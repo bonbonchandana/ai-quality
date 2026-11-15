@@ -11,3 +11,4 @@ ml_code_for_team.zip
 uploads/
 models/upload-*/
 artifacts/upload-*/
+report_*.json
