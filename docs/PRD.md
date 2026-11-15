@@ -25,6 +25,7 @@ periods. A reviewer who wants to check that the model was tested on later data a
 | 8 | API | FastAPI with `GET /`, `GET /health` and `POST /predict`, with Pydantic checks; works in Postman |
 | 9 | Dashboard | One page: summary cards, actual vs predicted, model comparison, input importance, daily and hourly patterns, episodes table, prediction form, upload |
 | 10 | Tests | API tests pass, and the API gives the same numbers as the training script |
+| 11 | Deployment | Running on Render at https://ai-quality.onrender.com; uploads train in a lighter mode in the background; Postman works against the live URL |
 
 ## How it fits together
 

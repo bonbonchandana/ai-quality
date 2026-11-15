@@ -7,6 +7,10 @@ episodes were real pollution or just problems in the data.
 This project does exactly that. You pick a dataset and a pollutant, and you get a next-hour prediction model, its test
 results and a list of flagged episodes, each with a reason.
 
+**Live version:** https://ai-quality.onrender.com/dashboard/ (API at https://ai-quality.onrender.com, docs at
+https://ai-quality.onrender.com/docs). It runs on Render's free plan, so after about 15 quiet minutes it goes to sleep
+and the first request takes around 50 seconds to wake it up.
+
 ## Datasets
 
 | Dataset | Rows (hourly) | Pollutants | Weather used |
@@ -66,7 +70,9 @@ data/                     the two built-in datasets
 models/<dataset>/         saved models, one .pkl per pollutant
 artifacts/<dataset>/      results the dashboard reads
 tests/test_api.py         API tests
-postman/                  Postman collection
+postman/                  Postman collections (local and online)
+render.yaml               Render deployment settings
+scripts/                  run_all.ps1 (train, start, test), run_local.ps1, public_url.ps1
 research/, docs/          planning-phase research and project documents
 ```
 
@@ -135,7 +141,28 @@ says whether that hour would be flagged.
 
 Run the automated tests with `.\.venv\Scripts\python -m pytest -q`.
 
-## Sharing
+## Deployment
+
+The app is deployed on [Render](https://render.com) from this repository, using `render.yaml`:
+
+* build: `pip install -r requirements-render.txt` (same versions as `requirements.txt`, but the CPU-only XGBoost and no test tools)
+* start: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+* every push to `main` redeploys it automatically
+
+To set it up again: sign in to Render with GitHub, click **New + → Blueprint**, pick this repository and click **Apply**.
+
+The free server has 512 MB of memory, so a few things are different online:
+
+* the server keeps only the last couple of models in memory
+* uploads train in "light" mode: Linear Regression and a small XGBoost, on at most the last two years of the file, with
+  a 10 MB size limit. Training runs in the background and the page shows its progress. For the best results, upload on
+  your own computer, where the full training runs.
+* uploaded datasets are kept until the server restarts (after it sleeps or on a redeploy). The two built-in datasets are always there.
+
+Postman: `postman/AirQuality-online.postman_collection.json` has the same three requests pointed at
+`https://ai-quality.onrender.com`.
+
+## Sharing from your own computer
 
 * Same Wi-Fi: `powershell -ExecutionPolicy Bypass -File scripts\run_local.ps1` prints a network address.
 * Temporary public link: install `cloudflared` (`winget install --id Cloudflare.cloudflared`), keep the server running

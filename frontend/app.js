@@ -40,7 +40,7 @@ async function start() {
   if (!health.upload_enabled) {
     $("upload-form").hidden = true;
     $("upload-result").hidden = false;
-    $("upload-result").textContent = "Uploading is turned off on the online version. Run the app on your own computer to train on your own file.";
+    $("upload-result").textContent = "Uploading is turned off on this server. Run the app on your own computer to train on your own file.";
   }
 }
 
@@ -160,22 +160,40 @@ async function predict(event) {
 }
 
 // ---------- upload ----------
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function upload(event) {
   event.preventDefault();
   const box = $("upload-result");
+  const button = $("upload-form").querySelector("button");
   const form = new FormData();
   form.append("file", $("upload-file").files[0]);
   form.append("name", $("upload-name").value);
   box.hidden = false;
   box.className = "result";
-  box.textContent = "Training on your file. A big file can take a couple of minutes.";
+  box.textContent = "Uploading and checking the file…";
+  button.disabled = true;
   try {
-    const r = await getJSON("/api/upload", { method: "POST", body: form });
+    let job = await getJSON("/api/upload", { method: "POST", body: form });
+    const started = Date.now();
+    // Training runs on the server in the background; check on it every few seconds.
+    while (job.status === "waiting" || job.status === "training") {
+      const seconds = Math.round((Date.now() - started) / 1000);
+      box.textContent = job.status === "waiting"
+        ? `Waiting for another training to finish… (${seconds}s)`
+        : `Training models for ${job.pollutants.join(", ")}… (${seconds}s). This can take a few minutes on the online server.`;
+      await wait(3000);
+      job = await getJSON(`/api/upload/${job.job}`);
+    }
+    if (job.status === "error") throw { detail: job.message };
+    const r = job.result;
     box.textContent = `Done. "${r.title}" now has models for ${r.pollutants.map((p) => p.pollutant).join(", ")}. It is selected above.`;
     await loadDatasets(r.id);
   } catch (err) {
     box.className = "result error";
     box.textContent = err.detail || "Upload failed.";
+  } finally {
+    button.disabled = false;
   }
 }
 

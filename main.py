@@ -12,6 +12,8 @@ Start the server from the project folder:
 import json
 import os
 import re
+import shutil
+import threading
 import uuid
 from functools import lru_cache
 from pathlib import Path
@@ -29,9 +31,12 @@ import train_model
 BASE = Path(__file__).resolve().parent
 ARTIFACTS = BASE / "artifacts"
 UPLOADS = BASE / "uploads"
-MAX_UPLOAD_MB = 30
-# Training needs more memory than a free host has, so the online demo turns uploads off (ALLOW_UPLOAD=false).
+MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "30"))
 ALLOW_UPLOAD = os.environ.get("ALLOW_UPLOAD", "true").lower() != "false"
+# On a small free server we train a lighter model set on at most two years of data (LIGHT_TRAINING=true).
+LIGHT_TRAINING = os.environ.get("LIGHT_TRAINING", "false").lower() == "true"
+JOBS = {}                          # upload job id -> its status
+TRAINING_LOCK = threading.Lock()   # one training at a time, so memory stays low
 
 class UTF8JSONResponse(JSONResponse):
     media_type = "application/json; charset=utf-8"     # so units like mg/m³ show correctly in every client
@@ -166,26 +171,57 @@ def get_sample(dataset_id: str, pollutant: str):
                                              "observed": float(df.at[t, info["column"]])}}
 
 
-@app.post("/api/upload")
+def run_training(job_id, path, dataset_id, title):
+    """Runs in a background thread so the upload request can return straight away."""
+    with TRAINING_LOCK:
+        JOBS[job_id]["status"] = "training"
+        load_model.cache_clear()           # free the cached models while we train
+        dataset_frame.cache_clear()
+        try:
+            summary, _ = train_model.train_dataset(path, dataset_id, title, out_root=BASE, light=LIGHT_TRAINING)
+            JOBS[job_id].update(status="done", result={"id": dataset_id, "title": title, "pollutants": summary})
+        except Exception as exc:
+            path.unlink(missing_ok=True)
+            for folder in ("models", "artifacts"):
+                shutil.rmtree(BASE / folder / dataset_id, ignore_errors=True)
+            JOBS[job_id].update(status="error", message=f"Could not train on this file: {exc}")
+
+
+@app.post("/api/upload", status_code=202)
 def upload_dataset(file: UploadFile = File(...), name: str = Form("")):
-    """Trains models on your own hourly CSV or ZIP. The file needs a time column and at least one pollutant."""
+    """Takes your own hourly CSV, Excel or ZIP and starts training on it. Check progress at /api/upload/{job}."""
     if not ALLOW_UPLOAD:
-        raise HTTPException(403, "Uploading is turned off on the online version. Run the app on your own computer to train on your own file.")
+        raise HTTPException(403, "Uploading is turned off on this server.")
     content = file.file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
     if len(content) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f"File is larger than {MAX_UPLOAD_MB} MB")
-    suffix = ".zip" if (file.filename or "").lower().endswith(".zip") else ".csv"
+    filename = (file.filename or "my-data.csv").lower()
+    suffix = next((ext for ext in (".zip", ".xlsx", ".csv") if filename.endswith(ext)), ".csv")
     title = (name or Path(file.filename or "my-data").stem).strip()[:60]
     dataset_id = "upload-" + (re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:30] or "data") + "-" + uuid.uuid4().hex[:6]
     UPLOADS.mkdir(exist_ok=True)
     path = UPLOADS / f"{dataset_id}{suffix}"
     path.write_bytes(content)
+
+    # Quick check first, so a wrong file gets an answer right away instead of after training
     try:
-        summary, _ = train_model.train_dataset(path, dataset_id, title, out_root=BASE)
+        pollutants, _ = train_model.find_columns(train_model.load_data(path))
     except Exception as exc:
         path.unlink(missing_ok=True)
-        raise HTTPException(422, f"Could not train on this file: {exc}")
-    return {"id": dataset_id, "title": title, "pollutants": summary}
+        raise HTTPException(422, f"Could not use this file: {exc}")
+
+    job_id = uuid.uuid4().hex[:10]
+    JOBS[job_id] = {"job": job_id, "status": "waiting" if TRAINING_LOCK.locked() else "training",
+                    "title": title, "pollutants": list(pollutants), "light": LIGHT_TRAINING}
+    threading.Thread(target=run_training, args=(job_id, path, dataset_id, title), daemon=True).start()
+    return JOBS[job_id]
+
+
+@app.get("/api/upload/{job_id}")
+def upload_status(job_id: str):
+    if job_id not in JOBS:
+        raise HTTPException(404, "Unknown upload job (the server may have restarted).")
+    return JOBS[job_id]
 
 
 app.mount("/dashboard", StaticFiles(directory=BASE / "frontend", html=True), name="dashboard")

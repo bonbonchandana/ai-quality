@@ -1,0 +1,78 @@
+{
+  "info": {
+    "name": "Air Quality Prediction API (online)",
+    "description": "Same requests as the local collection, sent to the deployed app on Render. The first request after a quiet period can take about 50 seconds while the server wakes up.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET /",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://ai-quality.onrender.com/",
+          "protocol": "https",
+          "host": [
+            "ai-quality",
+            "onrender",
+            "com"
+          ],
+          "path": []
+        }
+      }
+    },
+    {
+      "name": "GET /health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "https://ai-quality.onrender.com/health",
+          "protocol": "https",
+          "host": [
+            "ai-quality",
+            "onrender",
+            "com"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      }
+    },
+    {
+      "name": "POST /predict",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"pollutant\": \"CO\",\n  \"hour\": 18,\n  \"weekday\": 2,\n  \"lag_1\": 2.4,\n  \"lag_2\": 2.0,\n  \"lag_3\": 1.7,\n  \"lag_24\": 2.9,\n  \"temperature\": 12.5,\n  \"relative_humidity\": 55.0,\n  \"absolute_humidity\": 0.8\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://ai-quality.onrender.com/predict",
+          "protocol": "https",
+          "host": [
+            "ai-quality",
+            "onrender",
+            "com"
+          ],
+          "path": [
+            "predict"
+          ]
+        }
+      }
+    }
+  ]
+}

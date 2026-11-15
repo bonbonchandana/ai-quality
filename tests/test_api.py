@@ -61,6 +61,45 @@ def test_upload_rejects_a_file_without_pollutants():
     assert r.status_code == 422
 
 
+def test_upload_trains_in_the_background(monkeypatch):
+    import shutil
+    import time
+
+    import numpy as np
+    import pandas as pd
+
+    monkeypatch.setattr(main, "LIGHT_TRAINING", True)          # same quick mode as the online server
+    hours = pd.date_range("2024-01-01", periods=1500, freq="h")
+    rng = np.random.default_rng(0)
+    data = pd.DataFrame({"datetime": hours,
+                         "CO": np.abs(2 + np.sin(np.arange(1500) / 4) + rng.normal(0, 0.3, 1500)).round(2),
+                         "T": (15 + 5 * np.sin(np.arange(1500) / 24)).round(1)})
+    r = client.post("/api/upload", files={"file": ("test city.csv", data.to_csv(index=False).encode(), "text/csv")},
+                    data={"name": "pytest city"})
+    assert r.status_code == 202
+    job = r.json()
+    for _ in range(120):
+        job = client.get(f"/api/upload/{job['job']}").json()
+        if job["status"] in ("done", "error"):
+            break
+        time.sleep(1)
+    try:
+        assert job["status"] == "done", job
+        dataset_id = job["result"]["id"]
+        sample = client.get(f"/api/sample/{dataset_id}/CO").json()
+        assert client.post("/predict", json=sample["input"]).status_code == 200
+    finally:
+        if job.get("result"):
+            for _ in range(10):                      # Windows can hold a new file open for a moment
+                for folder in ("models", "artifacts"):
+                    shutil.rmtree(main.BASE / folder / job["result"]["id"], ignore_errors=True)
+                if not (main.BASE / "artifacts" / job["result"]["id"]).exists():
+                    break
+                time.sleep(0.5)
+            for f in main.UPLOADS.glob(job["result"]["id"] + ".*"):
+                f.unlink()
+
+
 def test_report_is_readable_json():
     r = client.get("/api/report/uci-italy/CO")
     report = r.json()

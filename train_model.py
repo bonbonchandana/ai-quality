@@ -76,7 +76,7 @@ def read_csv_any(path):
         if hasattr(path, "seek"):
             path.seek(0)
         table = pd.read_csv(path, **options)
-        if table.shape[1] > 3:
+        if table.shape[1] >= 2:                                    # at least a time column and one pollutant
             return table
     raise ValueError("Could not read the file as a CSV table.")
 
@@ -153,7 +153,10 @@ def device():
         return "cpu"
 
 
-def candidate_models(dev):
+def candidate_models(dev, light=False):
+    if light:   # small and quick, for a free online server with little memory and CPU
+        return {"Linear Regression": [LinearRegression()],
+                "XGBoost": [XGBRegressor(n_estimators=200, max_depth=4, learning_rate=0.1, n_jobs=1, verbosity=0, random_state=42)]}
     return {
         "Linear Regression": [LinearRegression()],
         "Random Forest": [RandomForestRegressor(n_estimators=150, max_depth=d, min_samples_leaf=5, n_jobs=2, random_state=42)
@@ -178,7 +181,7 @@ def scores(y_true, y_pred):
 
 
 # ---------------------------------------------------------------- 4-6. train, flag, analyze
-def train_pollutant(df, name, column, weather, dev="cpu"):
+def train_pollutant(df, name, column, weather, dev="cpu", light=False):
     X, y = make_features(df, column, weather), df[column]
     change = y - X["lag_1"]               # we train on the hour-to-hour change, not the level itself
     n = len(df)
@@ -193,7 +196,7 @@ def train_pollutant(df, name, column, weather, dev="cpu"):
 
     # Try each model's settings and keep whichever does best on the validation period
     results = []
-    for model_name, options in candidate_models(dev).items():
+    for model_name, options in candidate_models(dev, light).items():
         best = None
         for model in options:
             fitted = make_pipeline(model).fit(X.iloc[train], change.iloc[train])
@@ -365,11 +368,13 @@ def build_report(info, dataset_title=""):
     }
 
 
-def train_dataset(path, dataset_id, title, out_root="."):
+def train_dataset(path, dataset_id, title, out_root=".", light=False):
     """Trains a model for every pollutant in the file. Models go to models/<id>/, results to artifacts/<id>/."""
     df = load_data(path)
+    if light and len(df) > 24 * 365 * 2:     # light mode keeps the last two years to save memory and time
+        df = df.iloc[-24 * 365 * 2:]
     pollutants, weather = find_columns(df)
-    dev = device()
+    dev = "cpu" if light else device()
     print(f"[{title}] {len(df)} hourly rows {df.index.min()} -> {df.index.max()} | "
           f"pollutants {list(pollutants)} | weather {list(weather)} | XGBoost on {dev}")
     model_dir, art_dir = Path(out_root, "models", dataset_id), Path(out_root, "artifacts", dataset_id)
@@ -377,7 +382,7 @@ def train_dataset(path, dataset_id, title, out_root="."):
     art_dir.mkdir(parents=True, exist_ok=True)
     summary, preds = [], {}
     for name, column in pollutants.items():
-        model, info, pred = train_pollutant(df, name, column, weather, dev)
+        model, info, pred = train_pollutant(df, name, column, weather, dev, light)
         key = re.sub(r"[^A-Za-z0-9]", "", name)                    # PM2.5 -> PM25 for file names
         joblib.dump(model, model_dir / f"{key}.pkl", compress=3)
         (art_dir / f"{key}.json").write_text(json.dumps(info, allow_nan=False), encoding="utf-8")
