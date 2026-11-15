@@ -59,12 +59,12 @@ def find_pollutant(dataset_id, pollutant):
     raise HTTPException(404, f"Dataset '{dataset_id}' not found. Available: {[d['id'] for d in datasets()]}")
 
 
-@lru_cache(maxsize=64)
+@lru_cache(maxsize=2)          # keep only the last couple of models in memory
 def load_model(dataset_id, key):
     return joblib.load(BASE / "models" / dataset_id / f"{key}.pkl")
 
 
-@lru_cache(maxsize=64)
+@lru_cache(maxsize=4)
 def load_results(dataset_id, key):
     return json.loads((ARTIFACTS / dataset_id / f"{key}.json").read_text(encoding="utf-8"))
 
@@ -101,7 +101,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "datasets": [d["id"] for d in datasets()]}
+    return {"status": "ok", "datasets": [d["id"] for d in datasets()], "upload_enabled": ALLOW_UPLOAD}
 
 
 @app.post("/predict")
@@ -142,7 +142,7 @@ def get_report(dataset_id: str, pollutant: str, download: bool = False):
                     headers={"Content-Disposition": f'attachment; filename="{dataset_id}-{key}-report.json"'})
 
 
-@lru_cache(maxsize=16)
+@lru_cache(maxsize=1)
 def dataset_frame(dataset_id):
     return pd.read_csv(ARTIFACTS / dataset_id / "data.csv", parse_dates=["timestamp"], index_col="timestamp").asfreq("h")
 

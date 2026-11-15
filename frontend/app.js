@@ -36,6 +36,12 @@ async function start() {
   $("upload-form").addEventListener("submit", upload);
   window.addEventListener("resize", () => chart && chart.resize());
   await loadDatasets();
+  const health = await getJSON("/health");
+  if (!health.upload_enabled) {
+    $("upload-form").hidden = true;
+    $("upload-result").hidden = false;
+    $("upload-result").textContent = "Uploading is turned off on the online version. Run the app on your own computer to train on your own file.";
+  }
 }
 
 async function loadDatasets(selectId) {
