@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Air Quality Prediction API",
-    "description": "Start the server with: python -m uvicorn main:app --reload",
+    "description": "Start the server with: python -m uvicorn main:app --reload. pollutant can be CO, NO2, NOx or C6H6.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -57,7 +57,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"hour\": 17,\n  \"weekday\": 4,\n  \"pt08_s1_co\": 1411,\n  \"pt08_s2_nmhc\": 1191,\n  \"pt08_s3_nox\": 519,\n  \"pt08_s4_no2\": 1426,\n  \"pt08_s5_o3\": 1920,\n  \"temperature\": 13.4,\n  \"relative_humidity\": 51.2,\n  \"absolute_humidity\": 0.7808,\n  \"co_lag_1\": 3.3,\n  \"co_lag_2\": 3.0,\n  \"co_lag_3\": 2.9,\n  \"co_lag_24\": 4.5,\n  \"pt08_s1_co_prev\": 1551,\n  \"pt08_s2_nmhc_prev\": 1303,\n  \"pt08_s3_nox_prev\": 469,\n  \"pt08_s4_no2_prev\": 1520,\n  \"pt08_s5_o3_prev\": 2171\n}",
+          "raw": "{\n  \"pollutant\": \"CO\",\n  \"hour\": 18,\n  \"weekday\": 2,\n  \"lag_1\": 2.4,\n  \"lag_2\": 2.0,\n  \"lag_3\": 1.7,\n  \"lag_24\": 2.9,\n  \"temperature\": 12.5,\n  \"relative_humidity\": 55.0,\n  \"absolute_humidity\": 0.8\n}",
           "options": {
             "raw": {
               "language": "json"

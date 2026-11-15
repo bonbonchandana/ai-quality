@@ -1,6 +1,7 @@
 # Air quality prediction and episode detection — research
 
-Updated 15 November 2026. Phases 1–3 (domain, existing products, dataset findings) come from the research phase and remain valid. Phase 4 documents the first research run ([run.py](../research/run.py)), which has been **superseded**. The model and system that actually shipped are described in **Phase 5 (final model)** and **Phase 6 (final architecture)**. Read [PRD.md](PRD.md) for the product requirements and [SOURCES.md](SOURCES.md) for evidence scope. Design judgments and candidate explanations are not validated causal findings.
+Phases 1–3 (domain, existing products, dataset findings) come from the planning-phase research. Phases 4–6 describe the
+model and system that were built. The method is deliberately simple and follows the problem statement step by step.
 
 ## Phase 1 — domain and problem
 
@@ -87,7 +88,7 @@ Drift signs: monthly CO-versus-S1 linear slopes range approximately 0.00441 in A
 
 Notable calendar window: 24–26 December 2004 has 71 observed CO hours, mean 3.552 mg/m³. A “holiday effect” is [unverified]: no holiday/event labels or causal controls are present. Do not describe Christmas, fireworks or traffic as confirmed explanations. The long October gaps and February shared-channel gap are stronger actionable evidence for this MVP than event speculation.
 
-Choose **CO(GT)**. It has 7,674 observed reference hours (82.01%), whereas NMHC is largely unusable. Benzene is more complete, but CO offers a directly interpretable reference quantity and a public-health rationale ([WHO](https://www.who.int/teams/environment-climate-change-and-health/air-quality-and-health/health-impacts/types-of-pollutants)). Its nowcast and one-hour forecast performance are evaluated below. We did not compare ML predictability across all pollutants and do not claim CO is statistically the best target.
+Pollutant choice: the app lets the user **select CO, NO2, NOx or benzene (C6H6)**. CO(GT) has 7,674 observed hours (82.01%); NO2 and NOx about 82%; C6H6 about 96%. NMHC is excluded because 90% of its values are missing. Health background: [WHO](https://www.who.int/teams/environment-climate-change-and-health/air-quality-and-health/health-impacts/types-of-pollutants).
 
 ### Seven saved figures
 
@@ -99,119 +100,44 @@ Choose **CO(GT)**. It has 7,674 observed reference hours (82.01%), whereas NMHC 
 ![Test predictions, intervals and episode flags](../research/figures/06_episodes.png)
 ![Validation feature importance](../research/figures/07_importance.png)
 
-## Phase 4 — research-phase experiments: forecast vs virtual sensor (superseded)
+## Phase 4 — final method
 
-> **Superseded.** This section records the first research run (`research/run.py`, 89 engineered features, Ridge selected).
-> It established that the virtual-sensor nowcast framing beats a one-hour forecast. It is kept for traceability.
-> The deployed model was retrained with a compact, API-friendly feature set; see [Phase 5](#phase-5--final-model-shipped-in-the-app).
+* **Pollutants:** CO (mg/m³), NO2 (µg/m³), NOx (ppb), C6H6 (µg/m³). NMHC is skipped because 90% of it is missing.
+* **Task:** predict the pollutant at hour *t* using only information available before *t*.
+* **Features (lagged):** the pollutant at *t−1, t−2, t−3, t−24*, temperature, relative and absolute humidity at *t−1*,
+  hour of day and weekday. Missing inputs are filled with the training median.
+* **Split (future-period evaluation):** train on the first 60% of the timeline (Mar–Oct 2004), validate on the next 20%
+  (Oct 2004 – Jan 2005), test on the last 20% (16 Jan – 4 Apr 2005). The data are never shuffled.
+* **Models:** Linear Regression, Random Forest (small grid) and XGBoost (small grid, trained on an RTX GPU). The best
+  model on validation is retrained on train + validation and scored once on test. The baseline is persistence (same as the previous hour).
+* **Flagging:** a test hour is flagged when |actual − predicted| exceeds the 95th percentile of validation errors.
+  Flagged hours less than 3 hours apart form one episode.
+* **Analysis:** an episode is a *data limitation* when any input was missing or the pollutant had missing values in the
+  6 hours before it. Otherwise it is *unusual pollution*: the inputs were complete, but the level was much higher or lower than expected.
 
-The virtual sensor estimates CO at time t using PT08 sensor responses and weather at t, plus CO only from t−1 and earlier. Forecast uses sensor and weather data only through t−1 to predict CO at t. Same timestamps and same two baselines for both. A nowcast is not a future forecast, and concurrent sensor readings must actually be available before the estimate can be produced. Historical data cannot demonstrate live availability or performance at a new location.
+## Phase 5 — results (test period)
 
-Each framing uses CO lags 1, 2, 3, 24, 168 hours; past-only rolling means/std and lag difference; sensor and weather lags, rolling means/std and lag differences; cyclic hour and weekday. Forecast sensor/weather rolling windows end at t−1; nowcast ends at t. No reference pollutant at t is included as a feature. Median imputers and Ridge scalers are fit on training rows only. Rolling features are created from past/concurrent observations only; no backfill. Seasonal and persistence baselines use CO at t−24 and t−1, respectively. Actual past targets in the evaluated period become available sequentially, which is a practical limitation when a reference analyzer is unavailable for a long stretch.
+| Pollutant | Linear Regression | Random Forest | XGBoost | Persistence | Chosen (on validation) | Better than persistence |
+|---|---|---|---|---|---|---|
+| CO (mg/m³) | 0.472 | **0.403** | 0.409 | 0.519 | Random Forest | 22.4% |
+| NO2 (µg/m³) | 18.17 | **17.01** | 16.64 | 19.79 | Random Forest | 14.1% |
+| NOx (ppb) | **66.24** | 62.73 | 61.74 | 72.73 | Linear Regression | 8.9% |
+| C6H6 (µg/m³) | 2.191 | 1.717 | **1.854** | 2.291 | XGBoost | 19.1% |
 
-Three expanding chronological evaluation folds end at the original 60% training boundary. XGBoost early stopping uses a chronological tail of each fold's **training** period; it is then refit on that fold's full training period with the chosen number of trees. The scored outer fold never controls its own stopping. Final XGBoost tree count is the median of fold selections; Ridge alpha=10. The sole selection criterion is the **unweighted mean of the three fold MAEs**, across both framings and both learned models. The pipeline writes selection.json before predicting the test period. No models are retrained on calibration or test data. The 10% threshold is applied against the better baseline under the selected framing, using the same fold average.
+Values are test MAE. The bold value is the model chosen on the validation period. Choosing on validation (not test)
+keeps the evaluation honest, even where another model happened to score slightly better on test.
 
-### Validation: unweighted mean across three rolling folds
+* For all four pollutants, the most important input is the previous hour's value (`lag_1`), followed by hour of day and `lag_24`.
+* For NOx, persistence was slightly better than every model on validation (91.4 vs 92.9 ppb). The 8.9% test gain is therefore the least reliable.
+* Episodes (unusual pollution / data limitation): CO 34 (29 / 5), NO2 68 (42 / 26), NOx 48 (30 / 18), C6H6 46 (45 / 1).
+  NO2 and NOx have more data-limitation episodes because their reference analyzers have more gaps.
 
-| framing | model | n | MAE | RMSE | R2 |
-|---|---|---|---|---|---|
-| forecast | Persistence | 3 folds | 0.495 | 0.736 | 0.628 |
-| forecast | Ridge | 3 folds | 0.408 | 0.566 | 0.783 |
-| forecast | Seasonal naive | 3 folds | 0.732 | 1.036 | 0.285 |
-| forecast | XGBoost | 3 folds | 0.367 | 0.530 | 0.811 |
-| nowcast | Persistence | 3 folds | 0.495 | 0.736 | 0.628 |
-| nowcast | Ridge | 3 folds | 0.197 | 0.268 | 0.947 |
-| nowcast | Seasonal naive | 3 folds | 0.732 | 1.036 | 0.285 |
-| nowcast | XGBoost | 3 folds | 0.204 | 0.294 | 0.940 |
+## Phase 6 — architecture
 
-Validation RMSE and R² above are the arithmetic means of the individual fold metrics, not pooled statistics. The folds have 585, 433 and 495 common eligible rows. Ridge nowcast MAE is 0.1966 against persistence 0.4952: **60.3% lower**. Forecast XGBoost also clears the validation threshold (0.3671 versus 0.4952). All fold-specific values and dates are in [metrics.csv](../research/output/metrics.csv).
+`train_model.py` trains and saves `models/<pollutant>.pkl` with joblib and writes `artifacts/<pollutant>.json`.
+`main.py` (FastAPI) loads the models and serves `GET /`, `GET /health` and `POST /predict` (Pydantic validation; a
+`pollutant` field selects the model), plus the data for the one-page dashboard in `frontend/` at `/dashboard/`.
+It is tested with pytest and Postman.
 
-### Final chronological test: same 1,689 eligible hours per method
-
-| framing | model | n | MAE | RMSE | R2 |
-|---|---|---|---|---|---|
-| forecast | Persistence | 1689 | 0.527 | 0.817 | 0.646 |
-| forecast | Seasonal naive | 1689 | 0.879 | 1.289 | 0.118 |
-| forecast | Ridge | 1689 | 0.479 | 0.680 | 0.755 |
-| forecast | XGBoost | 1689 | 0.486 | 0.738 | 0.711 |
-| nowcast | Persistence | 1689 | 0.527 | 0.817 | 0.646 |
-| nowcast | Seasonal naive | 1689 | 0.879 | 1.289 | 0.118 |
-| nowcast | Ridge | 1689 | 0.281 | 0.449 | 0.893 |
-| nowcast | XGBoost | 1689 | 0.333 | 0.575 | 0.824 |
-
-Nowcast Ridge was selected on validation, and its test MAE is **46.7% lower** than persistence. The test compares all methods to satisfy the requested table; it did not determine the selection in this revised run. **Important limitation:** this same historical test period was examined during the earlier version of this project, before the revised experiments were designed. Therefore it is not a genuinely untouched independent test, even though this run freezes its selection before scoring. A future dataset or new later period is needed for an unbiased prospective confirmation.
-
-The highest R² among individual reported folds and test rows is below 0.97. Feature provenance was still audited in code: only CO shifts of at least one hour are inputs; nowcast same-hour inputs are limited to PT08 and weather; forecast inputs are shifted. The model does not use same-hour reference CO or C6H6/NOx/NO2. Imputation and scaling are training-only. The analysis assumes all same-hour PT08 and meteorological measurements are available when the nowcast is issued; actual reporting latency is [unverified]. No guarantee follows for other sites, seasons or missing reference histories.
-
-### Intervals and classified episodes
-
-A later, separate chronological calibration block supplies a conformal-style nominal 90% symmetric interval, radius 0.932 mg/m³, and an absolute residual threshold 1.237 mg/m³. Empirical coverage on all 1,781 observed test targets was 94.9%; time-series dependence means coverage is not guaranteed ([conformal tutorial](https://arxiv.org/abs/2107.07511)). The common-baseline table uses 1,689 rows with both target lags available; all-observed export metrics have a different denominator. Missing actuals cannot be flagged.
-
-The regenerated test output contains 48 flagged hours in 29 contiguous episodes: 26 data-limitation candidates and 3 unusual-pollution candidates. Flags are deviations, not diagnoses. A flag is classified as data-limitation candidate when any input was missing and imputed, prior CO history was missing, sensor range is exceeded, past sensor disagreement suggests drift, or current sensor/reference agreement is poor. Otherwise it is an unusual-pollution candidate. Saturation and drift are hypotheses; causes are unverified. All episodes include exact reasons in [episodes.json](../research/output/episodes.json). Missing observations are gaps, not flagged episodes.
-
-[Model metadata](../research/output/model_metadata.json), [predictions](../research/output/predictions.json), [selection](../research/output/selection.json), and [reproducibility instructions](../research/README.md) document the artifact. Validation permutation feature importance and all seven charts were regenerated. The importance measures model reliance, not causation. Estimated intervals can extend below zero and are not AQI categories.
-
-## Phase 5 — final model (shipped in the app)
-
-Produced by [`train_model.py`](../train_model.py); all values are written to [`artifacts/`](../artifacts) on every run.
-
-**Why it was retrained.** A deployed API needs inputs that a client can send in one JSON request. The 89-feature research
-model needed a week of rolling history per request. The final model uses **19 raw inputs**, defined in [`aq_features.py`](../aq_features.py):
-hour, weekday, the five PT08 sensor responses at *t*, temperature, relative and absolute humidity, CO at *t−1, t−2, t−3,
-t−24*, and the five sensor responses at *t−1*. Inside the saved pipeline these become cyclical time, lag summaries and
-**hour-to-hour sensor deltas**, followed by median imputation (with missing indicators), scaling and the estimator. The
-deltas were the decisive addition: they let a linear model's validation MAE fall from 0.356 to 0.244.
-
-**Splits (chronological, never shuffled).** Three rolling-origin validation folds (40–50%, 50–60% and 60–70% of the hourly
-timeline, each trained on all earlier data), a calibration block (70–80%) and a test block (80–100%, 16 Jan – 4 Apr 2005).
-All methods are scored on the same rows: observed target, sensors present, and both baseline lags available.
-
-**Candidates and tuning (validation folds only).** Linear Regression; Ridge (alpha grid); KNN, the course's algorithm
-(k and weights grid); Random Forest (depth and leaf grid); and XGBoost, **trained on an NVIDIA RTX 5050 with CUDA**
-(trees, depth, learning rate). The models were compared against persistence, a seasonal-naive baseline and a faithful
-re-creation of the team notebook model.
-
-| Model | Validation MAE | Test MAE | Test RMSE | Test R² |
-|---|---|---|---|---|
-| **XGBoost (selected)** | **0.210** | **0.271** | **0.401** | **0.910** |
-| Ridge | 0.244 | 0.252 | 0.353 | 0.931 |
-| Linear Regression | 0.244 | 0.252 | 0.355 | 0.930 |
-| Random Forest | 0.242 | 0.292 | 0.458 | 0.883 |
-| KNN | 0.362 | 0.366 | 0.505 | 0.858 |
-| Persistence | 0.579 | 0.526 | 0.814 | 0.630 |
-| Seasonal naive | 1.002 | 0.878 | 1.283 | 0.083 |
-| Team notebook LR (no lags) | 0.316 | 1.255 | 1.348 | −0.01 |
-
-* XGBoost was selected by lowest mean validation MAE; tuning improved it from 0.234 to 0.210. On test it is **48.4% more accurate
-  than persistence**. Ridge scored slightly better on test, but changing the selection after seeing test results would
-  leak the test set, so the validation choice stands.
-* Framing check with the same tuned settings: nowcast test MAE 0.271 vs forecast (sensors at *t−1*) 0.452, which confirms the Phase 4 conclusion.
-* The team notebook model collapses on the test months. Its `Month` feature extrapolates into months that are unseen or
-  only partly seen, and without lags it cannot follow sensor drift.
-* The 90% interval half-width is 0.719 mg/m³ (conformal, from calibration residuals), with 91.8% empirical test coverage.
-  The episode threshold is 1.032 mg/m³ (95th percentile of calibration |residual|).
-* The test period was inspected during earlier exploratory work, so it is not a fully independent test.
-
-**Episodes.** Hours whose |observed − estimate| exceeds the threshold are flagged across all out-of-sample periods
-(walk-forward fold models, then the frozen final model). Flagged runs less than 3 hours apart are merged. That gives
-**68 episodes: 35 unusual-pollution candidates and 33 data-limitation candidates**. An episode is a data-limitation candidate when any of these rules
-fires: imputed CO history, a preceding CO data gap, S1 outside its training range, past-week sensor/reference
-disagreement above 25% (a drift proxy), or current disagreement beyond the training 99th percentile. Otherwise it is an
-unusual-pollution candidate. Each episode stores its evidence counts and a plain-language reason. Causes remain unverified.
-
-**Saving.** The fitted pipeline is saved with joblib as [`air_quality_model.pkl`](../air_quality_model.pkl), switched
-to CPU inference for portability, and checked to give identical predictions after reloading. Permutation importance
-(calibration period) ranks S2, CO at *t−1* and S1 highest.
-
-## Phase 6 — final architecture
-
-Python trains the model offline (`train_model.py`). **FastAPI** (`main.py`) loads the saved pipeline once and serves
-`GET /`, `GET /health` and `POST /predict`, with Pydantic `Field` validation and SHAP contributions from XGBoost. It also serves
-`/api/*` data endpoints and the dashboard (`frontend/`: HTML, CSS and vanilla JS with Apache ECharts 5.5.1, no build step) at
-`/dashboard/`, so the whole product runs from one process and one URL. Tested with pytest (10 tests) and a Postman
-collection. Deployed locally with Uvicorn (`scripts/run_local.ps1`: local and LAN URLs); a temporary public URL comes from a
-Cloudflare quick tunnel (`scripts/public_url.ps1`). Permanent cloud hosting is optional future work.
-
-Future work: validate on another time period or site, measure real sensor availability and latency, add time-series-aware
-uncertainty, and validate episode causes against independent event labels. [UCI](https://archive.ics.uci.edu/dataset/360/air+quality)
-contains conflicting research-only and CC BY statements; clarify these before any commercial reuse.
+Future work: validate on another site or a later period, add more environmental variables, and check episode causes
+against real event records. The archived first experiment (a same-hour "virtual sensor") is in `research/` and in the git tag `v1-advanced`.

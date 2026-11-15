@@ -32,11 +32,7 @@ Checked with web search and primary pages on 15 November 2026. Search snippets w
 
 ## Architecture, versions and deployment
 
-**Used in the final build:** [FastAPI](https://fastapi.tiangolo.com/) with [Pydantic](https://docs.pydantic.dev/) and [Uvicorn](https://www.uvicorn.org/)
-for the API; [Apache ECharts 5.5.1](https://echarts.apache.org/) for the dashboard; [XGBoost](https://xgboost.readthedocs.io/en/stable/python/python_api.html)
-(CUDA training, `pred_contribs` SHAP values) and [scikit-learn](https://scikit-learn.org/) pipelines; [joblib](https://joblib.readthedocs.io/)
-for model saving; [Cloudflare quick tunnels](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/)
-for the temporary public URL. The exact pins are in the root `requirements.txt`. The links below are the options considered during research.
+**Used in the final build:** [FastAPI](https://fastapi.tiangolo.com/) with [Pydantic](https://docs.pydantic.dev/) and [Uvicorn](https://www.uvicorn.org/); [scikit-learn](https://scikit-learn.org/) (Linear Regression, Random Forest); [XGBoost](https://xgboost.readthedocs.io/); [joblib](https://joblib.readthedocs.io/) for saving models; [Apache ECharts](https://echarts.apache.org/) for the dashboard charts. Exact versions are in `requirements.txt`. The links below are the options considered during research.
 
 
 - [React versions](https://react.dev/versions): direct page reports 19.3 and links 19.3.0; stale search snippets reported 19.2. Prefer fetched documentation.

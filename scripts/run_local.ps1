@@ -4,7 +4,7 @@ $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
 $python = ".\.venv\Scripts\python.exe"
 if (-not (Test-Path $python)) { Write-Host "Create the venv first: python -m venv .venv; .\.venv\Scripts\pip install -r requirements.txt"; exit 1 }
-if (-not (Test-Path "air_quality_model.pkl")) { & $python train_model.py }
+if (-not (Test-Path "models/CO.pkl")) { & $python train_model.py }
 $port = 8000
 $lan = (Get-NetIPConfiguration -ErrorAction SilentlyContinue |
         Where-Object { $_.IPv4DefaultGateway -ne $null -and $_.NetAdapter.Status -eq "Up" } |
