@@ -1,0 +1,9 @@
+{
+  "name": "air-quality-analytics",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {"dev": "vite", "build": "tsc -b && vite build", "test": "vitest run"},
+  "dependencies": {"@vitejs/plugin-react": "latest", "echarts": "latest", "echarts-for-react": "latest", "react": "latest", "react-dom": "latest", "typescript": "latest", "vite": "latest"},
+  "devDependencies": {"vitest": "latest", "jsdom": "latest", "@types/react": "latest", "@types/react-dom": "latest"}
+}

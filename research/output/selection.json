@@ -5,18 +5,18 @@
   "selected_before_test": true,
   "fold_early_stopping_rounds": {
     "forecast": [
-      147,
-      122,
-      350
+      146,
+      119,
+      373
     ],
     "nowcast": [
-      219,
-      87,
-      229
+      179,
+      84,
+      347
     ]
   },
   "final_xgboost_trees": {
-    "forecast": 147,
-    "nowcast": 219
+    "forecast": 146,
+    "nowcast": 179
   }
 }

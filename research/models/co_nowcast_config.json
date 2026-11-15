@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "target": "CO(GT)",
+  "units": "mg/m3",
+  "framing": "nowcast",
+  "horizon_hours": 0,
+  "model": "Ridge",
+  "feature_preparation": "Past/concurrent sensor and weather readings, lagged CO, rolling statistics, calendar encodings; median imputation and scaling are inside the saved pipeline.",
+  "feature_order_source": "research/output/model_metadata.json",
+  "episode_threshold": 1.237431631633739,
+  "calibration_radius": 0.9322998747350182,
+  "metrics": {
+    "validation_mae": 0.197,
+    "validation_rmse": 0.268,
+    "validation_r2": 0.947,
+    "test_mae": 0.28551020162314805,
+    "test_rmse": 0.4550239243811718,
+    "test_r2": 0.8902663460053108,
+    "test_note": "The test period was examined during earlier research and is not fully independent."
+  },
+  "training_period": "2004-03-17 18:00:00 through 2004-10-30 15:00:00",
+  "validation_period": "2004-10-30 16:00:00 through 2005-01-16 14:00:00",
+  "test_period": "2005-01-16 15:00:00 through 2005-04-04 14:00:00"
+}

@@ -96,13 +96,13 @@
     "weekday_cos",
     "lag_missing_count"
   ],
-  "calibration_radius": 0.9322998747350182,
-  "episode_threshold": 1.237431631633739,
+  "calibration_radius": 0.9322998747350226,
+  "episode_threshold": 1.2374316316337421,
   "sensor_reference_coefficients": [
-    0.005574798362186447,
-    -4.111316153273262
+    0.0055747983621864585,
+    -4.111316153273266
   ],
-  "sensor_disagreement_threshold": 1.6328086939483886,
+  "sensor_disagreement_threshold": 1.6328086939483926,
   "sensor_training_range": [
     708.0,
     2040.0

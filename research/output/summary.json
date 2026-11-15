@@ -8,15 +8,15 @@
   "inserted_hours": 0,
   "selected_model": "Ridge",
   "selected_framing": "nowcast",
-  "q90": 0.9322998747350182,
-  "threshold95": 1.237431631633739,
+  "q90": 0.9322998747350226,
+  "threshold95": 1.2374316316337421,
   "calibration_n": 778,
   "test_interval_coverage_all_observed": 0.948905109489051,
   "test_metrics_all_observed": {
     "n": 1781,
-    "MAE": 0.28551020162314805,
-    "RMSE": 0.4550239243811718,
-    "R2": 0.8902663460053108
+    "MAE": 0.28551020162315166,
+    "RMSE": 0.45502392438117556,
+    "R2": 0.8902663460053091
   },
   "flagged_hours": 48,
   "episodes": 29,

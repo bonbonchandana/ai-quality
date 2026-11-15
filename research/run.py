@@ -72,9 +72,9 @@ def fitmodel(name,X,end,rounds=None):
  if rounds is None:
   cut=int(end*.85); inner=trainids(cut); val=trainids(end);val=val[val>=cut]
   imp=SimpleImputer(strategy='median',add_indicator=True);xt=imp.fit_transform(X.iloc[inner]);xv=imp.transform(X.iloc[val])
-  early=XGBRegressor(n_estimators=1000,max_depth=3,learning_rate=.04,objective='reg:squarederror',random_state=42,n_jobs=2,tree_method='hist',early_stopping_rounds=40)
+  early=XGBRegressor(n_estimators=1000,max_depth=3,learning_rate=.04,objective='reg:squarederror',random_state=42,n_jobs=1,tree_method='hist',device='cuda',early_stopping_rounds=40)
   early.fit(xt,y.iloc[inner],eval_set=[(xv,y.iloc[val])],verbose=False);rounds=early.best_iteration+1
- m=make_pipeline(SimpleImputer(strategy='median',add_indicator=True),XGBRegressor(n_estimators=int(rounds),max_depth=3,learning_rate=.04,objective='reg:squarederror',random_state=42,n_jobs=2,tree_method='hist'))
+ m=make_pipeline(SimpleImputer(strategy='median',add_indicator=True),XGBRegressor(n_estimators=int(rounds),max_depth=3,learning_rate=.04,objective='reg:squarederror',random_state=42,n_jobs=1,tree_method='hist',device='cuda'))
  m.fit(X.iloc[tr],y.iloc[tr]);return m,int(rounds)
 rows=[]; rounds_by={f:[] for f in Xs}
 for f,X in Xs.items():

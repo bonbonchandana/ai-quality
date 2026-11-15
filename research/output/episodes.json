@@ -7,7 +7,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 1.63377000181036
+    "peak_abs_residual": 1.6337700018103583
   },
   {
     "id": "EP002",
@@ -17,7 +17,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history. Prior CO missing streak reaches 4 hours.",
-    "peak_abs_residual": 1.248438580084669
+    "peak_abs_residual": 1.2484385800846325
   },
   {
     "id": "EP003",
@@ -27,7 +27,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 1.9330033540801206
+    "peak_abs_residual": 1.933003354080125
   },
   {
     "id": "EP004",
@@ -37,7 +37,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 2.129984641922491
+    "peak_abs_residual": 2.1299846419225115
   },
   {
     "id": "EP005",
@@ -47,7 +47,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 1.6498067908906406
+    "peak_abs_residual": 1.6498067908906517
   },
   {
     "id": "EP006",
@@ -57,7 +57,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 1.2603634590828692
+    "peak_abs_residual": 1.26036345908289
   },
   {
     "id": "EP007",
@@ -67,7 +67,7 @@
     "severity": "high",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history. Prior CO missing streak reaches 25 hours. CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 2.575761990978035
+    "peak_abs_residual": 2.5757619909780316
   },
   {
     "id": "EP008",
@@ -77,7 +77,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.4771812018667698
+    "peak_abs_residual": 1.4771812018667783
   },
   {
     "id": "EP009",
@@ -87,7 +87,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.6549921419282283
+    "peak_abs_residual": 1.6549921419282452
   },
   {
     "id": "EP010",
@@ -97,7 +97,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 1.364120071860913
+    "peak_abs_residual": 1.364120071860917
   },
   {
     "id": "EP011",
@@ -107,7 +107,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.3187770242775787
+    "peak_abs_residual": 1.3187770242779047
   },
   {
     "id": "EP012",
@@ -117,7 +117,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.6552599104222017
+    "peak_abs_residual": 1.6552599104222154
   },
   {
     "id": "EP013",
@@ -127,7 +127,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history. Prior CO missing streak reaches 1 hours.",
-    "peak_abs_residual": 1.4637850017912948
+    "peak_abs_residual": 1.463785001791324
   },
   {
     "id": "EP014",
@@ -137,7 +137,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.3175442413096454
+    "peak_abs_residual": 1.317544241309664
   },
   {
     "id": "EP015",
@@ -147,7 +147,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.377879788525504
+    "peak_abs_residual": 1.3778797885255023
   },
   {
     "id": "EP016",
@@ -157,7 +157,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.4334761754854994
+    "peak_abs_residual": 1.4334761754855028
   },
   {
     "id": "EP017",
@@ -167,7 +167,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.3951706775950043
+    "peak_abs_residual": 1.3951706775950106
   },
   {
     "id": "EP018",
@@ -177,7 +177,7 @@
     "severity": "high",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 4.353920311208174
+    "peak_abs_residual": 4.353920311208176
   },
   {
     "id": "EP019",
@@ -187,7 +187,7 @@
     "severity": "high",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 3.008447643628239
+    "peak_abs_residual": 3.0084476436282253
   },
   {
     "id": "EP020",
@@ -197,7 +197,7 @@
     "severity": "high",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 3.1511627239494673
+    "peak_abs_residual": 3.1511627239494646
   },
   {
     "id": "EP021",
@@ -207,7 +207,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.5502813516478282
+    "peak_abs_residual": 1.5502813516481417
   },
   {
     "id": "EP022",
@@ -217,7 +217,7 @@
     "severity": "moderate",
     "classification": "unusual_pollution_candidate",
     "reason": "Observed CO departs from model expectation with complete inputs and no triggered sensor-quality rule; cause unverified.",
-    "peak_abs_residual": 1.513841610435708
+    "peak_abs_residual": 1.513841610435661
   },
   {
     "id": "EP023",
@@ -227,7 +227,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 1.4179280409335044
+    "peak_abs_residual": 1.4179280409335036
   },
   {
     "id": "EP024",
@@ -237,7 +237,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history.",
-    "peak_abs_residual": 1.5945458446238634
+    "peak_abs_residual": 1.5945458446238439
   },
   {
     "id": "EP025",
@@ -247,7 +247,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "At least one predictor missing; training-median imputation used; includes missing lag or sensor/environment history. Prior CO missing streak reaches 4 hours. CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 1.3144149139406105
+    "peak_abs_residual": 1.3144149139405628
   },
   {
     "id": "EP026",
@@ -257,7 +257,7 @@
     "severity": "moderate",
     "classification": "unusual_pollution_candidate",
     "reason": "Observed CO departs from model expectation with complete inputs and no triggered sensor-quality rule; cause unverified.",
-    "peak_abs_residual": 1.2445430344708135
+    "peak_abs_residual": 1.244543034470793
   },
   {
     "id": "EP027",
@@ -267,7 +267,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 1.3562875901560023
+    "peak_abs_residual": 1.3562875901560076
   },
   {
     "id": "EP028",
@@ -277,7 +277,7 @@
     "severity": "moderate",
     "classification": "data_limitation_candidate",
     "reason": "CO reference differs from training linear sensor expectation beyond training 99th-percentile residual; fault or cross-sensitivity possible.",
-    "peak_abs_residual": 1.34017558541928
+    "peak_abs_residual": 1.3401755854192867
   },
   {
     "id": "EP029",
@@ -287,6 +287,6 @@
     "severity": "moderate",
     "classification": "unusual_pollution_candidate",
     "reason": "Observed CO departs from model expectation with complete inputs and no triggered sensor-quality rule; cause unverified.",
-    "peak_abs_residual": 1.6205506090178847
+    "peak_abs_residual": 1.6205506090178927
   }
 ]
