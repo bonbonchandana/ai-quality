@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+.pytest_cache/
+research/.venv/
+research/.cache/
+research/.mplconfig/
+.claude/
+tools/
+ml_code_for_team.zip
+*.log.tmp

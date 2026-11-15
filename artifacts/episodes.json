@@ -1,0 +1,1294 @@
+[
+  {
+    "id": "EP001",
+    "start": "2004-08-31T14:00:00",
+    "end": "2004-08-31T14:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "1 h had missing CO history filled with training medians. Preceded by a CO data gap of up to 72 h.",
+    "peak_abs_residual": 1.4819036960601806,
+    "period": "fold_1",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 1,
+      "max_prior_co_missing_hours": 72,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP002",
+    "start": "2004-09-13T19:00:00",
+    "end": "2004-09-13T19:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "1 h had missing CO history filled with training medians. Preceded by a CO data gap of up to 1 h.",
+    "peak_abs_residual": 1.1966669082641603,
+    "period": "fold_1",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 1,
+      "max_prior_co_missing_hours": 1,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP003",
+    "start": "2004-09-15T18:00:00",
+    "end": "2004-09-15T19:00:00",
+    "hours": 2,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "2 h had missing CO history filled with training medians.",
+    "peak_abs_residual": 1.488841247558594,
+    "period": "fold_1",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 2,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP004",
+    "start": "2004-09-20T09:00:00",
+    "end": "2004-09-20T09:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "1 h had missing CO history filled with training medians. Preceded by a CO data gap of up to 1 h.",
+    "peak_abs_residual": 1.3895117759704592,
+    "period": "fold_1",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 1,
+      "max_prior_co_missing_hours": 1,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP005",
+    "start": "2004-09-20T19:00:00",
+    "end": "2004-09-20T19:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.0527048110961914,
+    "period": "fold_1",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP006",
+    "start": "2004-09-21T08:00:00",
+    "end": "2004-09-21T08:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "1 h had missing CO history filled with training medians. Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.3819115638732908,
+    "period": "fold_1",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 1,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP007",
+    "start": "2004-09-28T19:00:00",
+    "end": "2004-09-28T19:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.1267080307006836,
+    "period": "fold_2",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP008",
+    "start": "2004-10-08T18:00:00",
+    "end": "2004-10-08T18:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.1072623252868654,
+    "period": "fold_2",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP009",
+    "start": "2004-10-20T17:00:00",
+    "end": "2004-10-20T17:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "1 h had missing CO history filled with training medians.",
+    "peak_abs_residual": 1.2283945083618164,
+    "period": "fold_2",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 1,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP010",
+    "start": "2004-10-22T18:00:00",
+    "end": "2004-10-22T18:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.4695085525512699,
+    "period": "fold_2",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP011",
+    "start": "2004-10-25T18:00:00",
+    "end": "2004-10-25T19:00:00",
+    "hours": 2,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.4078053474426273,
+    "period": "fold_2",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 2,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP012",
+    "start": "2004-10-26T17:00:00",
+    "end": "2004-10-26T18:00:00",
+    "hours": 2,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.902151107788086,
+    "period": "fold_2",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 2,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP013",
+    "start": "2004-11-02T20:00:00",
+    "end": "2004-11-02T20:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.228089523315429,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP014",
+    "start": "2004-11-04T18:00:00",
+    "end": "2004-11-04T18:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "1 h had missing CO history filled with training medians. Preceded by a CO data gap of up to 8 h. Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 2.0216581344604485,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 1,
+      "max_prior_co_missing_hours": 8,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP015",
+    "start": "2004-11-12T21:00:00",
+    "end": "2004-11-12T21:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.1921341896057127,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP016",
+    "start": "2004-11-17T17:00:00",
+    "end": "2004-11-17T18:00:00",
+    "hours": 2,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.4891740798950188,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 2,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP017",
+    "start": "2004-11-19T09:00:00",
+    "end": "2004-11-19T10:00:00",
+    "hours": 2,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.8798223495483395,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP018",
+    "start": "2004-11-19T14:00:00",
+    "end": "2004-11-20T03:00:00",
+    "hours": 14,
+    "severity": "high",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 2.8282681465148922,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 12,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP019",
+    "start": "2004-11-20T19:00:00",
+    "end": "2004-11-20T19:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.0401066780090331,
+    "period": "fold_3",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP020",
+    "start": "2004-11-22T09:00:00",
+    "end": "2004-11-22T13:00:00",
+    "hours": 5,
+    "severity": "high",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 2.763347053527832,
+    "period": "fold_3",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP021",
+    "start": "2004-11-22T18:00:00",
+    "end": "2004-11-22T23:00:00",
+    "hours": 6,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.684440326690674,
+    "period": "fold_3",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP022",
+    "start": "2004-11-23T18:00:00",
+    "end": "2004-11-23T21:00:00",
+    "hours": 4,
+    "severity": "high",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 2.7625579833984375,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 4,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP023",
+    "start": "2004-11-26T18:00:00",
+    "end": "2004-11-26T21:00:00",
+    "hours": 4,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.4024702072143551,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 2,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP024",
+    "start": "2004-11-27T21:00:00",
+    "end": "2004-11-27T21:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.0947943687438961,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP025",
+    "start": "2004-11-30T21:00:00",
+    "end": "2004-11-30T21:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.2910717487335202,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP026",
+    "start": "2004-12-01T18:00:00",
+    "end": "2004-12-01T18:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.337066650390625,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP027",
+    "start": "2004-12-02T19:00:00",
+    "end": "2004-12-02T19:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.0846580505371097,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP028",
+    "start": "2004-12-03T21:00:00",
+    "end": "2004-12-03T21:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.7078582763671877,
+    "period": "fold_3",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP029",
+    "start": "2004-12-13T15:00:00",
+    "end": "2004-12-13T15:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.2984553337097164,
+    "period": "calibration",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP030",
+    "start": "2004-12-19T18:00:00",
+    "end": "2004-12-19T18:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.213470458984375,
+    "period": "calibration",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP031",
+    "start": "2004-12-20T08:00:00",
+    "end": "2004-12-20T08:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.7893976688385012,
+    "period": "calibration",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP032",
+    "start": "2004-12-20T21:00:00",
+    "end": "2004-12-20T21:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.241874647140503,
+    "period": "calibration",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP033",
+    "start": "2004-12-21T09:00:00",
+    "end": "2004-12-21T09:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.5632219314575195,
+    "period": "calibration",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP034",
+    "start": "2004-12-23T18:00:00",
+    "end": "2004-12-24T18:00:00",
+    "hours": 25,
+    "severity": "high",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 2.2005625724792477,
+    "period": "calibration",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 13,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP035",
+    "start": "2004-12-25T00:00:00",
+    "end": "2004-12-25T03:00:00",
+    "hours": 4,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.8973271369934084,
+    "period": "calibration",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP036",
+    "start": "2004-12-25T13:00:00",
+    "end": "2004-12-25T13:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.2212772369384766,
+    "period": "calibration",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP037",
+    "start": "2005-01-01T02:00:00",
+    "end": "2005-01-01T02:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "1 h had missing CO history filled with training medians.",
+    "peak_abs_residual": 1.3588604927062988,
+    "period": "calibration",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 1,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP038",
+    "start": "2005-01-10T07:00:00",
+    "end": "2005-01-10T18:00:00",
+    "hours": 12,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "3 h had missing CO history filled with training medians. Preceded by a CO data gap of up to 2 h. Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.349563980102539,
+    "period": "calibration",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 3,
+      "max_prior_co_missing_hours": 2,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP039",
+    "start": "2005-01-12T00:00:00",
+    "end": "2005-01-12T00:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.2087953567504883,
+    "period": "calibration",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP040",
+    "start": "2005-01-17T18:00:00",
+    "end": "2005-01-17T19:00:00",
+    "hours": 2,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.747167778015136,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 2,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP041",
+    "start": "2005-01-18T09:00:00",
+    "end": "2005-01-18T09:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.2139144897460934,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP042",
+    "start": "2005-01-21T17:00:00",
+    "end": "2005-01-22T03:00:00",
+    "hours": 11,
+    "severity": "high",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 2.4755979537963864,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 7,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP043",
+    "start": "2005-01-22T08:00:00",
+    "end": "2005-01-22T12:00:00",
+    "hours": 5,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.3828072547912598,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 5,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP044",
+    "start": "2005-01-22T18:00:00",
+    "end": "2005-01-22T19:00:00",
+    "hours": 2,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "2 h had missing CO history filled with training medians. Preceded by a CO data gap of up to 2 h.",
+    "peak_abs_residual": 1.29776611328125,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 2,
+      "max_prior_co_missing_hours": 2,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP045",
+    "start": "2005-01-22T23:00:00",
+    "end": "2005-01-22T23:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.2366191864013671,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP046",
+    "start": "2005-01-24T02:00:00",
+    "end": "2005-01-24T02:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "1 h had missing CO history filled with training medians. Preceded by a CO data gap of up to 25 h. Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.6294813394546508,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 1,
+      "max_prior_co_missing_hours": 25,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 1,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP047",
+    "start": "2005-02-01T22:00:00",
+    "end": "2005-02-01T22:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.1681828498840332,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP048",
+    "start": "2005-02-02T09:00:00",
+    "end": "2005-02-02T10:00:00",
+    "hours": 2,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.6401625633239743,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP049",
+    "start": "2005-02-05T09:00:00",
+    "end": "2005-02-05T09:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.8295131683349606,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP050",
+    "start": "2005-02-11T22:00:00",
+    "end": "2005-02-12T02:00:00",
+    "hours": 5,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.5279779911041258,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP051",
+    "start": "2005-02-14T11:00:00",
+    "end": "2005-02-14T11:00:00",
+    "hours": 1,
+    "severity": "high",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 2.6652603149414062,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP052",
+    "start": "2005-02-16T21:00:00",
+    "end": "2005-02-16T21:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.3335062980651857,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP053",
+    "start": "2005-02-18T20:00:00",
+    "end": "2005-02-18T20:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.1346686363220213,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP054",
+    "start": "2005-02-21T20:00:00",
+    "end": "2005-02-21T20:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.4268520355224608,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP055",
+    "start": "2005-02-26T12:00:00",
+    "end": "2005-02-26T12:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.0438604593276977,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP056",
+    "start": "2005-02-27T00:00:00",
+    "end": "2005-02-27T02:00:00",
+    "hours": 3,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.4066980361938475,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP057",
+    "start": "2005-03-02T20:00:00",
+    "end": "2005-03-02T20:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.3903697013854979,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP058",
+    "start": "2005-03-03T09:00:00",
+    "end": "2005-03-03T09:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.4268605232238771,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP059",
+    "start": "2005-03-04T10:00:00",
+    "end": "2005-03-04T10:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.0738101959228512,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP060",
+    "start": "2005-03-09T09:00:00",
+    "end": "2005-03-09T09:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.4461374282836914,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP061",
+    "start": "2005-03-11T12:00:00",
+    "end": "2005-03-11T12:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.5650367736816406,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP062",
+    "start": "2005-03-11T18:00:00",
+    "end": "2005-03-11T18:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.2153451442718506,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP063",
+    "start": "2005-03-12T08:00:00",
+    "end": "2005-03-12T08:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "1 h had missing CO history filled with training medians. Preceded by a CO data gap of up to 4 h.",
+    "peak_abs_residual": 1.089206600189209,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 1,
+      "max_prior_co_missing_hours": 4,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP064",
+    "start": "2005-03-14T10:00:00",
+    "end": "2005-03-14T10:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.27712082862854,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP065",
+    "start": "2005-03-15T21:00:00",
+    "end": "2005-03-15T21:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.1441795349121096,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP066",
+    "start": "2005-03-22T18:00:00",
+    "end": "2005-03-22T21:00:00",
+    "hours": 4,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.4636395454406737,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP067",
+    "start": "2005-03-25T12:00:00",
+    "end": "2005-03-25T15:00:00",
+    "hours": 4,
+    "severity": "moderate",
+    "classification": "data_limitation_candidate",
+    "reason": "Reference CO disagrees with the sensor's own calibration line beyond the training 99th percentile.",
+    "peak_abs_residual": 1.1169246196746827,
+    "period": "test",
+    "direction": "below",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 2,
+      "drift_flag_hours": 0
+    }
+  },
+  {
+    "id": "EP068",
+    "start": "2005-03-31T08:00:00",
+    "end": "2005-03-31T08:00:00",
+    "hours": 1,
+    "severity": "moderate",
+    "classification": "unusual_pollution_candidate",
+    "reason": "Inputs complete and sensors consistent, yet observed CO departs from the estimate: a genuine unusual pollution event is the leading explanation (cause unverified).",
+    "peak_abs_residual": 1.7287713050842282,
+    "period": "test",
+    "direction": "above",
+    "evidence": {
+      "imputed_input_hours": 0,
+      "max_prior_co_missing_hours": 0,
+      "sensor_out_of_range_hours": 0,
+      "sensor_disagreement_hours": 0,
+      "drift_flag_hours": 0
+    }
+  }
+]
