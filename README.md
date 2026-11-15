@@ -1,6 +1,6 @@
 # Air Quality Prediction and Pollution Episode Detection
 
-This is a real-data ML analytics app for the UCI Air Quality dataset. The product model is a Ridge CO virtual-sensor nowcast (estimated vs observed, not a forecast). Episode labels are candidates and always include evidence reasons.
+This is a real-data ML analytics app for the UCI Air Quality datasets. Select a pollutant and an exact date/time to make a specific prediction. The dashboard compares actual and predicted values, filters episodes for the selected pollutant, and reports model performance. Episode labels are candidates and include evidence reasons.
 
 ## Run locally
 
@@ -10,7 +10,7 @@ From PowerShell:
 ./scripts/run_local.ps1
 ```
 
-The script builds the frontend and starts one FastAPI server. It prints `http://localhost:8000`; use the machine LAN address for another device. API docs are at `/docs`.
+The script starts one FastAPI server serving the dashboard and API. It prints `http://localhost:8000`; use the machine LAN address for another device. API docs are at `/docs`.
 
 ## Deploy publicly on Render
 
@@ -22,4 +22,4 @@ For a temporary tunnel, install a tunnel tool separately and run it against port
 
 ## Evidence
 
-Research outputs are in `research/output/`; the saved product pipeline is `research/models/co_nowcast.joblib`; the step mapping is `docs/PIPELINE.md`. The validated research verification script passes 10 integrity checks.
+Research outputs are in `research/output/`. The selected-pollutant models and dashboard artifacts are in `models/` and `artifacts/`. The downloadable report includes the methodology, episode evidence, and model metrics.

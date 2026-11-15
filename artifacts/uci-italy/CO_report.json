@@ -1,0 +1,417 @@
+{
+  "title": "CO next-hour prediction - Italy (UCI Air Quality)",
+  "dataset": "Italy (UCI Air Quality)",
+  "pollutant": "CO",
+  "unit": "mg/m³",
+  "summary": "We predicted CO one hour ahead using the Italy (UCI Air Quality) data. Random Forest did best on the validation period, so we used it. On the test period (16 Jan 2005 to 4 Apr 2005) its average error was 0.393 mg/m³. Just repeating the last hour's value gave 0.519 mg/m³, so the model was 24.2% better. 25 episodes were flagged: 15 look like unusual pollution, 5 look like data problems and 5 are unclear.",
+  "how_it_was_made": [
+    "Read the hourly data and treated empty cells and -200 as missing.",
+    "Built the inputs: hour, weekday, the reading 1 hour before, the reading 2 hours before, the reading 3 hours before, the reading at the same time the day before, temperature, relative humidity, absolute humidity.",
+    "Split the timeline in order: first 60% to train, next 20% to choose the model, last 20% to test.",
+    "Tried Linear Regression, Random Forest and XGBoost. Each predicts how much the level changes in the next hour.",
+    "Flagged test hours where the miss was more than 1.74 mg/m³ (bigger than 95% of the misses on the validation period).",
+    "By design this limit flags 5% of the validation hours; on the test period it flagged 1.8% of hours. So the number of episodes partly depends on where the limit is set.",
+    "Grouped flagged hours that were less than 3 hours apart and checked each group: missing inputs or a gap, a stuck reading, or a sudden jump that nothing else shared mean a data problem; other pollutants moving the same way at the same time mean unusual pollution; anything else is unclear."
+  ],
+  "results": {
+    "chosen_model": "Random Forest",
+    "test_period": "16 Jan 2005 to 4 Apr 2005",
+    "average_error": 0.393,
+    "average_error_if_repeating_last_hour": 0.519,
+    "better_than_repeating_last_hour_percent": 24.2,
+    "r2": 0.816,
+    "test_hours": 1746
+  },
+  "models_compared": [
+    {
+      "model": "Linear Regression",
+      "validation_error": 0.62,
+      "test_error": 0.479
+    },
+    {
+      "model": "Random Forest",
+      "validation_error": 0.565,
+      "test_error": 0.393
+    },
+    {
+      "model": "XGBoost",
+      "validation_error": 0.577,
+      "test_error": 0.402
+    },
+    {
+      "model": "Persistence (same as previous hour)",
+      "validation_error": 0.607,
+      "test_error": 0.519
+    }
+  ],
+  "most_important_inputs": [
+    "hour",
+    "the reading 2 hours before",
+    "the reading 1 hour before"
+  ],
+  "episode_counts": {
+    "total": 25,
+    "Unusual pollution": 15,
+    "Data limitation": 5,
+    "Unclear": 5
+  },
+  "patterns": "Most episodes peaked around 09:00, 19:00 and 20:00, and 88% fell on weekdays, more than the 71% you'd expect, so they lean towards working days. The busiest month was Mar 2005 with 10 episodes.",
+  "most_severe": [
+    {
+      "id": 1,
+      "when": "Mon 17 Jan 2005, 18:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 2.24,
+      "peak_value": 8.6,
+      "expected_value": 4.706,
+      "explanation": "Mon 17 Jan 2005, 18:00 to 20:00: CO was 8.60 mg/m³ at 18:00, but the model expected about 4.71 mg/m³, so it was 3.89 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 6,
+      "when": "Thu 3 Feb 2005, 18:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.98,
+      "peak_value": 6.7,
+      "expected_value": 3.265,
+      "explanation": "Thu 3 Feb 2005, 18:00 to 20:00: CO was 6.70 mg/m³ at 18:00, but the model expected about 3.27 mg/m³, so it was 3.43 higher. The inputs were complete, and NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 4,
+      "when": "Fri 21 Jan 2005, 14:00 to 21:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.86,
+      "peak_value": 4.9,
+      "expected_value": 1.675,
+      "explanation": "Fri 21 Jan 2005, 14:00 to 21:00: CO was 4.90 mg/m³ at 20:00, but the model expected about 1.68 mg/m³, so it was 3.22 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 8,
+      "when": "Thu 10 Feb 2005, 20:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.71,
+      "peak_value": 8.4,
+      "expected_value": 5.425,
+      "explanation": "Thu 10 Feb 2005, 20:00: CO was 8.40 mg/m³ at 20:00, but the model expected about 5.43 mg/m³, so it was 2.97 higher. But absolute humidity, relative humidity and temperature were missing. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 7,
+      "when": "Sat 5 Feb 2005, 10:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.53,
+      "peak_value": 1.3,
+      "expected_value": 3.965,
+      "explanation": "Sat 5 Feb 2005, 10:00: CO was 1.30 mg/m³ at 10:00, but the model expected about 3.96 mg/m³, so it was 2.66 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 22,
+      "when": "Thu 24 Mar 2005, 19:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.45,
+      "peak_value": 5.9,
+      "expected_value": 3.375,
+      "explanation": "Thu 24 Mar 2005, 19:00 to 20:00: CO was 5.90 mg/m³ at 19:00, but the model expected about 3.38 mg/m³, so it was 2.52 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 13,
+      "when": "Mon 21 Feb 2005, 19:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.4,
+      "peak_value": 4.9,
+      "expected_value": 2.468,
+      "explanation": "Mon 21 Feb 2005, 19:00 to 20:00: CO was 4.90 mg/m³ at 19:00, but the model expected about 2.47 mg/m³, so it was 2.43 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 20,
+      "when": "Mon 21 Mar 2005, 09:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.36,
+      "peak_value": 6.1,
+      "expected_value": 3.742,
+      "explanation": "Mon 21 Mar 2005, 09:00: CO was 6.10 mg/m³ at 09:00, but the model expected about 3.74 mg/m³, so it was 2.36 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 5,
+      "when": "Wed 2 Feb 2005, 09:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.28,
+      "peak_value": 6.7,
+      "expected_value": 4.483,
+      "explanation": "Wed 2 Feb 2005, 09:00: CO was 6.70 mg/m³ at 09:00, but the model expected about 4.48 mg/m³, so it was 2.22 higher. The inputs were complete, and NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 11,
+      "when": "Wed 16 Feb 2005, 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.26,
+      "peak_value": 5.6,
+      "expected_value": 3.411,
+      "explanation": "Wed 16 Feb 2005, 20:00: CO was 5.60 mg/m³ at 20:00, but the model expected about 3.41 mg/m³, so it was 2.19 higher. The inputs were complete, and NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    }
+  ],
+  "episodes": [
+    {
+      "id": 1,
+      "when": "Mon 17 Jan 2005, 18:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 2.24,
+      "peak_value": 8.6,
+      "expected_value": 4.706,
+      "explanation": "Mon 17 Jan 2005, 18:00 to 20:00: CO was 8.60 mg/m³ at 18:00, but the model expected about 4.71 mg/m³, so it was 3.89 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 2,
+      "when": "Tue 18 Jan 2005, 21:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.12,
+      "peak_value": 1.5,
+      "expected_value": 3.439,
+      "explanation": "Tue 18 Jan 2005, 21:00: CO was 1.50 mg/m³ at 21:00, but the model expected about 3.44 mg/m³, so it was 1.94 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 3,
+      "when": "Thu 20 Jan 2005, 19:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.2,
+      "peak_value": 4.3,
+      "expected_value": 6.379,
+      "explanation": "Thu 20 Jan 2005, 19:00: CO was 4.30 mg/m³ at 19:00, but the model expected about 6.38 mg/m³, so it was 2.08 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 4,
+      "when": "Fri 21 Jan 2005, 14:00 to 21:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.86,
+      "peak_value": 4.9,
+      "expected_value": 1.675,
+      "explanation": "Fri 21 Jan 2005, 14:00 to 21:00: CO was 4.90 mg/m³ at 20:00, but the model expected about 1.68 mg/m³, so it was 3.22 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 5,
+      "when": "Wed 2 Feb 2005, 09:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.28,
+      "peak_value": 6.7,
+      "expected_value": 4.483,
+      "explanation": "Wed 2 Feb 2005, 09:00: CO was 6.70 mg/m³ at 09:00, but the model expected about 4.48 mg/m³, so it was 2.22 higher. The inputs were complete, and NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 6,
+      "when": "Thu 3 Feb 2005, 18:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.98,
+      "peak_value": 6.7,
+      "expected_value": 3.265,
+      "explanation": "Thu 3 Feb 2005, 18:00 to 20:00: CO was 6.70 mg/m³ at 18:00, but the model expected about 3.27 mg/m³, so it was 3.43 higher. The inputs were complete, and NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 7,
+      "when": "Sat 5 Feb 2005, 10:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.53,
+      "peak_value": 1.3,
+      "expected_value": 3.965,
+      "explanation": "Sat 5 Feb 2005, 10:00: CO was 1.30 mg/m³ at 10:00, but the model expected about 3.96 mg/m³, so it was 2.66 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 8,
+      "when": "Thu 10 Feb 2005, 20:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.71,
+      "peak_value": 8.4,
+      "expected_value": 5.425,
+      "explanation": "Thu 10 Feb 2005, 20:00: CO was 8.40 mg/m³ at 20:00, but the model expected about 5.43 mg/m³, so it was 2.97 higher. But absolute humidity, relative humidity and temperature were missing. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 9,
+      "when": "Fri 11 Feb 2005, 09:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.14,
+      "peak_value": 5.9,
+      "expected_value": 3.922,
+      "explanation": "Fri 11 Feb 2005, 09:00: CO was 5.90 mg/m³ at 09:00, but the model expected about 3.92 mg/m³, so it was 1.98 higher. But absolute humidity, relative humidity and temperature were missing. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 10,
+      "when": "Sun 13 Feb 2005, 12:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.02,
+      "peak_value": 1.5,
+      "expected_value": 3.272,
+      "explanation": "Sun 13 Feb 2005, 12:00: CO was 1.50 mg/m³ at 12:00, but the model expected about 3.27 mg/m³, so it was 1.77 lower. The inputs were complete, and NOx and C6H6 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 11,
+      "when": "Wed 16 Feb 2005, 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.26,
+      "peak_value": 5.6,
+      "expected_value": 3.411,
+      "explanation": "Wed 16 Feb 2005, 20:00: CO was 5.60 mg/m³ at 20:00, but the model expected about 3.41 mg/m³, so it was 2.19 higher. The inputs were complete, and NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 12,
+      "when": "Fri 18 Feb 2005, 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.09,
+      "peak_value": 4.8,
+      "expected_value": 2.912,
+      "explanation": "Fri 18 Feb 2005, 20:00: CO was 4.80 mg/m³ at 20:00, but the model expected about 2.91 mg/m³, so it was 1.89 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 13,
+      "when": "Mon 21 Feb 2005, 19:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.4,
+      "peak_value": 4.9,
+      "expected_value": 2.468,
+      "explanation": "Mon 21 Feb 2005, 19:00 to 20:00: CO was 4.90 mg/m³ at 19:00, but the model expected about 2.47 mg/m³, so it was 2.43 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 14,
+      "when": "Fri 4 Mar 2005, 09:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.11,
+      "peak_value": 6.1,
+      "expected_value": 4.172,
+      "explanation": "Fri 4 Mar 2005, 09:00: CO was 6.10 mg/m³ at 09:00, but the model expected about 4.17 mg/m³, so it was 1.93 higher. The inputs were complete, and NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 15,
+      "when": "Wed 9 Mar 2005, 10:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.14,
+      "peak_value": 3.8,
+      "expected_value": 5.786,
+      "explanation": "Wed 9 Mar 2005, 10:00: CO was 3.80 mg/m³ at 10:00, but the model expected about 5.79 mg/m³, so it was 1.99 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 16,
+      "when": "Fri 11 Mar 2005, 12:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.14,
+      "peak_value": 1.0,
+      "expected_value": 2.985,
+      "explanation": "Fri 11 Mar 2005, 12:00: CO was 1.00 mg/m³ at 12:00, but the model expected about 2.98 mg/m³, so it was 1.98 lower. But absolute humidity, relative humidity and temperature were missing. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 17,
+      "when": "Sun 13 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.25,
+      "peak_value": 3.2,
+      "expected_value": 1.038,
+      "explanation": "Sun 13 Mar 2005, 19:00: CO was 3.20 mg/m³ at 19:00, but the model expected about 1.04 mg/m³, so it was 2.16 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 18,
+      "when": "Thu 17 Mar 2005, 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.12,
+      "peak_value": 5.6,
+      "expected_value": 3.662,
+      "explanation": "Thu 17 Mar 2005, 20:00: CO was 5.60 mg/m³ at 20:00, but the model expected about 3.66 mg/m³, so it was 1.94 higher. The inputs were complete, and NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 19,
+      "when": "Fri 18 Mar 2005, 09:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.03,
+      "peak_value": 5.4,
+      "expected_value": 3.612,
+      "explanation": "Fri 18 Mar 2005, 09:00: CO was 5.40 mg/m³ at 09:00, but the model expected about 3.61 mg/m³, so it was 1.79 higher. The inputs were complete, and NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 20,
+      "when": "Mon 21 Mar 2005, 09:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.36,
+      "peak_value": 6.1,
+      "expected_value": 3.742,
+      "explanation": "Mon 21 Mar 2005, 09:00: CO was 6.10 mg/m³ at 09:00, but the model expected about 3.74 mg/m³, so it was 2.36 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 21,
+      "when": "Wed 23 Mar 2005, 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.07,
+      "peak_value": 7.2,
+      "expected_value": 5.348,
+      "explanation": "Wed 23 Mar 2005, 20:00: CO was 7.20 mg/m³ at 20:00, but the model expected about 5.35 mg/m³, so it was 1.85 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 22,
+      "when": "Thu 24 Mar 2005, 19:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.45,
+      "peak_value": 5.9,
+      "expected_value": 3.375,
+      "explanation": "Thu 24 Mar 2005, 19:00 to 20:00: CO was 5.90 mg/m³ at 19:00, but the model expected about 3.38 mg/m³, so it was 2.52 higher. The inputs were complete, and NO2, NOx and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 23,
+      "when": "Fri 25 Mar 2005, 16:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.01,
+      "peak_value": 3.4,
+      "expected_value": 1.649,
+      "explanation": "Fri 25 Mar 2005, 16:00: CO was 3.40 mg/m³ at 16:00, but the model expected about 1.65 mg/m³, so it was 1.75 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 24,
+      "when": "Fri 1 Apr 2005, 08:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.08,
+      "peak_value": 1.9,
+      "expected_value": 3.78,
+      "explanation": "Fri 1 Apr 2005, 08:00: CO was 1.90 mg/m³ at 08:00, but the model expected about 3.78 mg/m³, so it was 1.88 lower. But the CO data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 25,
+      "when": "Mon 4 Apr 2005, 07:00",
+      "type": "Data limitation",
+      "confidence": "high",
+      "severity": 1.04,
+      "peak_value": 4.0,
+      "expected_value": 2.19,
+      "explanation": "Mon 4 Apr 2005, 07:00: CO was 4.00 mg/m³ at 07:00, but the model expected about 2.19 mg/m³, so it was 1.81 higher. But the reading 3 hours before was missing and the CO data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+    }
+  ],
+  "limitations": [
+    "Results come from one place and period, so they may not hold elsewhere.",
+    "Episode labels come from simple rules. Nobody checked them against real events."
+  ]
+}

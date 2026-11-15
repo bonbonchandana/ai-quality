@@ -1,16 +1,11 @@
-FROM node:22-alpine AS frontend
-WORKDIR /app/frontend
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend ./
-RUN npm run build
-
 FROM python:3.12-slim
 WORKDIR /app
-COPY backend/requirements.txt ./
+COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
-COPY backend ./backend
-COPY research ./research
-COPY --from=frontend /app/frontend/dist ./frontend/dist
+COPY main.py train_model.py ./
+COPY frontend ./frontend
+COPY models ./models
+COPY artifacts ./artifacts
+COPY data ./data
 EXPOSE 8000
-CMD ["uvicorn","backend.app:app","--host","0.0.0.0","--port","8000"]
+CMD ["uvicorn","main:app","--host","0.0.0.0","--port","8000"]
