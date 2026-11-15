@@ -46,6 +46,14 @@ tr.chosen td { font-weight: 700; }
 .episode .tag { font-weight: 600; }
 .episode.unusual .tag { color: #c2410c; }
 .episode.data .tag { color: #6d28d9; }
+.episode.unclear { border-color: #9ca3af; }
+.episode.unclear .tag { color: #555; }
+.episode .meta { color: #666; font-weight: 400; }
+h3 { font-size: 1rem; margin: 22px 0 6px; }
+ul { margin: 0 0 12px; padding-left: 20px; }
+#chart-patterns { width: 100%; height: 220px; }
+details summary { cursor: pointer; font-weight: 600; font-size: 1.05rem; margin: 8px 0; }
+details[open] summary { margin-bottom: 12px; }
 
 .form { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
 .form label { font-weight: 400; font-size: 0.9rem; display: flex; flex-direction: column; }

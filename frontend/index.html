@@ -31,7 +31,6 @@
         <thead><tr><th>Model</th><th>Validation error</th><th>Test error</th></tr></thead>
         <tbody id="results"></tbody>
       </table>
-      <p id="inputs"></p>
     </section>
 
     <section>
@@ -42,34 +41,38 @@
 
     <section>
       <h2>Flagged episodes</h2>
-      <p>An episode is a run of hours where the real value was much further from the prediction than usual. For each one we
-        checked whether the inputs were complete. If something was missing, it is marked as a <b>data limitation</b>.
-        If everything was there, it is marked as <b>unusual pollution</b>.</p>
+      <p>An episode is a run of hours where the real value was much further from the prediction than usual. Each one is
+        checked in this order:</p>
+      <ul>
+        <li><b>Data limitation</b>: inputs were missing, the data had a gap just before, the reading was stuck on one
+          value, or it jumped suddenly while nothing else moved.</li>
+        <li><b>Unusual pollution</b>: the data looked fine and other pollutants rose or fell at the same time. They are
+          measured by separate instruments, so this points to a real event.</li>
+        <li><b>Unclear</b>: the data looked fine but nothing else moved with it. It may be a small local event, or the
+          model may simply have missed a normal change.</li>
+      </ul>
+      <p id="counts"></p>
+
+      <h3>When do they happen?</h3>
+      <p id="patterns"></p>
+      <div id="chart-patterns"></div>
+
+      <h3 id="episodes-title">The 10 biggest episodes</h3>
       <label class="filter">Show
         <select id="episode-filter">
-          <option value="all">all episodes</option>
+          <option value="all">all types</option>
           <option value="Unusual pollution">unusual pollution only</option>
           <option value="Data limitation">data limitations only</option>
+          <option value="Unclear">unclear only</option>
         </select>
       </label>
       <div id="episodes"></div>
-      <button type="button" id="more" class="secondary" hidden>Show all</button>
+      <button type="button" id="more" class="secondary">Show all episodes in time order</button>
     </section>
 
     <section>
       <h2>How we did it</h2>
       <ol id="steps"></ol>
-    </section>
-
-    <section>
-      <h2>Try a prediction</h2>
-      <p>This sends the values below to <code>POST /predict</code>. "Load a real hour" fills them in from the test period.</p>
-      <form id="predict-form" class="form"></form>
-      <div class="buttons">
-        <button type="button" id="load-sample" class="secondary">Load a real hour</button>
-        <button type="submit" form="predict-form">Predict</button>
-      </div>
-      <p id="predict-result" class="result" hidden></p>
     </section>
 
     <section>
@@ -85,6 +88,19 @@
         <button type="submit">Upload and train</button>
       </form>
       <p id="upload-result" class="result" hidden></p>
+    </section>
+
+    <section>
+      <details>
+        <summary>API demo: try <code>POST /predict</code></summary>
+        <p>This is the same request Postman sends. "Load a real hour" fills the boxes in from the test period.</p>
+        <form id="predict-form" class="form"></form>
+        <div class="buttons">
+          <button type="button" id="load-sample" class="secondary">Load a real hour</button>
+          <button type="submit" form="predict-form">Predict</button>
+        </div>
+        <p id="predict-result" class="result" hidden></p>
+      </details>
     </section>
   </main>
 

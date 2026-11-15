@@ -19,7 +19,7 @@ periods. A reviewer who wants to check that the model was tested on later data a
 | 2 | Lagged features | The pollutant at 1, 2, 3 and 24 hours back, the previous hour's weather, hour and weekday |
 | 3 | Test on a later period | 60/20/20 split in time order; the model is chosen on validation and tested once; it is compared with repeating the last value |
 | 4 | Flag big misses | Test hours with a miss bigger than 95% of the validation misses show up in red |
-| 5 | Explain the episodes | Flagged hours are grouped; each group is labelled data limitation or unusual pollution, with the reason |
+| 5 | Explain the episodes | Flagged hours are grouped; each group is checked for data problems (missing, gap, stuck, glitch) and for other pollutants moving at the same time, then labelled data limitation, unusual pollution or unclear, with a confidence and a reason; the page shows when episodes happen and the 10 biggest first |
 | 6 | Other datasets | An hourly CSV can be uploaded from the dashboard, and it gets trained the same way |
 | 7 | Save models | One `.pkl` per pollutant per dataset (joblib) |
 | 8 | API | FastAPI with `GET /`, `GET /health` and `POST /predict`, with Pydantic checks; works in Postman |

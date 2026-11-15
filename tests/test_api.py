@@ -109,6 +109,26 @@ def test_report_is_readable_json():
     assert "attachment" in download.headers["content-disposition"]
 
 
+@pytest.mark.parametrize("dataset,pollutant", CASES)
+def test_every_report_explains_its_episodes(dataset, pollutant):
+    report = client.get(f"/api/report/{dataset}/{pollutant}").json()
+    kinds = {"Unusual pollution", "Data limitation", "Unclear"}
+    assert all(e["type"] in kinds and e["explanation"] for e in report["episodes"])
+    severities = [e["severity"] or 0 for e in report["most_severe"]]
+    assert len(severities) <= 10 and severities == sorted(severities, reverse=True)
+    counts = report["episode_counts"]
+    assert counts["total"] == sum(counts.get(k, 0) for k in kinds)
+
+
+def test_new_episode_checks_are_used():
+    info = main.load_results("uci-italy", "CO")
+    assert info["patterns"]["text"] and len(info["patterns"]["by_hour"]["Unusual pollution"]) == 24
+    real = [e for e in info["episodes"] if e["type"] == "Unusual pollution"]
+    assert real and all(e["checks"]["other_pollutants_agreeing"] for e in real)    # backed by other pollutants
+    unclear = [e for e in info["episodes"] if e["type"] == "Unclear"]
+    assert all(not e["checks"]["other_pollutants_agreeing"] for e in unclear)
+
+
 def test_dashboard_is_served():
     assert len(client.get("/api/datasets").json()) >= 2
     assert client.get("/dashboard/").status_code == 200

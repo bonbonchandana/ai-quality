@@ -117,31 +117,46 @@ One change made a big difference. At first the models predicted the level direct
 worse than just repeating the last value. We switched to predicting the change from the last hour and adding it back.
 That helped on 9 of the 10 pollutants (only Beijing SO2 got slightly worse). Italy's NOx went from 9% to 21% better than persistence, and Beijing PM2.5 went from 3% to 6%.
 
-A test hour is flagged when its miss is bigger than 95% of the misses on the validation period. Flagged hours under
-3 hours apart are joined into an episode. An episode is a data limitation if some inputs were missing or the pollutant
-had missing values in the 6 hours before. Otherwise we call it unusual pollution.
+A test hour is flagged when its miss is bigger than 95% of the misses on the validation period. (That flags 5% of
+validation hours by design; on the test period it flagged about 2–7% depending on the pollutant.) Flagged hours under
+3 hours apart are joined into an episode.
+
+Our first version called every episode "unusual pollution" unless an input was missing. That was too generous: any big
+miss with complete data counted as real pollution, even when a sensor was stuck or the model just missed a normal peak.
+Each episode now goes through three checks in order:
+
+1. Data limitation: missing inputs, a gap in the 6 hours before, the same reading for 6+ hours in a row, or a jump more
+   than 6 times bigger than a normal hourly change that no other pollutant shared.
+2. Unusual pollution: the data looked fine and other pollutants were also unusually high or low at the same time
+   (z-score of at least 1.5 against their previous 24 hours, in the same direction). Separate instruments agreeing is
+   the strongest evidence of a real event. Two or more agreeing gives high confidence, one gives medium.
+3. Unclear: the data looked fine, but nothing else moved with it.
+
+For Italy CO this turned 20 "unusual" episodes into 15 well-supported ones (all backed by NO2, NOx and benzene) and
+5 unclear ones. The episodes also follow a clear pattern: most peak around 08:00–09:00 and 19:00–20:00 on weekdays,
+which matches commuter traffic. That is our reading of the timing, not something the data proves.
 
 ## Phase 5 — results (test MAE; better/worse is compared with repeating the last hour)
 
 Italy, test period 16 Jan – 4 Apr 2005:
 
-| Pollutant | Chosen model | Test MAE | Persistence | Change | Episodes (unusual / data) |
+| Pollutant | Chosen model | Test MAE | Persistence | Change | Episodes (unusual / data / unclear) |
 |---|---|---|---|---|---|
-| CO (mg/m³) | Random Forest | 0.393 | 0.519 | 24.2% better | 25 (20 / 5) |
-| NO2 (µg/m³) | Random Forest | 15.94 | 19.79 | 19.5% better | 85 (58 / 27) |
-| NOx (ppb) | Random Forest | 57.56 | 72.73 | 20.9% better | 25 (16 / 9) |
-| C6H6 (µg/m³) | Random Forest | 1.716 | 2.291 | 25.1% better | 33 (33 / 0) |
+| CO (mg/m³) | Random Forest | 0.393 | 0.519 | 24.2% better | 25 (15 / 5 / 5) |
+| NO2 (µg/m³) | Random Forest | 15.94 | 19.79 | 19.5% better | 85 (28 / 27 / 30) |
+| NOx (ppb) | Random Forest | 57.56 | 72.73 | 20.9% better | 25 (10 / 12 / 3) |
+| C6H6 (µg/m³) | Random Forest | 1.716 | 2.291 | 25.1% better | 33 (18 / 1 / 14) |
 
 Beijing Aotizhongxin, test period 12 May 2016 – 28 Feb 2017 (all µg/m³):
 
-| Pollutant | Chosen model | Test MAE | Persistence | Change | Episodes (unusual / data) |
+| Pollutant | Chosen model | Test MAE | Persistence | Change | Episodes (unusual / data / unclear) |
 |---|---|---|---|---|---|
-| O3 | XGBoost | 8.47 | 11.19 | 24.3% better | 315 (265 / 50) |
-| NO2 | Random Forest | 6.95 | 7.53 | 7.7% better | 227 (195 / 32) |
-| PM2.5 | XGBoost | 9.69 | 10.34 | 6.2% better | 165 (154 / 11) |
-| PM10 | XGBoost | 14.84 | 14.96 | 0.8% better | 181 (177 / 4) |
-| CO | XGBoost | 191.8 | 191.2 | 0.3% worse | 150 (139 / 11) |
-| SO2 | XGBoost | 1.78 | 1.70 | 4.6% worse | 106 (101 / 5) |
+| O3 | XGBoost | 8.47 | 11.19 | 24.3% better | 315 (112 / 50 / 153) |
+| NO2 | Random Forest | 6.95 | 7.53 | 7.7% better | 227 (105 / 34 / 88) |
+| PM2.5 | XGBoost | 9.69 | 10.34 | 6.2% better | 165 (116 / 13 / 36) |
+| PM10 | XGBoost | 14.84 | 14.96 | 0.8% better | 181 (126 / 5 / 50) |
+| CO | XGBoost | 191.8 | 191.2 | 0.3% worse | 150 (97 / 14 / 39) |
+| SO2 | XGBoost | 1.78 | 1.70 | 4.6% worse | 106 (62 / 5 / 39) |
 
 We also tried a much bigger search: about 40 settings per pollutant (Ridge, deeper and wider Random Forests, XGBoost with up to 1,500 trees). It ran about ten times longer and changed almost nothing. Italy got slightly worse on test for all four pollutants, and Beijing moved by between −0.9 and +1.3 points. So we kept the small search. Past a point, more tuning only fits the validation period better.
 

@@ -7,7 +7,8 @@ const LABELS = {
   absolute_humidity: "Absolute humidity", pressure: "Pressure (hPa)", dew_point: "Dew point (°C)",
   rain: "Rain (mm)", wind_speed: "Wind speed (m/s)", observed: "Actual value (optional)",
 };
-const FIRST_EPISODES = 15;
+const KIND_CLASS = { "Unusual pollution": "unusual", "Data limitation": "data", "Unclear": "unclear" };
+const KIND_COLOR = { "Unusual pollution": "#c2410c", "Data limitation": "#6d28d9", "Unclear": "#9ca3af" };
 
 let datasets = [];
 let dataset = null;   // the selected dataset
@@ -15,6 +16,7 @@ let results = null;   // numbers for the selected pollutant
 let report = null;    // the same results written out in words
 let showAll = false;
 let chart = null;
+let patternChart = null;
 
 const $ = (id) => document.getElementById(id);
 const fmt = (v, d = 3) => (v == null ? "–" : Number(v).toFixed(d));
@@ -30,11 +32,11 @@ async function start() {
   $("dataset").addEventListener("change", () => pickDataset($("dataset").value));
   $("pollutant").addEventListener("change", () => pickPollutant($("pollutant").value));
   $("episode-filter").addEventListener("change", () => { showAll = false; showEpisodes(); });
-  $("more").addEventListener("click", () => { showAll = true; showEpisodes(); });
+  $("more").addEventListener("click", () => { showAll = !showAll; showEpisodes(); });
   $("load-sample").addEventListener("click", loadSample);
   $("predict-form").addEventListener("submit", predict);
   $("upload-form").addEventListener("submit", upload);
-  window.addEventListener("resize", () => chart && chart.resize());
+  window.addEventListener("resize", () => [chart, patternChart].forEach((c) => c && c.resize()));
   await loadDatasets();
   const health = await getJSON("/health");
   if (!health.upload_enabled) {
@@ -66,10 +68,11 @@ async function pickPollutant(key) {
   $("download").href = `/api/report/${dataset.id}/${key}?download=true`;
   $("summary").textContent = report.summary;
   $("steps").innerHTML = report.how_it_was_made.map((s) => `<li>${s}</li>`).join("");
-  $("inputs").textContent = `The inputs the chosen model relied on most: ${report.most_important_inputs.join(", ")}.`;
   showResults();
   showChart();
   showAll = false;
+  showCounts();
+  showPatterns();
   showEpisodes();
   buildForm();
   $("predict-result").hidden = true;
@@ -108,17 +111,45 @@ function showChart() {
   }, true);
 }
 
+function showCounts() {
+  const c = report.episode_counts;
+  $("counts").textContent = c.total
+    ? `${c.total} episodes: ${c["Unusual pollution"] || 0} unusual pollution, ${c["Data limitation"] || 0} data limitations, ${c["Unclear"] || 0} unclear.`
+    : "No episodes were flagged.";
+}
+
+function showPatterns() {
+  const p = results.patterns;
+  $("patterns").textContent = p ? p.text : "";
+  $("chart-patterns").hidden = !p;
+  if (!p) return;
+  patternChart = patternChart || echarts.init($("chart-patterns"));
+  patternChart.setOption({
+    animation: false,
+    tooltip: { trigger: "axis" },
+    legend: { data: Object.keys(p.by_hour) },
+    grid: { left: 36, right: 10, top: 30, bottom: 30 },
+    xAxis: { type: "category", data: [...Array(24).keys()].map((h) => `${h}`), name: "hour" },
+    yAxis: { type: "value", minInterval: 1 },
+    series: Object.entries(p.by_hour).map(([kind, counts]) => ({
+      name: kind, type: "bar", stack: "all", data: counts, color: KIND_COLOR[kind],
+    })),
+  }, true);
+}
+
 function showEpisodes() {
   const filter = $("episode-filter").value;
-  const list = report.episodes.filter((e) => filter === "all" || e.type === filter);
-  const shown = showAll ? list : list.slice(0, FIRST_EPISODES);
-  $("episodes").innerHTML = shown.length
-    ? shown.map((e) => `<div class="episode ${e.type === "Unusual pollution" ? "unusual" : "data"}">
-        <h3>Episode ${e.id} · <span class="tag">${e.type}</span></h3>
+  const matching = report.episodes.filter((e) => filter === "all" || e.type === filter);
+  const list = showAll ? matching : [...matching].sort((a, b) => (b.severity || 0) - (a.severity || 0)).slice(0, 10);
+  $("episodes-title").textContent = showAll ? "All episodes, in time order" : `The ${Math.min(10, matching.length)} biggest episodes`;
+  $("episodes").innerHTML = list.length
+    ? list.map((e) => `<div class="episode ${KIND_CLASS[e.type] || "unclear"}">
+        <h3>Episode ${e.id} · <span class="tag">${e.type}</span>
+          <span class="meta">${e.confidence ? `· ${e.confidence} confidence` : ""}${e.severity ? ` · ${Number(e.severity).toFixed(1)}× the limit` : ""}</span></h3>
         <p>${e.explanation}</p></div>`).join("")
-    : "<p>No episodes of this kind.</p>";
-  $("more").hidden = shown.length === list.length;
-  $("more").textContent = `Show all ${list.length}`;
+    : "<p>No episodes of this kind here.</p>";
+  $("more").hidden = matching.length <= 10;
+  $("more").textContent = showAll ? "Show only the 10 biggest" : `Show all ${matching.length} in time order`;
 }
 
 // ---------- prediction form ----------

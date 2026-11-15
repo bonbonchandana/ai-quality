@@ -31,19 +31,27 @@ or `datetime`) and at least one pollutant column. The other 11 Beijing stations 
    the level will change in the next hour, and that change is added to the last reading. Every model is compared with
    simply repeating the last hour's value ("persistence").
 5. A test hour is flagged when the miss is bigger than 95% of the misses on the validation period.
-6. Flagged hours less than 3 hours apart form an episode. If inputs were missing or the data had a gap just before, it is
-   labelled **Data limitation**. If not, it is labelled **Unusual pollution**.
+6. Flagged hours less than 3 hours apart form an episode, and each one is checked in order:
+   - **Data limitation**: an input was missing, the data had a gap in the 6 hours before, the reading stayed exactly
+     the same for 6+ hours (stuck sensor or very coarse readings), or it jumped far more than normal while no other
+     pollutant moved.
+   - **Unusual pollution**: the data looked fine and at least one other pollutant was also unusually high or low at the
+     same time (compared with its previous 24 hours). They come from separate instruments, so this points to a real
+     event. Two or more agreeing pollutants give high confidence, one gives medium.
+   - **Unclear**: the data looked fine but nothing else moved with it. It may be a small local event, or the model
+     simply missed a normal change.
+   The page shows the 10 biggest episodes first and a short summary of when they happen.
 
 ## Results on the test period
 
 Italy (test period 16 Jan – 4 Apr 2005):
 
-| Pollutant | Model | Test MAE | Persistence MAE | Better by | R² | Episodes (unusual / data) |
+| Pollutant | Model | Test MAE | Persistence MAE | Better by | R² | Episodes (unusual / data / unclear) |
 |---|---|---|---|---|---|---|
-| CO | Random Forest | 0.393 mg/m³ | 0.519 | 24.2% | 0.82 | 25 (20 / 5) |
-| NO2 | Random Forest | 15.9 µg/m³ | 19.8 | 19.5% | 0.83 | 85 (58 / 27) |
-| NOx | Random Forest | 57.6 ppb | 72.7 | 20.9% | 0.83 | 25 (16 / 9) |
-| C6H6 | Random Forest | 1.72 µg/m³ | 2.29 | 25.1% | 0.83 | 33 (33 / 0) |
+| CO | Random Forest | 0.393 mg/m³ | 0.519 | 24.2% | 0.82 | 25 (15 / 5 / 5) |
+| NO2 | Random Forest | 15.9 µg/m³ | 19.8 | 19.5% | 0.83 | 85 (28 / 27 / 30) |
+| NOx | Random Forest | 57.6 ppb | 72.7 | 20.9% | 0.83 | 25 (10 / 12 / 3) |
+| C6H6 | Random Forest | 1.72 µg/m³ | 2.29 | 25.1% | 0.83 | 33 (18 / 1 / 14) |
 
 Beijing, Aotizhongxin (test period 12 May 2016 – 28 Feb 2017):
 
