@@ -64,7 +64,9 @@ WEATHER = {
 
 # ---------------------------------------------------------------- 1. load the data
 def read_csv_any(path):
-    """Reads a CSV, or the first CSV inside a ZIP. Tries ';' first (UCI style), then ','."""
+    """Reads a CSV, an Excel file, or the first CSV inside a ZIP. For CSVs it tries ';' first (UCI style), then ','."""
+    if str(path).lower().endswith((".xlsx", ".xls")):
+        return pd.read_excel(path)
     if str(path).lower().endswith(".zip"):
         z = zipfile.ZipFile(path)
         name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
@@ -86,8 +88,11 @@ def load_data(path):
 
     if {"Date", "Time"} <= cols:                                   # UCI Italy format
         raw = raw.dropna(subset=["Date", "Time"])
-        time = pd.to_datetime(raw["Date"].astype(str) + " " + raw["Time"].astype(str).str.replace(".", ":", regex=False),
-                              dayfirst=True, errors="coerce")
+        day = pd.to_datetime(raw["Date"], format="%d/%m/%Y", errors="coerce")
+        if day.isna().all():                                       # Excel version stores real dates
+            day = pd.to_datetime(raw["Date"], errors="coerce")
+        clock = raw["Time"].astype(str).str.replace(".", ":", regex=False)
+        time = pd.to_datetime(day.dt.strftime("%Y-%m-%d") + " " + clock, errors="coerce")
     elif {"year", "month", "day", "hour"} <= cols:                 # Beijing format
         time = pd.to_datetime(raw[["year", "month", "day", "hour"]], errors="coerce")
     else:                                                          # one datetime column
@@ -304,13 +309,21 @@ def train_dataset(path, dataset_id, title, out_root="."):
 
 def find_data_file():
     """Looks in /kaggle/input and ./data for a dataset. If there is none, downloads the UCI one."""
-    for pattern in ["/kaggle/input/**/*.csv", "/kaggle/input/**/*.zip", "data/*.csv"]:
+    for pattern in ["/kaggle/input/**/*.csv", "/kaggle/input/**/*.xlsx", "/kaggle/input/**/*.zip", "data/*.csv"]:
         files = sorted(glob.glob(pattern, recursive=True))
         if files:
+            print("Using", files[0])
             return files[0]
+    found = [f for f in glob.glob("/kaggle/input/**/*", recursive=True) if os.path.isfile(f)]
+    print("No CSV, Excel or ZIP file found under /kaggle/input." + (f" Files there: {found[:10]}" if found else ""))
+    print("Downloading the UCI Air Quality data instead (this needs Internet switched on)...")
     Path("data").mkdir(exist_ok=True)
     import urllib.request
-    urllib.request.urlretrieve(UCI_URL, "data/air-quality.zip")
+    try:
+        urllib.request.urlretrieve(UCI_URL, "data/air-quality.zip")
+    except OSError:
+        raise SystemExit("No dataset found and no Internet. In Kaggle: click '+ Add Input' and add an air quality "
+                         "dataset (or upload AirQualityUCI.csv), or turn on Settings > Internet. Then run again.")
     return "data/air-quality.zip"
 
 
@@ -330,7 +343,7 @@ def plot(preds):
 
 
 if __name__ == "__main__":
-    files = [a for a in sys.argv[1:] if a.lower().endswith((".csv", ".zip"))]   # ignores Jupyter/Kaggle kernel args
+    files = [a for a in sys.argv[1:] if a.lower().endswith((".csv", ".xlsx", ".zip"))]   # ignores Jupyter/Kaggle kernel args
     path = files[0] if files else find_data_file()
     dataset_id = "uci-italy" if "airquality" in os.path.basename(path).lower().replace("-", "").replace("_", "") \
         else re.sub(r"[^a-z0-9]+", "-", Path(path).stem.lower()).strip("-")
