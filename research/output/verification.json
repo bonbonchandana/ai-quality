@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "clean_rows": 9357,
+  "prediction_rows": 1872,
+  "observed_test_targets": 1781,
+  "flagged_hours": 48,
+  "episodes": 29,
+  "figures": 7,
+  "checks": [
+    "hourly unique sorted grid",
+    "sentinel removed",
+    "archive hash",
+    "prediction finite and interval ordered",
+    "actuals equal cleaned source",
+    "nulls never flagged",
+    "episodes exactly cover flags without overlap",
+    "every episode classified with reason",
+    "export MAE recomputed",
+    "chronological split separation"
+  ]
+}
