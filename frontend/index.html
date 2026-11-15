@@ -3,117 +3,62 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Air Quality Prediction</title>
+  <title>Air Quality Monitor</title>
   <link rel="stylesheet" href="style.css">
   <script src="vendor/echarts.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Air Quality Prediction and Pollution Episode Detection</h1>
-    <p>Pick a dataset and a pollutant to see how well its next hour can be predicted, and which hours looked unusual.</p>
-    <div class="controls">
-      <label>Dataset <select id="dataset"></select></label>
-      <label>Pollutant <select id="pollutant"></select></label>
-      <a id="download" class="button" href="#">Download report (JSON)</a>
+  <header class="topbar">
+    <div>
+      <p class="kicker">AIR QUALITY MONITOR</p>
+      <h1>Prediction at a glance</h1>
+      <p class="subtitle">Compare measured and predicted pollution, inspect unusual hours, and check model reliability.</p>
+    </div>
+    <div class="selectors">
+      <label>Dataset<select id="dataset"></select></label>
+      <label>Pollutant<select id="pollutant"></select></label>
     </div>
   </header>
 
   <main>
-    <section>
-      <h2>Summary</h2>
-      <p id="summary">Loading…</p>
+    <p id="error" class="result error" hidden></p>
+    <section class="summary-grid">
+      <article class="metric"><span>Selected pollutant</span><strong id="metric-pollutant">—</strong><small id="metric-unit"></small></article>
+      <article class="metric"><span>Best model</span><strong id="metric-model">—</strong><small id="metric-model-note"></small></article>
+      <article class="metric"><span>Test MAE</span><strong id="metric-mae">—</strong><small>lower is better</small></article>
+      <article class="metric"><span>Flagged episodes</span><strong id="metric-episodes">—</strong><small id="metric-episode-note"></small></article>
     </section>
 
-    <section>
-      <h2>Results</h2>
-      <p>Average error per hour (lower is better). The chosen model is in bold. "Repeat last hour" is the simple guess we compare against.</p>
-      <table>
-        <thead><tr><th>Model</th><th>Validation error</th><th>Test error</th></tr></thead>
-        <tbody id="results"></tbody>
-      </table>
-    </section>
-
-    <section>
-      <h2>Actual vs predicted</h2>
-      <p>The test period, starting with its first two weeks (drag the slider to see more). Red dots are flagged hours.</p>
+    <section class="panel chart-panel">
+      <div class="section-head"><div><p class="kicker">TEST PERIOD</p><h2>Actual vs predicted</h2></div><span class="legend"><i class="actual"></i>Actual <i class="predicted"></i>Predicted</span></div>
+      <p class="muted">Red points mark hours where the prediction differed unusually from the measured value.</p>
       <div id="chart"></div>
     </section>
 
-    <section>
-      <h2>Flagged episodes</h2>
-      <p>An episode is a run of hours where the real value was much further from the prediction than usual. Each one is
-        checked in this order:</p>
-      <ul>
-        <li><b>Data limitation</b>: inputs were missing, the data had a gap just before, the reading was stuck on one
-          value, or it jumped suddenly while nothing else moved.</li>
-        <li><b>Unusual pollution</b>: the data looked fine and other pollutants rose or fell at the same time. They are
-          measured by separate instruments, so this points to a real event.</li>
-        <li><b>Unclear</b>: the data looked fine but nothing else moved with it. It may be a small local event, or the
-          model may simply have missed a normal change.</li>
-      </ul>
-      <p id="counts"></p>
+    <div class="two-column">
+      <section class="panel">
+        <div class="section-head"><div><p class="kicker">EPISODES</p><h2>Unusual hours</h2></div><select id="episode-filter"><option value="all">All types</option><option value="Unusual pollution">Unusual pollution</option><option value="Data limitation">Data limitation</option><option value="Unclear">Unclear</option></select></div>
+        <p id="counts" class="muted"></p>
+        <div id="episodes" class="episode-list"></div>
+      </section>
 
-      <h3>When do they happen?</h3>
-      <p id="patterns"></p>
-      <div id="chart-patterns"></div>
+      <section class="panel">
+        <div class="section-head"><div><p class="kicker">MODEL CHECK</p><h2>Performance</h2></div></div>
+        <p class="muted">Test-set results for the selected pollutant.</p>
+        <div class="table-wrap"><table><thead><tr><th>Model</th><th>MAE</th><th>RMSE</th><th>R²</th></tr></thead><tbody id="performance"></tbody></table></div>
+        <p id="model-summary" class="callout"></p>
+      </section>
+    </div>
 
-      <h3 id="episodes-title">The 10 biggest episodes</h3>
-      <label class="filter">Show
-        <select id="episode-filter">
-          <option value="all">all types</option>
-          <option value="Unusual pollution">unusual pollution only</option>
-          <option value="Data limitation">data limitations only</option>
-          <option value="Unclear">unclear only</option>
-        </select>
-      </label>
-      <div id="episodes"></div>
-      <button type="button" id="more" class="secondary">Show all episodes in time order</button>
-    </section>
-
-    <section>
-      <h2>How we did it</h2>
-      <ol id="steps"></ol>
-    </section>
-
-    <section>
-      <h2>Model performance</h2>
-      <p>Independent validation and test metrics for every candidate model. Higher R² is better; lower MAE and RMSE are better.</p>
-      <table>
-        <thead><tr><th>Model</th><th>Validation MAE</th><th>Test MAE</th><th>Test RMSE</th><th>Test R²</th></tr></thead>
-        <tbody id="performance"></tbody>
-      </table>
-    </section>
-
-    <section>
-      <h2>Use your own data</h2>
-      <p>Upload an hourly CSV, Excel or ZIP file. It needs a time column (<code>Date</code> and <code>Time</code>,
-        <code>year/month/day/hour</code>, or <code>datetime</code>) and at least one pollutant column such as CO, NO2,
-        NOx, C6H6, PM2.5, PM10, SO2 or O3. Any weather columns in the file are used too. The
-        <a href="https://archive.ics.uci.edu/dataset/501/beijing+multi+site+air+quality+data" target="_blank" rel="noopener">UCI Beijing</a>
-        station files work as they are.</p>
-      <form id="upload-form" class="buttons">
-        <input type="file" id="upload-file" accept=".csv,.xlsx,.zip" required>
-        <input type="text" id="upload-name" placeholder="Name (optional)" maxlength="60">
-        <button type="submit">Upload and train</button>
-      </form>
-      <p id="upload-result" class="result" hidden></p>
-    </section>
-
-    <section>
-      <details>
-        <summary>API demo: try <code>POST /predict</code></summary>
-        <p>This is the same request Postman sends. "Load a real hour" fills the boxes in from the test period.</p>
-        <form id="predict-form" class="form"></form>
-        <div class="buttons">
-          <button type="button" id="load-sample" class="secondary">Load a real hour</button>
-          <button type="submit" form="predict-form">Predict</button>
-        </div>
-        <p id="predict-result" class="result" hidden></p>
-      </details>
+    <section class="panel prediction-panel">
+      <div class="section-head"><div><p class="kicker">TRY A TIME</p><h2>Specific prediction</h2></div><button id="load-sample" class="secondary">Load example</button></div>
+      <p class="muted">Choose an exact date and hour. The model uses the selected time plus recent readings and weather inputs.</p>
+      <form id="predict-form" class="form"></form>
+      <div class="form-actions"><button type="submit" form="predict-form">Predict</button></div>
+      <p id="predict-result" class="result" hidden></p>
     </section>
   </main>
-
-  <footer>Data from the UCI Machine Learning Repository. Made with scikit-learn, XGBoost and FastAPI.</footer>
+  <footer>UCI Air Quality data · Predictions are estimates, not medical or regulatory advice.</footer>
   <script src="app.js"></script>
 </body>
 </html>
