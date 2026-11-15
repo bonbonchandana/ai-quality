@@ -61,6 +61,15 @@ def test_upload_rejects_a_file_without_pollutants():
     assert r.status_code == 422
 
 
+def test_report_is_readable_json():
+    r = client.get("/api/report/uci-italy/CO")
+    report = r.json()
+    assert r.status_code == 200 and report["summary"].startswith("We predicted CO")
+    assert report["episodes"] and all(e["explanation"] for e in report["episodes"])
+    download = client.get("/api/report/uci-italy/CO", params={"download": "true"})
+    assert "attachment" in download.headers["content-disposition"]
+
+
 def test_dashboard_is_served():
     assert len(client.get("/api/datasets").json()) >= 2
     assert client.get("/dashboard/").status_code == 200

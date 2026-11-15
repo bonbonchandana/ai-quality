@@ -9,104 +9,86 @@
 </head>
 <body>
   <header>
-    <div>
-      <h1>Air Quality Prediction &amp; Pollution Episode Detection</h1>
-      <p class="muted">Next-hour prediction from past pollutant readings and weather</p>
-    </div>
-    <div class="pickers">
-      <label class="picker">Dataset <select id="dataset"></select></label>
-      <label class="picker">Pollutant <select id="pollutant"></select></label>
+    <h1>Air Quality Prediction and Pollution Episode Detection</h1>
+    <p>Pick a dataset and a pollutant to see how well its next hour can be predicted, and which hours looked unusual.</p>
+    <div class="controls">
+      <label>Dataset <select id="dataset"></select></label>
+      <label>Pollutant <select id="pollutant"></select></label>
+      <a id="download" class="button" href="#">Download report (JSON)</a>
     </div>
   </header>
 
   <main>
-    <section class="cards" id="cards"></section>
-
-    <section class="panel">
-      <h2>Actual vs predicted (test period)</h2>
-      <p class="muted">Red dots mark flagged hours, where the measured value was much further from the prediction than usual.</p>
-      <div id="chart-test" class="chart tall"></div>
+    <section>
+      <h2>Summary</h2>
+      <p id="summary">Loading…</p>
     </section>
 
-    <div class="grid">
-      <section class="panel">
-        <h2>Model comparison</h2>
-        <p class="muted">Average error on the test period (lower is better).</p>
-        <div id="chart-models" class="chart"></div>
-      </section>
-      <section class="panel">
-        <h2>Most important inputs</h2>
-        <p class="muted">Which inputs the chosen model leans on the most.</p>
-        <div id="chart-importance" class="chart"></div>
-      </section>
-      <section class="panel">
-        <h2>Daily average</h2>
-        <p class="muted">Whole dataset. Gaps are missing data.</p>
-        <div id="chart-daily" class="chart"></div>
-      </section>
-      <section class="panel">
-        <h2>Average by hour of day</h2>
-        <p class="muted">Shows at what time of day the levels usually go up.</p>
-        <div id="chart-hourly" class="chart"></div>
-      </section>
-    </div>
+    <section>
+      <h2>Results</h2>
+      <p>Average error per hour (lower is better). The chosen model is in bold. "Repeat last hour" is the simple guess we compare against.</p>
+      <table>
+        <thead><tr><th>Model</th><th>Validation error</th><th>Test error</th></tr></thead>
+        <tbody id="results"></tbody>
+      </table>
+      <p id="inputs"></p>
+    </section>
 
-    <section class="panel">
-      <div class="row">
-        <h2>Flagged episodes</h2>
+    <section>
+      <h2>Actual vs predicted</h2>
+      <p>The test period, starting with its first two weeks (drag the slider to see more). Red dots are flagged hours.</p>
+      <div id="chart"></div>
+    </section>
+
+    <section>
+      <h2>Flagged episodes</h2>
+      <p>An episode is a run of hours where the real value was much further from the prediction than usual. For each one we
+        checked whether the inputs were complete. If something was missing, it is marked as a <b>data limitation</b>.
+        If everything was there, it is marked as <b>unusual pollution</b>.</p>
+      <label class="filter">Show
         <select id="episode-filter">
-          <option value="all">All types</option>
-          <option value="Unusual pollution">Unusual pollution</option>
-          <option value="Data limitation">Data limitation</option>
+          <option value="all">all episodes</option>
+          <option value="Unusual pollution">unusual pollution only</option>
+          <option value="Data limitation">data limitations only</option>
         </select>
-      </div>
-      <p class="muted">Flagged hours close together are grouped into an episode. Each one is checked to see if it looks like real pollution or a problem with the data.</p>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>#</th><th>Start</th><th>End</th><th>Flagged hours</th><th>Max deviation</th><th>Type</th><th>Reason</th></tr></thead>
-          <tbody id="episodes"></tbody>
-        </table>
-      </div>
+      </label>
+      <div id="episodes"></div>
+      <button type="button" id="more" class="secondary" hidden>Show all</button>
     </section>
 
-    <section class="panel">
+    <section>
+      <h2>How we did it</h2>
+      <ol id="steps"></ol>
+    </section>
+
+    <section>
       <h2>Try a prediction</h2>
-      <p class="muted">This sends the values to <code>POST /predict</code>. "Load a real hour" fills the boxes with an hour from the test period.</p>
+      <p>This sends the values below to <code>POST /predict</code>. "Load a real hour" fills them in from the test period.</p>
       <form id="predict-form" class="form"></form>
-      <div class="row">
+      <div class="buttons">
         <button type="button" id="load-sample" class="secondary">Load a real hour</button>
         <button type="submit" form="predict-form">Predict</button>
       </div>
-      <div id="predict-result" class="result" hidden></div>
+      <p id="predict-result" class="result" hidden></p>
     </section>
 
-    <section class="panel">
-      <h2>Use your own dataset</h2>
-      <p class="muted">Upload an hourly CSV (or ZIP) with a time column (<code>Date</code> + <code>Time</code>,
-        <code>year/month/day/hour</code> or <code>datetime</code>) and pollutant columns such as CO, NO2, NOx, C6H6,
-        PM2.5, PM10, SO2 or O3. Weather columns (temperature, humidity, pressure, wind…) are used when present.
-        Example: the <a href="https://archive.ics.uci.edu/dataset/501/beijing+multi+site+air+quality+data" target="_blank" rel="noopener">UCI Beijing</a> station files.</p>
-      <form id="upload-form" class="row upload">
-        <input type="file" id="upload-file" accept=".csv,.zip" required>
-        <input type="text" id="upload-name" placeholder="Name (optional), e.g. Delhi 2023" maxlength="60">
-        <button type="submit">Upload &amp; train</button>
+    <section>
+      <h2>Use your own data</h2>
+      <p>Upload an hourly CSV, Excel or ZIP file. It needs a time column (<code>Date</code> and <code>Time</code>,
+        <code>year/month/day/hour</code>, or <code>datetime</code>) and at least one pollutant column such as CO, NO2,
+        NOx, C6H6, PM2.5, PM10, SO2 or O3. Any weather columns in the file are used too. The
+        <a href="https://archive.ics.uci.edu/dataset/501/beijing+multi+site+air+quality+data" target="_blank" rel="noopener">UCI Beijing</a>
+        station files work as they are.</p>
+      <form id="upload-form" class="buttons">
+        <input type="file" id="upload-file" accept=".csv,.xlsx,.zip" required>
+        <input type="text" id="upload-name" placeholder="Name (optional)" maxlength="60">
+        <button type="submit">Upload and train</button>
       </form>
-      <div id="upload-result" class="result" hidden></div>
-    </section>
-
-    <section class="panel">
-      <h2>How it works</h2>
-      <ol>
-        <li><b>Data:</b> hourly readings. In the UCI file, -200 means the value is missing.</li>
-        <li><b>Lagged features:</b> the pollutant 1, 2, 3 and 24 hours earlier, plus the previous hour's weather.</li>
-        <li><b>Model:</b> it predicts how much the level will go up or down in the next hour and adds that to the last reading.</li>
-        <li><b>Testing on the future:</b> the first 60% of the timeline is for training, the next 20% for picking the model, and the last 20% for the final test.</li>
-        <li><b>Flagging:</b> a test hour is flagged when the miss is bigger than 95% of the misses on the validation period.</li>
-        <li><b>Analysis:</b> if some inputs were missing or the data had a gap just before, the episode is a <i>data limitation</i>. If not, it is treated as <i>unusual pollution</i>.</li>
-      </ol>
+      <p id="upload-result" class="result" hidden></p>
     </section>
   </main>
 
+  <footer>Data from the UCI Machine Learning Repository. Made with scikit-learn, XGBoost and FastAPI.</footer>
   <script src="app.js"></script>
 </body>
 </html>

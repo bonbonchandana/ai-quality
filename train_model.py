@@ -27,6 +27,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
+from sklearn.base import clone
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
@@ -208,7 +209,7 @@ def train_pollutant(df, name, column, weather, dev="cpu"):
 
     # Retrain on train + validation, then check once on the test period
     for r in results:
-        r["final"] = make_pipeline(r["estimator"]).fit(X.iloc[train_val], change.iloc[train_val])
+        r["final"] = make_pipeline(clone(r["estimator"])).fit(X.iloc[train_val], change.iloc[train_val])
         r["test"] = scores(y.iloc[test], predict_level(r["final"], X.iloc[test]))
     baseline = {"model": "Persistence (same as previous hour)", "validation": scores(y.iloc[val], X["lag_1"].iloc[val]),
                 "test": scores(y.iloc[test], X["lag_1"].iloc[test])}
@@ -217,10 +218,12 @@ def train_pollutant(df, name, column, weather, dev="cpu"):
     pred = pd.DataFrame({"actual": y.iloc[test], "predicted": predict_level(final, X.iloc[test])})
     pred["residual"] = pred["actual"] - pred["predicted"]
     pred["flagged"] = pred["residual"].abs() > threshold
-    pred["missing_inputs"] = X.iloc[test].isna().sum(axis=1)
+    missing = X.iloc[test].isna()
+    pred["missing_inputs"] = missing.sum(axis=1)
+    pred["missing_names"] = [list(missing.columns[row]) for row in missing.to_numpy()]
     pred["gap_before"] = y.isna().rolling(6, min_periods=1).sum().shift(1).reindex(pred.index).fillna(0)
 
-    episodes = find_episodes(pred, unit=UNITS.get(column, ""))
+    episodes = find_episodes(pred, name, UNITS.get(column, ""))
     imp = final.named_steps["model"]
     imp = imp.feature_importances_ if hasattr(imp, "feature_importances_") else np.abs(imp.coef_)
     info = {
@@ -249,31 +252,117 @@ def train_pollutant(df, name, column, weather, dev="cpu"):
     return final, info, pred
 
 
-def find_episodes(pred, unit=""):
-    """Joins flagged hours that are under 3 hours apart, then guesses the cause of each group."""
+READABLE = {
+    "lag_1": "the reading 1 hour before", "lag_2": "the reading 2 hours before", "lag_3": "the reading 3 hours before",
+    "lag_24": "the reading at the same time the day before", "temperature": "temperature",
+    "relative_humidity": "relative humidity", "absolute_humidity": "absolute humidity", "pressure": "air pressure",
+    "dew_point": "dew point", "rain": "rain", "wind_speed": "wind speed", "hour": "hour", "weekday": "weekday",
+}
+
+
+def when_text(start, end):
+    """Turns two timestamps into something like 'Tue 1 Feb 2005, 08:00 to 11:00'."""
+    day = f"{start:%a} {start.day} {start:%b %Y}"
+    if start == end:
+        return f"{day}, {start:%H:%M}"
+    if start.date() == end.date():
+        return f"{day}, {start:%H:%M} to {end:%H:%M}"
+    return f"{day} {start:%H:%M} to {end:%a} {end.day} {end:%b} {end:%H:%M}"
+
+
+def find_episodes(pred, pollutant="", unit=""):
+    """Joins flagged hours that are under 3 hours apart, then explains each group in plain words."""
     episodes, group = [], []
     for t in list(pred.index[pred["flagged"]]) + [None]:
         if group and (t is None or t - group[-1] > pd.Timedelta(hours=3)):
             hits = pred.loc[group]
-            reasons = []
-            if hits["missing_inputs"].sum() > 0:
-                reasons.append("some input readings were missing and had to be filled in")
-            if hits["gap_before"].max() > 0:
-                reasons.append(f"the data had a gap just before ({int(hits['gap_before'].max())} missing hours)")
-            direction = "higher" if hits["residual"].mean() > 0 else "lower"
-            if reasons:
-                kind, reason = "Data limitation", "Probably a data problem: " + "; ".join(reasons) + "."
+            peak = hits["residual"].abs().idxmax()
+            actual, expected = float(pred.at[peak, "actual"]), float(pred.at[peak, "predicted"])
+            direction = "higher" if actual > expected else "lower"
+            missing = sorted({name for names in hits["missing_names"] for name in names})
+            gap = int(hits["gap_before"].max())
+            when = when_text(group[0], group[-1])
+            what = (f"{when}: {pollutant} was {actual:.2f} {unit} at {peak:%H:%M}, but the model expected about "
+                    f"{expected:.2f} {unit}, so it was {abs(actual - expected):.2f} {direction} than expected.").replace("  ", " ")
+            problems = []
+            if missing:
+                words = [READABLE.get(m, m) for m in missing]
+                listed = words[0] if len(words) == 1 else ", ".join(words[:-1]) + " and " + words[-1]
+                problems.append(listed + (" was" if len(words) == 1 else " were") + " missing")
+            if gap:
+                problems.append(f"the {pollutant} data had a gap of {gap} hour{'s' if gap > 1 else ''} just before")
+            if problems:
+                kind = "Data limitation"
+                reason = "Some input data was missing or there was a gap just before."
+                explanation = (what + " However, " + " and ".join(problems) + ". The model had to fill those in, "
+                               "so it was partly guessing. This looks more like a data problem than real pollution.")
             else:
                 kind = "Unusual pollution"
-                reason = (f"Inputs were complete, yet the level was {direction} than expected by up to "
-                          f"{hits['residual'].abs().max():.2f} {unit}.").replace("  ", " ")
+                reason = f"All inputs were present, yet the level was much {direction} than expected."
+                explanation = (what + " Every input reading was there and the data had no gap before it, so the model "
+                               f"had full information. A miss this big points to a real, unusual {'rise' if direction == 'higher' else 'drop'} in pollution.")
             episodes.append({"id": len(episodes) + 1, "start": group[0].isoformat(), "end": group[-1].isoformat(),
-                             "flagged_hours": len(group), "max_deviation": float(hits["residual"].abs().max()),
-                             "direction": direction, "type": kind, "reason": reason})
+                             "when": when, "flagged_hours": len(group), "peak_time": peak.isoformat(),
+                             "peak_value": round(actual, 3), "expected_value": round(expected, 3),
+                             "difference": round(actual - expected, 3), "max_deviation": float(hits["residual"].abs().max()),
+                             "direction": direction, "type": kind, "missing_inputs": [READABLE.get(m, m) for m in missing],
+                             "gap_hours_before": gap, "reason": reason, "explanation": explanation})
             group = []
         if t is not None:
             group.append(t)
     return episodes
+
+
+def nice_date(text):
+    t = pd.Timestamp(text)
+    return f"{t.day} {t:%b %Y}"
+
+
+def build_report(info, dataset_title=""):
+    """A readable summary of one pollutant's results. This is what the JSON download contains."""
+    unit = info.get("unit") or "units"
+    best = next(m for m in info["models"] if m["model"] == info["model"])
+    persistence = info["models"][-1]
+    gain = info["improvement_vs_persistence_pct"]
+    counts = info["episode_counts"]
+    test_from, test_to = info["periods"]["test"]
+    top = [READABLE.get(f["feature"], f["feature"]) for f in info["feature_importance"][:3]]
+    summary = (f"We predicted {info['pollutant']} one hour ahead using the {dataset_title or 'selected'} data. "
+               f"{info['model']} did best on the validation period, so we used it. On the test period "
+               f"({nice_date(test_from)} to {nice_date(test_to)}) its average error was {best['test']['MAE']:.3f} {unit}. "
+               f"Just repeating the last hour's value gave {persistence['test']['MAE']:.3f} {unit}, so the model was "
+               f"{abs(gain):.1f}% {'better' if gain >= 0 else 'worse'}. "
+               f"{counts['total']} episodes were flagged: {counts['Unusual pollution']} look like unusual pollution and "
+               f"{counts['Data limitation']} look like data problems.")
+    return {
+        "title": f"{info['pollutant']} next-hour prediction" + (f" - {dataset_title}" if dataset_title else ""),
+        "dataset": dataset_title, "pollutant": info["pollutant"], "unit": info.get("unit", ""),
+        "summary": summary,
+        "how_it_was_made": [
+            "Read the hourly data and treated empty cells and -200 as missing.",
+            f"Built the inputs: {', '.join(READABLE.get(f, f) for f in info['features'])}.",
+            "Split the timeline in order: first 60% to train, next 20% to choose the model, last 20% to test.",
+            "Tried Linear Regression, Random Forest and XGBoost. Each predicts how much the level changes in the next hour.",
+            f"Flagged test hours where the miss was more than {info['threshold']:.2f} {unit} "
+            "(bigger than 95% of the misses on the validation period).",
+            "Grouped flagged hours that were less than 3 hours apart and checked each group for missing data.",
+        ],
+        "results": {"chosen_model": info["model"], "test_period": f"{nice_date(test_from)} to {nice_date(test_to)}",
+                    "average_error": round(best["test"]["MAE"], 3), "average_error_if_repeating_last_hour":
+                    round(persistence["test"]["MAE"], 3), "better_than_repeating_last_hour_percent": round(gain, 1),
+                    "r2": round(best["test"]["R2"], 3), "test_hours": best["test"]["n"]},
+        "models_compared": [{"model": m["model"], "validation_error": round(m["validation"]["MAE"], 3),
+                             "test_error": round(m["test"]["MAE"], 3)} for m in info["models"]],
+        "most_important_inputs": top,
+        "episode_counts": counts,
+        "episodes": [{"id": e["id"], "when": e.get("when", f"{e['start']} to {e['end']}"), "type": e["type"],
+                      "peak_value": e.get("peak_value"), "expected_value": e.get("expected_value"),
+                      "explanation": e.get("explanation", e["reason"])} for e in info["episodes"]],
+        "limitations": [
+            "Results come from one place and period, so they may not hold elsewhere.",
+            "Episode labels come from simple rules. Nobody checked them against real events.",
+        ],
+    }
 
 
 def train_dataset(path, dataset_id, title, out_root="."):
@@ -292,6 +381,8 @@ def train_dataset(path, dataset_id, title, out_root="."):
         key = re.sub(r"[^A-Za-z0-9]", "", name)                    # PM2.5 -> PM25 for file names
         joblib.dump(model, model_dir / f"{key}.pkl", compress=3)
         (art_dir / f"{key}.json").write_text(json.dumps(info, allow_nan=False), encoding="utf-8")
+        (art_dir / f"{key}_report.json").write_text(json.dumps(build_report(info, title), indent=2, ensure_ascii=False),
+                                                     encoding="utf-8")
         best = next(m for m in info["models"] if m["model"] == info["model"])
         summary.append({"pollutant": name, "key": key, "unit": info["unit"], "model": info["model"],
                         "test_MAE": round(best["test"]["MAE"], 3), "test_R2": round(best["test"]["R2"], 3),

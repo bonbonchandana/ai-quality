@@ -1,21 +1,23 @@
-// Air quality dashboard. Pick a dataset and a pollutant, and the page loads its results from the API.
+// Air quality report page. Pick a dataset and a pollutant, and the page fills itself in from the API.
 
 const LABELS = {
-  hour: "Hour (0-23)", weekday: "Weekday (0 = Mon)",
-  lag_1: "Value 1 h earlier", lag_2: "Value 2 h earlier", lag_3: "Value 3 h earlier", lag_24: "Value 24 h earlier",
-  temperature: "Temperature (°C)", relative_humidity: "Relative humidity (%)", absolute_humidity: "Absolute humidity",
-  pressure: "Pressure (hPa)", dew_point: "Dew point (°C)", rain: "Rain (mm)", wind_speed: "Wind speed (m/s)",
-  observed: "Actual value (optional)",
+  hour: "Hour (0-23)", weekday: "Weekday (0 = Monday)",
+  lag_1: "Value 1 hour before", lag_2: "Value 2 hours before", lag_3: "Value 3 hours before",
+  lag_24: "Value 24 hours before", temperature: "Temperature (°C)", relative_humidity: "Relative humidity (%)",
+  absolute_humidity: "Absolute humidity", pressure: "Pressure (hPa)", dew_point: "Dew point (°C)",
+  rain: "Rain (mm)", wind_speed: "Wind speed (m/s)", observed: "Actual value (optional)",
 };
+const FIRST_EPISODES = 15;
 
-const charts = {};
-let allDatasets = [];
-let current = null; // results of the selected pollutant
-let currentDataset = null;
+let datasets = [];
+let dataset = null;   // the selected dataset
+let results = null;   // numbers for the selected pollutant
+let report = null;    // the same results written out in words
+let showAll = false;
+let chart = null;
 
 const $ = (id) => document.getElementById(id);
-const fmt = (v, d = 2) => (v == null ? "–" : Number(v).toFixed(d));
-const unitOf = (r) => r.unit || "units";
+const fmt = (v, d = 3) => (v == null ? "–" : Number(v).toFixed(d));
 
 async function getJSON(url, options) {
   const res = await fetch(url, options);
@@ -24,200 +26,134 @@ async function getJSON(url, options) {
   return body;
 }
 
-function chart(id) {
-  if (!charts[id]) charts[id] = echarts.init($(id));
-  return charts[id];
-}
-
-// ---------- pickers ----------
-async function init() {
-  $("dataset").addEventListener("change", () => showDataset($("dataset").value));
-  $("pollutant").addEventListener("change", () => load($("pollutant").value));
-  $("episode-filter").addEventListener("change", renderEpisodes);
+async function start() {
+  $("dataset").addEventListener("change", () => pickDataset($("dataset").value));
+  $("pollutant").addEventListener("change", () => pickPollutant($("pollutant").value));
+  $("episode-filter").addEventListener("change", () => { showAll = false; showEpisodes(); });
+  $("more").addEventListener("click", () => { showAll = true; showEpisodes(); });
   $("load-sample").addEventListener("click", loadSample);
   $("predict-form").addEventListener("submit", predict);
   $("upload-form").addEventListener("submit", upload);
-  window.addEventListener("resize", () => Object.values(charts).forEach((c) => c.resize()));
-  await refreshDatasets();
+  window.addEventListener("resize", () => chart && chart.resize());
+  await loadDatasets();
 }
 
-async function refreshDatasets(selectId) {
-  allDatasets = await getJSON("/api/datasets");
-  $("dataset").innerHTML = allDatasets.map((d) => `<option value="${d.id}">${d.title}</option>`).join("");
-  showDataset(selectId || allDatasets[0].id);
+async function loadDatasets(selectId) {
+  datasets = await getJSON("/api/datasets");
+  $("dataset").innerHTML = datasets.map((d) => `<option value="${d.id}">${d.title}</option>`).join("");
+  pickDataset(selectId || datasets[0].id);
 }
 
-function showDataset(id) {
-  currentDataset = allDatasets.find((d) => d.id === id);
+function pickDataset(id) {
+  dataset = datasets.find((d) => d.id === id);
   $("dataset").value = id;
-  $("pollutant").innerHTML = currentDataset.pollutants
-    .map((p) => `<option value="${p.key}">${p.pollutant}${p.unit ? ` (${p.unit})` : ""}</option>`)
-    .join("");
-  load(currentDataset.pollutants[0].key);
+  $("pollutant").innerHTML = dataset.pollutants
+    .map((p) => `<option value="${p.key}">${p.pollutant}${p.unit ? ` (${p.unit})` : ""}</option>`).join("");
+  pickPollutant(dataset.pollutants[0].key);
 }
 
-async function load(key) {
-  current = await getJSON(`/api/results/${currentDataset.id}/${key}`);
-  renderCards();
-  renderTestChart();
-  renderModelChart();
-  renderImportance();
-  renderDaily();
-  renderHourly();
-  renderEpisodes();
+async function pickPollutant(key) {
+  [results, report] = await Promise.all([
+    getJSON(`/api/results/${dataset.id}/${key}`),
+    getJSON(`/api/report/${dataset.id}/${key}`),
+  ]);
+  $("download").href = `/api/report/${dataset.id}/${key}?download=true`;
+  $("summary").textContent = report.summary;
+  $("steps").innerHTML = report.how_it_was_made.map((s) => `<li>${s}</li>`).join("");
+  $("inputs").textContent = `The inputs the chosen model relied on most: ${report.most_important_inputs.join(", ")}.`;
+  showResults();
+  showChart();
+  showAll = false;
+  showEpisodes();
   buildForm();
   $("predict-result").hidden = true;
   loadSample();
 }
 
-// ---------- summary cards ----------
-function renderCards() {
-  const r = current;
-  const best = r.models.find((m) => m.model === r.model);
-  const counts = r.episode_counts;
-  const gain = r.improvement_vs_persistence_pct;
-  const cards = [
-    ["Chosen model", r.model, r.model === "XGBoost" && r.device === "cuda" ? "picked on validation · trained on GPU" : "picked on the validation period"],
-    ["Test error (MAE)", `${fmt(best.test.MAE)} ${unitOf(r)}`, `average miss per hour over ${best.test.n} test hours`],
-    ["R² on test", fmt(best.test.R2), "1.0 would be perfect"],
-    ["vs. 'same as last hour'", `${gain >= 0 ? "" : "−"}${fmt(Math.abs(gain), 1)}% ${gain >= 0 ? "better" : "worse"}`,
-      gain >= 1 ? "the model does better than just repeating the last value" : "this pollutant changes slowly, so the last value is hard to beat"],
-    ["Flagged episodes", counts.total, `${counts["Unusual pollution"]} unusual pollution · ${counts["Data limitation"]} data limitation`],
-  ];
-  $("cards").innerHTML = cards
-    .map(([label, value, note]) =>
-      `<div class="card"><div class="label">${label}</div><div class="value">${value}</div><div class="note">${note}</div></div>`)
-    .join("");
+function showResults() {
+  const unit = results.unit || "";
+  $("results").innerHTML = report.models_compared.map((m) => {
+    const name = m.model.startsWith("Persistence") ? "Repeat last hour" : m.model;
+    return `<tr class="${m.model === results.model ? "chosen" : ""}"><td>${name}</td>
+      <td class="num">${fmt(m.validation_error)} ${unit}</td><td class="num">${fmt(m.test_error)} ${unit}</td></tr>`;
+  }).join("");
 }
 
-// ---------- charts ----------
-function renderTestChart() {
-  const pts = current.test_predictions;
-  const end = Math.min(100, Math.round((24 * 14 / pts.length) * 100)) || 100; // start zoomed on two weeks
-  chart("chart-test").setOption({
+function showChart() {
+  const points = results.test_predictions;
+  const end = Math.min(100, Math.round((24 * 14 / points.length) * 100)) || 100;
+  chart = chart || echarts.init($("chart"));
+  chart.setOption({
+    animation: false,
     tooltip: { trigger: "axis" },
     legend: { data: ["Actual", "Predicted", "Flagged"] },
-    grid: { left: 55, right: 20, top: 40, bottom: 70 },
+    grid: { left: 50, right: 16, top: 36, bottom: 60 },
     xAxis: { type: "time" },
-    yAxis: { type: "value", name: unitOf(current) },
-    dataZoom: [{ type: "inside", start: 0, end }, { type: "slider", start: 0, end }],
+    yAxis: { type: "value", name: results.unit },
+    dataZoom: [{ type: "inside", start: 0, end }, { type: "slider", start: 0, end, height: 18 }],
     series: [
-      { name: "Actual", type: "line", showSymbol: false, lineStyle: { width: 1 }, color: "#2563eb",
-        data: pts.map((p) => [p.t, p.actual]) },
-      { name: "Predicted", type: "line", showSymbol: false, lineStyle: { width: 1 }, color: "#16a34a",
-        data: pts.map((p) => [p.t, p.predicted]) },
-      { name: "Flagged", type: "scatter", symbolSize: 6, color: "#dc2626",
-        data: pts.filter((p) => p.flagged).map((p) => [p.t, p.actual]) },
+      { name: "Actual", type: "line", showSymbol: false, color: "#333", lineStyle: { width: 1 },
+        data: points.map((p) => [p.t, p.actual]) },
+      { name: "Predicted", type: "line", showSymbol: false, color: "#1a5fb4", lineStyle: { width: 1, type: "dashed" },
+        data: points.map((p) => [p.t, p.predicted]) },
+      { name: "Flagged", type: "scatter", symbolSize: 6, color: "#d62828",
+        data: points.filter((p) => p.flagged).map((p) => [p.t, p.actual]) },
     ],
   }, true);
 }
 
-function renderModelChart() {
-  const rows = current.models;
-  chart("chart-models").setOption({
-    tooltip: { trigger: "axis", valueFormatter: (v) => `${fmt(v, 3)} ${unitOf(current)}` },
-    grid: { left: 150, right: 50, top: 10, bottom: 30 },
-    xAxis: { type: "value", name: unitOf(current) },
-    yAxis: { type: "category", data: rows.map((m) => m.model.replace(" (same as previous hour)", "")), inverse: true },
-    series: [{
-      type: "bar",
-      data: rows.map((m) => ({
-        value: m.test.MAE,
-        itemStyle: { color: m.model === current.model ? "#2563eb" : m.model.startsWith("Persistence") ? "#9ca3af" : "#93c5fd" },
-      })),
-      label: { show: true, position: "right", formatter: (p) => fmt(p.value, 3) },
-    }],
-  }, true);
-}
-
-function renderImportance() {
-  const rows = current.feature_importance;
-  chart("chart-importance").setOption({
-    tooltip: { trigger: "axis", valueFormatter: (v) => `${fmt(v * 100, 1)}%` },
-    grid: { left: 130, right: 40, top: 10, bottom: 30 },
-    xAxis: { type: "value", axisLabel: { formatter: (v) => `${Math.round(v * 100)}%` } },
-    yAxis: { type: "category", data: rows.map((r) => r.feature), inverse: true },
-    series: [{ type: "bar", color: "#7c3aed", data: rows.map((r) => r.importance) }],
-  }, true);
-}
-
-function renderDaily() {
-  chart("chart-daily").setOption({
-    tooltip: { trigger: "axis" },
-    grid: { left: 55, right: 20, top: 20, bottom: 30 },
-    xAxis: { type: "time" },
-    yAxis: { type: "value", name: unitOf(current) },
-    series: [{ type: "line", showSymbol: false, color: "#2563eb", areaStyle: { opacity: 0.1 }, data: current.data.daily }],
-  }, true);
-}
-
-function renderHourly() {
-  chart("chart-hourly").setOption({
-    tooltip: { trigger: "axis" },
-    grid: { left: 55, right: 20, top: 20, bottom: 30 },
-    xAxis: { type: "category", data: [...Array(24).keys()], name: "hour" },
-    yAxis: { type: "value", name: unitOf(current) },
-    series: [{ type: "bar", color: "#0891b2", data: current.data.hourly_profile }],
-  }, true);
-}
-
-// ---------- episodes table ----------
-function renderEpisodes() {
+function showEpisodes() {
   const filter = $("episode-filter").value;
-  const rows = current.episodes.filter((e) => filter === "all" || e.type === filter);
-  const date = (s) => s.replace("T", " ").slice(0, 16);
-  $("episodes").innerHTML = rows.length
-    ? rows.map((e) => `<tr>
-        <td class="num">${e.id}</td><td class="num">${date(e.start)}</td><td class="num">${date(e.end)}</td>
-        <td class="num">${e.flagged_hours}</td><td class="num">${fmt(e.max_deviation)} ${current.unit}</td>
-        <td><span class="badge ${e.type === "Unusual pollution" ? "unusual" : "data"}">${e.type}</span></td>
-        <td>${e.reason}</td></tr>`).join("")
-    : `<tr><td colspan="7" class="muted">No episodes of this type.</td></tr>`;
+  const list = report.episodes.filter((e) => filter === "all" || e.type === filter);
+  const shown = showAll ? list : list.slice(0, FIRST_EPISODES);
+  $("episodes").innerHTML = shown.length
+    ? shown.map((e) => `<div class="episode ${e.type === "Unusual pollution" ? "unusual" : "data"}">
+        <h3>Episode ${e.id} · <span class="tag">${e.type}</span></h3>
+        <p>${e.explanation}</p></div>`).join("")
+    : "<p>No episodes of this kind.</p>";
+  $("more").hidden = shown.length === list.length;
+  $("more").textContent = `Show all ${list.length}`;
 }
 
 // ---------- prediction form ----------
 function buildForm() {
-  const fields = [...current.features, "observed"];
-  $("predict-form").innerHTML = fields
-    .map((f) => `<label>${LABELS[f] || f}<input name="${f}" type="number" step="any"></label>`)
-    .join("");
+  $("predict-form").innerHTML = [...results.features, "observed"]
+    .map((f) => `<label>${LABELS[f] || f}<input name="${f}" type="number" step="any"></label>`).join("");
 }
 
 async function loadSample() {
-  const sample = await getJSON(`/api/sample/${currentDataset.id}/${current.pollutant}`);
+  const sample = await getJSON(`/api/sample/${dataset.id}/${results.pollutant}`);
   for (const input of $("predict-form").elements) input.value = sample.input[input.name] ?? "";
-  $("load-sample").textContent = `Load a real hour (now: ${sample.time.replace("T", " ").slice(0, 16)})`;
+  $("load-sample").textContent = `Load a real hour (now ${sample.time.replace("T", " ").slice(0, 16)})`;
 }
 
 async function predict(event) {
   event.preventDefault();
-  const body = { dataset: currentDataset.id, pollutant: current.pollutant };
+  const body = { dataset: dataset.id, pollutant: results.pollutant };
   for (const input of $("predict-form").elements) body[input.name] = input.value === "" ? null : Number(input.value);
   const box = $("predict-result");
   box.hidden = false;
   try {
-    const r = await getJSON("/predict", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    });
-    let html = `<div>Predicted ${r.pollutant} for the next hour (${r.model})</div>
-                <div class="big">${fmt(r.prediction, 3)} ${r.unit}</div>`;
+    const r = await getJSON("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    let text = `Predicted ${r.pollutant} for the next hour: ${fmt(r.prediction)} ${r.unit} (${r.model}).`;
     box.className = "result";
     if (r.episode_check) {
       const c = r.episode_check;
       box.className = c.flagged ? "result flagged" : "result";
-      html += `<div>Actual ${fmt(c.observed, 3)} · off by ${fmt(c.deviation, 3)} (limit ±${fmt(c.threshold, 3)}) →
-               <b>${c.flagged ? "flagged as a possible episode" : "normal"}</b></div>`;
+      text += ` The actual value was ${fmt(c.observed)}, a difference of ${fmt(Math.abs(c.deviation))}. ` +
+        (c.flagged ? `That is more than the ${fmt(c.threshold)} limit, so this hour would be flagged.`
+                   : `That is within the ${fmt(c.threshold)} limit, so this hour looks normal.`);
     }
-    box.innerHTML = html;
+    box.textContent = text;
   } catch (err) {
     box.className = "result error";
-    box.innerHTML = Array.isArray(err.detail)
-      ? err.detail.map((d) => `${d.loc[d.loc.length - 1]}: ${d.msg}`).join("<br>")
-      : err.detail || "Request failed";
+    box.textContent = Array.isArray(err.detail)
+      ? err.detail.map((d) => `${d.loc[d.loc.length - 1]}: ${d.msg}`).join(". ")
+      : err.detail || "Something went wrong.";
   }
 }
 
-// ---------- upload your own dataset ----------
+// ---------- upload ----------
 async function upload(event) {
   event.preventDefault();
   const box = $("upload-result");
@@ -229,13 +165,12 @@ async function upload(event) {
   box.textContent = "Training on your file. A big file can take a couple of minutes.";
   try {
     const r = await getJSON("/api/upload", { method: "POST", body: form });
-    box.innerHTML = `<b>${r.title}</b> is ready. Trained ${r.pollutants.length} pollutant(s): ` +
-      r.pollutants.map((p) => `${p.pollutant} (${p.model}, ${p["better_than_persistence_%"]}% vs. last hour)`).join(", ");
-    await refreshDatasets(r.id);
+    box.textContent = `Done. "${r.title}" now has models for ${r.pollutants.map((p) => p.pollutant).join(", ")}. It is selected above.`;
+    await loadDatasets(r.id);
   } catch (err) {
     box.className = "result error";
-    box.textContent = err.detail || "Upload failed";
+    box.textContent = err.detail || "Upload failed.";
   }
 }
 
-init();
+start();

@@ -132,7 +132,7 @@ Italy, test period 16 Jan – 4 Apr 2005:
 | NOx (ppb) | Random Forest | 57.56 | 72.73 | 20.9% better | 25 (16 / 9) |
 | C6H6 (µg/m³) | Random Forest | 1.716 | 2.291 | 25.1% better | 33 (33 / 0) |
 
-Beijing Aotizhongxin, test period Mar 2016 – Feb 2017 (all µg/m³):
+Beijing Aotizhongxin, test period 12 May 2016 – 28 Feb 2017 (all µg/m³):
 
 | Pollutant | Chosen model | Test MAE | Persistence | Change | Episodes (unusual / data) |
 |---|---|---|---|---|---|
@@ -142,6 +142,8 @@ Beijing Aotizhongxin, test period Mar 2016 – Feb 2017 (all µg/m³):
 | PM10 | XGBoost | 14.84 | 14.96 | 0.8% better | 181 (177 / 4) |
 | CO | XGBoost | 191.8 | 191.2 | 0.3% worse | 150 (139 / 11) |
 | SO2 | XGBoost | 1.78 | 1.70 | 4.6% worse | 106 (101 / 5) |
+
+We also tried a much bigger search: about 40 settings per pollutant (Ridge, deeper and wider Random Forests, XGBoost with up to 1,500 trees). It ran about ten times longer and changed almost nothing. Italy got slightly worse on test for all four pollutants, and Beijing moved by between −0.9 and +1.3 points. So we kept the small search. Past a point, more tuning only fits the validation period better.
 
 The models are chosen on the validation period, not the test period. That keeps the test honest, even where another
 model happened to score a little better on test.

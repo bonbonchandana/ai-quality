@@ -1,0 +1,742 @@
+{
+  "title": "NO2 next-hour prediction - Italy (UCI Air Quality)",
+  "dataset": "Italy (UCI Air Quality)",
+  "pollutant": "NO2",
+  "unit": "µg/m³",
+  "summary": "We predicted NO2 one hour ahead using the Italy (UCI Air Quality) data. Random Forest did best on the validation period, so we used it. On the test period (16 Jan 2005 to 4 Apr 2005) its average error was 15.940 µg/m³. Just repeating the last hour's value gave 19.789 µg/m³, so the model was 19.5% better. 85 episodes were flagged: 58 look like unusual pollution and 27 look like data problems.",
+  "how_it_was_made": [
+    "Read the hourly data and treated empty cells and -200 as missing.",
+    "Built the inputs: hour, weekday, the reading 1 hour before, the reading 2 hours before, the reading 3 hours before, the reading at the same time the day before, temperature, relative humidity, absolute humidity.",
+    "Split the timeline in order: first 60% to train, next 20% to choose the model, last 20% to test.",
+    "Tried Linear Regression, Random Forest and XGBoost. Each predicts how much the level changes in the next hour.",
+    "Flagged test hours where the miss was more than 39.01 µg/m³ (bigger than 95% of the misses on the validation period).",
+    "Grouped flagged hours that were less than 3 hours apart and checked each group for missing data."
+  ],
+  "results": {
+    "chosen_model": "Random Forest",
+    "test_period": "16 Jan 2005 to 4 Apr 2005",
+    "average_error": 15.94,
+    "average_error_if_repeating_last_hour": 19.789,
+    "better_than_repeating_last_hour_percent": 19.5,
+    "r2": 0.833,
+    "test_hours": 1757
+  },
+  "models_compared": [
+    {
+      "model": "Linear Regression",
+      "validation_error": 14.723,
+      "test_error": 17.114
+    },
+    {
+      "model": "Random Forest",
+      "validation_error": 13.894,
+      "test_error": 15.94
+    },
+    {
+      "model": "XGBoost",
+      "validation_error": 14.54,
+      "test_error": 16.593
+    },
+    {
+      "model": "Persistence (same as previous hour)",
+      "validation_error": 15.193,
+      "test_error": 19.789
+    }
+  ],
+  "most_important_inputs": [
+    "hour",
+    "the reading 2 hours before",
+    "the reading 1 hour before"
+  ],
+  "episode_counts": {
+    "total": 85,
+    "Unusual pollution": 58,
+    "Data limitation": 27
+  },
+  "episodes": [
+    {
+      "id": 1,
+      "when": "Mon 17 Jan 2005, 08:00",
+      "type": "Data limitation",
+      "peak_value": 169.0,
+      "expected_value": 119.461,
+      "explanation": "Mon 17 Jan 2005, 08:00: NO2 was 169.00 µg/m³ at 08:00, but the model expected about 119.46 µg/m³, so it was 49.54 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 2,
+      "when": "Mon 17 Jan 2005, 18:00",
+      "type": "Unusual pollution",
+      "peak_value": 272.0,
+      "expected_value": 188.32,
+      "explanation": "Mon 17 Jan 2005, 18:00: NO2 was 272.00 µg/m³ at 18:00, but the model expected about 188.32 µg/m³, so it was 83.68 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 3,
+      "when": "Tue 18 Jan 2005, 10:00",
+      "type": "Unusual pollution",
+      "peak_value": 235.0,
+      "expected_value": 181.878,
+      "explanation": "Tue 18 Jan 2005, 10:00: NO2 was 235.00 µg/m³ at 10:00, but the model expected about 181.88 µg/m³, so it was 53.12 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 4,
+      "when": "Wed 19 Jan 2005, 10:00",
+      "type": "Unusual pollution",
+      "peak_value": 128.0,
+      "expected_value": 168.844,
+      "explanation": "Wed 19 Jan 2005, 10:00: NO2 was 128.00 µg/m³ at 10:00, but the model expected about 168.84 µg/m³, so it was 40.84 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 5,
+      "when": "Fri 21 Jan 2005, 14:00 to 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 223.0,
+      "expected_value": 144.787,
+      "explanation": "Fri 21 Jan 2005, 14:00 to 20:00: NO2 was 223.00 µg/m³ at 18:00, but the model expected about 144.79 µg/m³, so it was 78.21 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 6,
+      "when": "Sat 22 Jan 2005, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 133.0,
+      "expected_value": 181.771,
+      "explanation": "Sat 22 Jan 2005, 15:00: NO2 was 133.00 µg/m³ at 15:00, but the model expected about 181.77 µg/m³, so it was 48.77 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 7,
+      "when": "Sat 22 Jan 2005, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 224.0,
+      "expected_value": 167.334,
+      "explanation": "Sat 22 Jan 2005, 21:00: NO2 was 224.00 µg/m³ at 21:00, but the model expected about 167.33 µg/m³, so it was 56.67 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 8,
+      "when": "Sun 23 Jan 2005, 05:00",
+      "type": "Data limitation",
+      "peak_value": 74.0,
+      "expected_value": 146.921,
+      "explanation": "Sun 23 Jan 2005, 05:00: NO2 was 74.00 µg/m³ at 05:00, but the model expected about 146.92 µg/m³, so it was 72.92 lower than expected. However, the reading 2 hours before was missing and the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 9,
+      "when": "Sun 23 Jan 2005, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 124.0,
+      "expected_value": 181.011,
+      "explanation": "Sun 23 Jan 2005, 17:00: NO2 was 124.00 µg/m³ at 17:00, but the model expected about 181.01 µg/m³, so it was 57.01 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 10,
+      "when": "Tue 25 Jan 2005, 11:00 to 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 126.0,
+      "expected_value": 191.085,
+      "explanation": "Tue 25 Jan 2005, 11:00 to 12:00: NO2 was 126.00 µg/m³ at 12:00, but the model expected about 191.09 µg/m³, so it was 65.09 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 11,
+      "when": "Thu 27 Jan 2005, 08:00 to 11:00",
+      "type": "Data limitation",
+      "peak_value": 184.0,
+      "expected_value": 130.182,
+      "explanation": "Thu 27 Jan 2005, 08:00 to 11:00: NO2 was 184.00 µg/m³ at 08:00, but the model expected about 130.18 µg/m³, so it was 53.82 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 12,
+      "when": "Fri 28 Jan 2005, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 147.0,
+      "expected_value": 187.159,
+      "explanation": "Fri 28 Jan 2005, 13:00: NO2 was 147.00 µg/m³ at 13:00, but the model expected about 187.16 µg/m³, so it was 40.16 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 13,
+      "when": "Sat 29 Jan 2005, 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 83.0,
+      "expected_value": 125.934,
+      "explanation": "Sat 29 Jan 2005, 22:00: NO2 was 83.00 µg/m³ at 22:00, but the model expected about 125.93 µg/m³, so it was 42.93 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 14,
+      "when": "Mon 31 Jan 2005, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 61.0,
+      "expected_value": 112.218,
+      "explanation": "Mon 31 Jan 2005, 02:00: NO2 was 61.00 µg/m³ at 02:00, but the model expected about 112.22 µg/m³, so it was 51.22 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 15,
+      "when": "Mon 31 Jan 2005, 08:00",
+      "type": "Data limitation",
+      "peak_value": 198.0,
+      "expected_value": 136.032,
+      "explanation": "Mon 31 Jan 2005, 08:00: NO2 was 198.00 µg/m³ at 08:00, but the model expected about 136.03 µg/m³, so it was 61.97 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 16,
+      "when": "Mon 31 Jan 2005, 13:00",
+      "type": "Data limitation",
+      "peak_value": 181.0,
+      "expected_value": 230.865,
+      "explanation": "Mon 31 Jan 2005, 13:00: NO2 was 181.00 µg/m³ at 13:00, but the model expected about 230.87 µg/m³, so it was 49.87 lower than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 17,
+      "when": "Mon 31 Jan 2005, 18:00 to 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 270.0,
+      "expected_value": 210.186,
+      "explanation": "Mon 31 Jan 2005, 18:00 to 19:00: NO2 was 270.00 µg/m³ at 18:00, but the model expected about 210.19 µg/m³, so it was 59.81 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 18,
+      "when": "Tue 1 Feb 2005, 13:00 to 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 181.0,
+      "expected_value": 225.516,
+      "explanation": "Tue 1 Feb 2005, 13:00 to 15:00: NO2 was 181.00 µg/m³ at 13:00, but the model expected about 225.52 µg/m³, so it was 44.52 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 19,
+      "when": "Wed 2 Feb 2005, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 139.0,
+      "expected_value": 203.787,
+      "explanation": "Wed 2 Feb 2005, 13:00: NO2 was 139.00 µg/m³ at 13:00, but the model expected about 203.79 µg/m³, so it was 64.79 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 20,
+      "when": "Thu 3 Feb 2005, 08:00",
+      "type": "Data limitation",
+      "peak_value": 275.0,
+      "expected_value": 154.84,
+      "explanation": "Thu 3 Feb 2005, 08:00: NO2 was 275.00 µg/m³ at 08:00, but the model expected about 154.84 µg/m³, so it was 120.16 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 21,
+      "when": "Thu 3 Feb 2005, 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 235.0,
+      "expected_value": 311.802,
+      "explanation": "Thu 3 Feb 2005, 12:00: NO2 was 235.00 µg/m³ at 12:00, but the model expected about 311.80 µg/m³, so it was 76.80 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 22,
+      "when": "Thu 3 Feb 2005, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 249.0,
+      "expected_value": 204.918,
+      "explanation": "Thu 3 Feb 2005, 19:00: NO2 was 249.00 µg/m³ at 19:00, but the model expected about 204.92 µg/m³, so it was 44.08 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 23,
+      "when": "Fri 4 Feb 2005, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 161.0,
+      "expected_value": 205.941,
+      "explanation": "Fri 4 Feb 2005, 00:00: NO2 was 161.00 µg/m³ at 00:00, but the model expected about 205.94 µg/m³, so it was 44.94 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 24,
+      "when": "Fri 4 Feb 2005, 07:00 to 08:00",
+      "type": "Data limitation",
+      "peak_value": 306.0,
+      "expected_value": 212.11,
+      "explanation": "Fri 4 Feb 2005, 07:00 to 08:00: NO2 was 306.00 µg/m³ at 08:00, but the model expected about 212.11 µg/m³, so it was 93.89 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 25,
+      "when": "Fri 4 Feb 2005, 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 169.0,
+      "expected_value": 220.177,
+      "explanation": "Fri 4 Feb 2005, 12:00: NO2 was 169.00 µg/m³ at 12:00, but the model expected about 220.18 µg/m³, so it was 51.18 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 26,
+      "when": "Sat 5 Feb 2005, 08:00 to 11:00",
+      "type": "Data limitation",
+      "peak_value": 200.0,
+      "expected_value": 290.755,
+      "explanation": "Sat 5 Feb 2005, 08:00 to 11:00: NO2 was 200.00 µg/m³ at 10:00, but the model expected about 290.76 µg/m³, so it was 90.76 lower than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 27,
+      "when": "Sun 6 Feb 2005, 11:00 to 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 212.0,
+      "expected_value": 145.289,
+      "explanation": "Sun 6 Feb 2005, 11:00 to 12:00: NO2 was 212.00 µg/m³ at 11:00, but the model expected about 145.29 µg/m³, so it was 66.71 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 28,
+      "when": "Mon 7 Feb 2005, 08:00",
+      "type": "Data limitation",
+      "peak_value": 246.0,
+      "expected_value": 147.656,
+      "explanation": "Mon 7 Feb 2005, 08:00: NO2 was 246.00 µg/m³ at 08:00, but the model expected about 147.66 µg/m³, so it was 98.34 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 29,
+      "when": "Tue 8 Feb 2005, 08:00 to 11:00",
+      "type": "Data limitation",
+      "peak_value": 224.0,
+      "expected_value": 175.997,
+      "explanation": "Tue 8 Feb 2005, 08:00 to 11:00: NO2 was 224.00 µg/m³ at 08:00, but the model expected about 176.00 µg/m³, so it was 48.00 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 30,
+      "when": "Wed 9 Feb 2005, 08:00",
+      "type": "Data limitation",
+      "peak_value": 231.0,
+      "expected_value": 168.417,
+      "explanation": "Wed 9 Feb 2005, 08:00: NO2 was 231.00 µg/m³ at 08:00, but the model expected about 168.42 µg/m³, so it was 62.58 higher than expected. However, absolute humidity, relative humidity and temperature were missing and the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 31,
+      "when": "Wed 9 Feb 2005, 19:00",
+      "type": "Data limitation",
+      "peak_value": 240.0,
+      "expected_value": 199.621,
+      "explanation": "Wed 9 Feb 2005, 19:00: NO2 was 240.00 µg/m³ at 19:00, but the model expected about 199.62 µg/m³, so it was 40.38 higher than expected. However, absolute humidity, relative humidity and temperature were missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 32,
+      "when": "Thu 10 Feb 2005, 06:00 to 09:00",
+      "type": "Data limitation",
+      "peak_value": 247.0,
+      "expected_value": 175.269,
+      "explanation": "Thu 10 Feb 2005, 06:00 to 09:00: NO2 was 247.00 µg/m³ at 08:00, but the model expected about 175.27 µg/m³, so it was 71.73 higher than expected. However, absolute humidity, the reading 3 hours before, relative humidity and temperature were missing and the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 33,
+      "when": "Thu 10 Feb 2005, 18:00 to 20:00",
+      "type": "Data limitation",
+      "peak_value": 276.0,
+      "expected_value": 220.009,
+      "explanation": "Thu 10 Feb 2005, 18:00 to 20:00: NO2 was 276.00 µg/m³ at 20:00, but the model expected about 220.01 µg/m³, so it was 55.99 higher than expected. However, absolute humidity, relative humidity and temperature were missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 34,
+      "when": "Fri 11 Feb 2005, 08:00 to 09:00",
+      "type": "Data limitation",
+      "peak_value": 267.0,
+      "expected_value": 169.544,
+      "explanation": "Fri 11 Feb 2005, 08:00 to 09:00: NO2 was 267.00 µg/m³ at 08:00, but the model expected about 169.54 µg/m³, so it was 97.46 higher than expected. However, absolute humidity, relative humidity and temperature were missing and the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 35,
+      "when": "Fri 11 Feb 2005, 14:00 to 20:00",
+      "type": "Data limitation",
+      "peak_value": 312.0,
+      "expected_value": 249.408,
+      "explanation": "Fri 11 Feb 2005, 14:00 to 20:00: NO2 was 312.00 µg/m³ at 15:00, but the model expected about 249.41 µg/m³, so it was 62.59 higher than expected. However, absolute humidity, relative humidity and temperature were missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 36,
+      "when": "Sun 13 Feb 2005, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 107.0,
+      "expected_value": 155.423,
+      "explanation": "Sun 13 Feb 2005, 13:00: NO2 was 107.00 µg/m³ at 13:00, but the model expected about 155.42 µg/m³, so it was 48.42 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 37,
+      "when": "Sun 13 Feb 2005, 19:00 to 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 211.0,
+      "expected_value": 141.299,
+      "explanation": "Sun 13 Feb 2005, 19:00 to 21:00: NO2 was 211.00 µg/m³ at 19:00, but the model expected about 141.30 µg/m³, so it was 69.70 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 38,
+      "when": "Mon 14 Feb 2005, 08:00 to 11:00",
+      "type": "Data limitation",
+      "peak_value": 123.0,
+      "expected_value": 176.033,
+      "explanation": "Mon 14 Feb 2005, 08:00 to 11:00: NO2 was 123.00 µg/m³ at 11:00, but the model expected about 176.03 µg/m³, so it was 53.03 lower than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 39,
+      "when": "Tue 15 Feb 2005, 08:00 to 10:00",
+      "type": "Data limitation",
+      "peak_value": 196.0,
+      "expected_value": 149.162,
+      "explanation": "Tue 15 Feb 2005, 08:00 to 10:00: NO2 was 196.00 µg/m³ at 08:00, but the model expected about 149.16 µg/m³, so it was 46.84 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 40,
+      "when": "Wed 16 Feb 2005, 07:00 to 12:00",
+      "type": "Data limitation",
+      "peak_value": 98.0,
+      "expected_value": 200.977,
+      "explanation": "Wed 16 Feb 2005, 07:00 to 12:00: NO2 was 98.00 µg/m³ at 11:00, but the model expected about 200.98 µg/m³, so it was 102.98 lower than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 41,
+      "when": "Wed 16 Feb 2005, 20:00 to 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 227.0,
+      "expected_value": 172.521,
+      "explanation": "Wed 16 Feb 2005, 20:00 to 21:00: NO2 was 227.00 µg/m³ at 20:00, but the model expected about 172.52 µg/m³, so it was 54.48 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 42,
+      "when": "Thu 17 Feb 2005, 08:00 to 09:00",
+      "type": "Data limitation",
+      "peak_value": 238.0,
+      "expected_value": 164.035,
+      "explanation": "Thu 17 Feb 2005, 08:00 to 09:00: NO2 was 238.00 µg/m³ at 08:00, but the model expected about 164.04 µg/m³, so it was 73.96 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 43,
+      "when": "Thu 17 Feb 2005 23:00 to Fri 18 Feb 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 106.0,
+      "expected_value": 156.122,
+      "explanation": "Thu 17 Feb 2005 23:00 to Fri 18 Feb 02:00: NO2 was 106.00 µg/m³ at 23:00, but the model expected about 156.12 µg/m³, so it was 50.12 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 44,
+      "when": "Fri 18 Feb 2005, 08:00 to 10:00",
+      "type": "Data limitation",
+      "peak_value": 205.0,
+      "expected_value": 144.841,
+      "explanation": "Fri 18 Feb 2005, 08:00 to 10:00: NO2 was 205.00 µg/m³ at 08:00, but the model expected about 144.84 µg/m³, so it was 60.16 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 45,
+      "when": "Fri 18 Feb 2005 18:00 to Sat 19 Feb 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 236.0,
+      "expected_value": 165.808,
+      "explanation": "Fri 18 Feb 2005 18:00 to Sat 19 Feb 02:00: NO2 was 236.00 µg/m³ at 23:00, but the model expected about 165.81 µg/m³, so it was 70.19 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 46,
+      "when": "Sat 19 Feb 2005, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 126.0,
+      "expected_value": 206.963,
+      "explanation": "Sat 19 Feb 2005, 13:00: NO2 was 126.00 µg/m³ at 13:00, but the model expected about 206.96 µg/m³, so it was 80.96 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 47,
+      "when": "Sat 19 Feb 2005, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 231.0,
+      "expected_value": 190.409,
+      "explanation": "Sat 19 Feb 2005, 21:00: NO2 was 231.00 µg/m³ at 21:00, but the model expected about 190.41 µg/m³, so it was 40.59 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 48,
+      "when": "Sun 20 Feb 2005, 05:00",
+      "type": "Data limitation",
+      "peak_value": 72.0,
+      "expected_value": 124.941,
+      "explanation": "Sun 20 Feb 2005, 05:00: NO2 was 72.00 µg/m³ at 05:00, but the model expected about 124.94 µg/m³, so it was 52.94 lower than expected. However, the reading 2 hours before was missing and the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 49,
+      "when": "Mon 21 Feb 2005, 09:00 to 10:00",
+      "type": "Data limitation",
+      "peak_value": 254.0,
+      "expected_value": 204.18,
+      "explanation": "Mon 21 Feb 2005, 09:00 to 10:00: NO2 was 254.00 µg/m³ at 10:00, but the model expected about 204.18 µg/m³, so it was 49.82 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 50,
+      "when": "Mon 21 Feb 2005, 19:00 to 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 252.0,
+      "expected_value": 180.224,
+      "explanation": "Mon 21 Feb 2005, 19:00 to 21:00: NO2 was 252.00 µg/m³ at 19:00, but the model expected about 180.22 µg/m³, so it was 71.78 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 51,
+      "when": "Tue 22 Feb 2005, 06:00 to 08:00",
+      "type": "Data limitation",
+      "peak_value": 295.0,
+      "expected_value": 199.321,
+      "explanation": "Tue 22 Feb 2005, 06:00 to 08:00: NO2 was 295.00 µg/m³ at 08:00, but the model expected about 199.32 µg/m³, so it was 95.68 higher than expected. However, the reading 3 hours before was missing and the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 52,
+      "when": "Tue 22 Feb 2005, 19:00 to 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 251.0,
+      "expected_value": 207.333,
+      "explanation": "Tue 22 Feb 2005, 19:00 to 21:00: NO2 was 251.00 µg/m³ at 19:00, but the model expected about 207.33 µg/m³, so it was 43.67 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 53,
+      "when": "Wed 23 Feb 2005, 10:00",
+      "type": "Unusual pollution",
+      "peak_value": 167.0,
+      "expected_value": 209.408,
+      "explanation": "Wed 23 Feb 2005, 10:00: NO2 was 167.00 µg/m³ at 10:00, but the model expected about 209.41 µg/m³, so it was 42.41 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 54,
+      "when": "Wed 23 Feb 2005, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 244.0,
+      "expected_value": 201.29,
+      "explanation": "Wed 23 Feb 2005, 20:00: NO2 was 244.00 µg/m³ at 20:00, but the model expected about 201.29 µg/m³, so it was 42.71 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 55,
+      "when": "Thu 24 Feb 2005, 06:00 to 08:00",
+      "type": "Data limitation",
+      "peak_value": 267.0,
+      "expected_value": 200.166,
+      "explanation": "Thu 24 Feb 2005, 06:00 to 08:00: NO2 was 267.00 µg/m³ at 08:00, but the model expected about 200.17 µg/m³, so it was 66.83 higher than expected. However, the reading 3 hours before was missing and the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 56,
+      "when": "Thu 24 Feb 2005, 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 267.0,
+      "expected_value": 217.951,
+      "explanation": "Thu 24 Feb 2005, 16:00: NO2 was 267.00 µg/m³ at 16:00, but the model expected about 217.95 µg/m³, so it was 49.05 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 57,
+      "when": "Mon 28 Feb 2005, 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 94.0,
+      "expected_value": 144.808,
+      "explanation": "Mon 28 Feb 2005, 01:00: NO2 was 94.00 µg/m³ at 01:00, but the model expected about 144.81 µg/m³, so it was 50.81 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 58,
+      "when": "Wed 2 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 240.0,
+      "expected_value": 199.955,
+      "explanation": "Wed 2 Mar 2005, 19:00: NO2 was 240.00 µg/m³ at 19:00, but the model expected about 199.95 µg/m³, so it was 40.05 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 59,
+      "when": "Fri 4 Mar 2005, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 225.0,
+      "expected_value": 177.961,
+      "explanation": "Fri 4 Mar 2005, 20:00: NO2 was 225.00 µg/m³ at 20:00, but the model expected about 177.96 µg/m³, so it was 47.04 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 60,
+      "when": "Sat 5 Mar 2005, 10:00",
+      "type": "Unusual pollution",
+      "peak_value": 121.0,
+      "expected_value": 191.089,
+      "explanation": "Sat 5 Mar 2005, 10:00: NO2 was 121.00 µg/m³ at 10:00, but the model expected about 191.09 µg/m³, so it was 70.09 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 61,
+      "when": "Sun 6 Mar 2005, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 100.0,
+      "expected_value": 143.99,
+      "explanation": "Sun 6 Mar 2005, 02:00: NO2 was 100.00 µg/m³ at 02:00, but the model expected about 143.99 µg/m³, so it was 43.99 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 62,
+      "when": "Sun 6 Mar 2005, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 163.0,
+      "expected_value": 115.018,
+      "explanation": "Sun 6 Mar 2005, 15:00: NO2 was 163.00 µg/m³ at 15:00, but the model expected about 115.02 µg/m³, so it was 47.98 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 63,
+      "when": "Tue 8 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 242.0,
+      "expected_value": 200.133,
+      "explanation": "Tue 8 Mar 2005, 19:00: NO2 was 242.00 µg/m³ at 19:00, but the model expected about 200.13 µg/m³, so it was 41.87 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 64,
+      "when": "Wed 9 Mar 2005, 18:00",
+      "type": "Unusual pollution",
+      "peak_value": 168.0,
+      "expected_value": 127.852,
+      "explanation": "Wed 9 Mar 2005, 18:00: NO2 was 168.00 µg/m³ at 18:00, but the model expected about 127.85 µg/m³, so it was 40.15 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 65,
+      "when": "Thu 10 Mar 2005, 19:00 to 20:00",
+      "type": "Data limitation",
+      "peak_value": 219.0,
+      "expected_value": 176.448,
+      "explanation": "Thu 10 Mar 2005, 19:00 to 20:00: NO2 was 219.00 µg/m³ at 19:00, but the model expected about 176.45 µg/m³, so it was 42.55 higher than expected. However, the NO2 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 66,
+      "when": "Fri 11 Mar 2005, 12:00",
+      "type": "Data limitation",
+      "peak_value": 162.0,
+      "expected_value": 215.56,
+      "explanation": "Fri 11 Mar 2005, 12:00: NO2 was 162.00 µg/m³ at 12:00, but the model expected about 215.56 µg/m³, so it was 53.56 lower than expected. However, absolute humidity, relative humidity and temperature were missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 67,
+      "when": "Fri 11 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 226.0,
+      "expected_value": 179.429,
+      "explanation": "Fri 11 Mar 2005, 19:00: NO2 was 226.00 µg/m³ at 19:00, but the model expected about 179.43 µg/m³, so it was 46.57 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 68,
+      "when": "Sat 12 Mar 2005, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 201.0,
+      "expected_value": 150.573,
+      "explanation": "Sat 12 Mar 2005, 20:00: NO2 was 201.00 µg/m³ at 20:00, but the model expected about 150.57 µg/m³, so it was 50.43 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 69,
+      "when": "Sun 13 Mar 2005, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 69.0,
+      "expected_value": 109.673,
+      "explanation": "Sun 13 Mar 2005, 03:00: NO2 was 69.00 µg/m³ at 03:00, but the model expected about 109.67 µg/m³, so it was 40.67 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 70,
+      "when": "Sun 13 Mar 2005, 08:00",
+      "type": "Unusual pollution",
+      "peak_value": 120.0,
+      "expected_value": 72.749,
+      "explanation": "Sun 13 Mar 2005, 08:00: NO2 was 120.00 µg/m³ at 08:00, but the model expected about 72.75 µg/m³, so it was 47.25 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 71,
+      "when": "Sun 13 Mar 2005, 14:00",
+      "type": "Unusual pollution",
+      "peak_value": 110.0,
+      "expected_value": 150.564,
+      "explanation": "Sun 13 Mar 2005, 14:00: NO2 was 110.00 µg/m³ at 14:00, but the model expected about 150.56 µg/m³, so it was 40.56 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 72,
+      "when": "Sun 13 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 215.0,
+      "expected_value": 144.321,
+      "explanation": "Sun 13 Mar 2005, 19:00: NO2 was 215.00 µg/m³ at 19:00, but the model expected about 144.32 µg/m³, so it was 70.68 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 73,
+      "when": "Mon 14 Mar 2005, 18:00",
+      "type": "Unusual pollution",
+      "peak_value": 225.0,
+      "expected_value": 173.344,
+      "explanation": "Mon 14 Mar 2005, 18:00: NO2 was 225.00 µg/m³ at 18:00, but the model expected about 173.34 µg/m³, so it was 51.66 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 74,
+      "when": "Tue 15 Mar 2005, 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 79.0,
+      "expected_value": 127.229,
+      "explanation": "Tue 15 Mar 2005, 01:00: NO2 was 79.00 µg/m³ at 01:00, but the model expected about 127.23 µg/m³, so it was 48.23 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 75,
+      "when": "Tue 15 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 243.0,
+      "expected_value": 193.082,
+      "explanation": "Tue 15 Mar 2005, 19:00: NO2 was 243.00 µg/m³ at 19:00, but the model expected about 193.08 µg/m³, so it was 49.92 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 76,
+      "when": "Fri 18 Mar 2005, 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 219.0,
+      "expected_value": 175.737,
+      "explanation": "Fri 18 Mar 2005, 16:00: NO2 was 219.00 µg/m³ at 16:00, but the model expected about 175.74 µg/m³, so it was 43.26 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 77,
+      "when": "Fri 18 Mar 2005, 21:00 to 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 159.0,
+      "expected_value": 212.919,
+      "explanation": "Fri 18 Mar 2005, 21:00 to 22:00: NO2 was 159.00 µg/m³ at 22:00, but the model expected about 212.92 µg/m³, so it was 53.92 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 78,
+      "when": "Sun 20 Mar 2005, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 166.0,
+      "expected_value": 125.101,
+      "explanation": "Sun 20 Mar 2005, 11:00: NO2 was 166.00 µg/m³ at 11:00, but the model expected about 125.10 µg/m³, so it was 40.90 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 79,
+      "when": "Mon 21 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 232.0,
+      "expected_value": 191.517,
+      "explanation": "Mon 21 Mar 2005, 19:00: NO2 was 232.00 µg/m³ at 19:00, but the model expected about 191.52 µg/m³, so it was 40.48 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 80,
+      "when": "Wed 23 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 227.0,
+      "expected_value": 183.494,
+      "explanation": "Wed 23 Mar 2005, 19:00: NO2 was 227.00 µg/m³ at 19:00, but the model expected about 183.49 µg/m³, so it was 43.51 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 81,
+      "when": "Thu 24 Mar 2005, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 232.0,
+      "expected_value": 186.958,
+      "explanation": "Thu 24 Mar 2005, 20:00: NO2 was 232.00 µg/m³ at 20:00, but the model expected about 186.96 µg/m³, so it was 45.04 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 82,
+      "when": "Thu 31 Mar 2005, 09:00",
+      "type": "Unusual pollution",
+      "peak_value": 139.0,
+      "expected_value": 178.541,
+      "explanation": "Thu 31 Mar 2005, 09:00: NO2 was 139.00 µg/m³ at 09:00, but the model expected about 178.54 µg/m³, so it was 39.54 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 83,
+      "when": "Sat 2 Apr 2005, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 174.0,
+      "expected_value": 116.483,
+      "explanation": "Sat 2 Apr 2005, 00:00: NO2 was 174.00 µg/m³ at 00:00, but the model expected about 116.48 µg/m³, so it was 57.52 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 84,
+      "when": "Sat 2 Apr 2005, 06:00",
+      "type": "Unusual pollution",
+      "peak_value": 107.0,
+      "expected_value": 52.711,
+      "explanation": "Sat 2 Apr 2005, 06:00: NO2 was 107.00 µg/m³ at 06:00, but the model expected about 52.71 µg/m³, so it was 54.29 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 85,
+      "when": "Sun 3 Apr 2005, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 181.0,
+      "expected_value": 136.536,
+      "explanation": "Sun 3 Apr 2005, 19:00: NO2 was 181.00 µg/m³ at 19:00, but the model expected about 136.54 µg/m³, so it was 44.46 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    }
+  ],
+  "limitations": [
+    "Results come from one place and period, so they may not hold elsewhere.",
+    "Episode labels come from simple rules. Nobody checked them against real events."
+  ]
+}

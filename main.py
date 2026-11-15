@@ -10,6 +10,7 @@ Start the server from the project folder:
     GET  /dashboard/  the web dashboard
 """
 import json
+import os
 import re
 import uuid
 from functools import lru_cache
@@ -19,6 +20,7 @@ from typing import Optional
 import joblib
 import pandas as pd
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -28,8 +30,14 @@ BASE = Path(__file__).resolve().parent
 ARTIFACTS = BASE / "artifacts"
 UPLOADS = BASE / "uploads"
 MAX_UPLOAD_MB = 30
+# Training needs more memory than a free host has, so the online demo turns uploads off (ALLOW_UPLOAD=false).
+ALLOW_UPLOAD = os.environ.get("ALLOW_UPLOAD", "true").lower() != "false"
 
-app = FastAPI(title="Air Quality Prediction API",
+class UTF8JSONResponse(JSONResponse):
+    media_type = "application/json; charset=utf-8"     # so units like mg/m³ show correctly in every client
+
+
+app = FastAPI(default_response_class=UTF8JSONResponse, title="Air Quality Prediction API",
               description="Predicts the next-hour level of a selected pollutant and flags unusual readings.")
 
 
@@ -122,6 +130,18 @@ def get_results(dataset_id: str, pollutant: str):
     return load_results(dataset_id, find_pollutant(dataset_id, pollutant))
 
 
+@app.get("/api/report/{dataset_id}/{pollutant}")
+def get_report(dataset_id: str, pollutant: str, download: bool = False):
+    """The results in plain words, as JSON. Add ?download=true to save it as a file."""
+    key = find_pollutant(dataset_id, pollutant)
+    title = next(d["title"] for d in datasets() if d["id"] == dataset_id)
+    report = train_model.build_report(load_results(dataset_id, key), title)
+    if not download:
+        return report
+    return Response(json.dumps(report, indent=2, ensure_ascii=False), media_type="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="{dataset_id}-{key}-report.json"'})
+
+
 @lru_cache(maxsize=16)
 def dataset_frame(dataset_id):
     return pd.read_csv(ARTIFACTS / dataset_id / "data.csv", parse_dates=["timestamp"], index_col="timestamp").asfreq("h")
@@ -149,6 +169,8 @@ def get_sample(dataset_id: str, pollutant: str):
 @app.post("/api/upload")
 def upload_dataset(file: UploadFile = File(...), name: str = Form("")):
     """Trains models on your own hourly CSV or ZIP. The file needs a time column and at least one pollutant."""
+    if not ALLOW_UPLOAD:
+        raise HTTPException(403, "Uploading is turned off on the online version. Run the app on your own computer to train on your own file.")
     content = file.file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
     if len(content) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f"File is larger than {MAX_UPLOAD_MB} MB")

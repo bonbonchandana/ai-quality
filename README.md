@@ -41,7 +41,7 @@ Italy (test period 16 Jan – 4 Apr 2005):
 | NOx | Random Forest | 57.6 ppb | 72.7 | 20.9% | 0.83 | 25 (16 / 9) |
 | C6H6 | Random Forest | 1.72 µg/m³ | 2.29 | 25.1% | 0.83 | 33 (33 / 0) |
 
-Beijing, Aotizhongxin (test period Mar 2016 – Feb 2017):
+Beijing, Aotizhongxin (test period 12 May 2016 – 28 Feb 2017):
 
 | Pollutant | Model | Test MAE (µg/m³) | Persistence MAE | Better by | R² |
 |---|---|---|---|---|---|
@@ -60,7 +60,8 @@ value is already a very good guess and no model really beats it. The high R² th
 ```
 train_model.py            the whole ML part (also runs on Kaggle)
 main.py                   FastAPI: GET /, GET /health, POST /predict, dataset upload and dashboard data
-frontend/                 one-page dashboard (HTML, CSS, JavaScript, ECharts)
+notebooks/                the same work as a Kaggle notebook, one section per step of the 16-step flow
+frontend/                 the report page (HTML, CSS, JavaScript, one ECharts chart)
 data/                     the two built-in datasets
 models/<dataset>/         saved models, one .pkl per pollutant
 artifacts/<dataset>/      results the dashboard reads
@@ -85,12 +86,27 @@ in the repo. To retrain:
 .\.venv\Scripts\python train_model.py data\Beijing_Aotizhongxin.csv
 ```
 
-## Run the ML part on Kaggle
+The page shows a written summary, the model results, one chart, every flagged episode explained in a sentence or
+two, a prediction form and an upload box. "Download report (JSON)" saves the same information as a JSON file. The API
+has it too, at `/api/report/<dataset>/<pollutant>`, for example `/api/report/uci-italy/CO`.
 
-1. Make a new notebook and add a dataset as input (UCI Air Quality, UCI Beijing, or your own CSV). Turning on a GPU is optional.
-2. Paste the whole of `train_model.py` into one cell and run it. It finds the CSV under `/kaggle/input` by itself.
-   If there is none and Internet is on, it downloads the UCI Air Quality data.
-3. It prints the results table and draws actual vs predicted for each pollutant. Models are saved under `models/`.
+## Run it on Kaggle
+
+The notebook `notebooks/air_quality_16_steps.ipynb` goes through the 16 steps one by one:
+
+| Steps | What the cells do |
+|---|---|
+| 1–4 | define the problem, find and load the data, clean it, look at it |
+| 5–10 | build the lag features, compare models, train, evaluate, tune, flag and explain episodes, save the model and a JSON report |
+| 11–14 | write a FastAPI app and a small web page, call `/predict` the way the page does, and run tests |
+| 15–16 | start the server with Uvicorn and print the URLs |
+
+1. On Kaggle: **File → Import Notebook** and upload `air_quality_16_steps.ipynb`.
+2. **+ Add Input** and add an air quality dataset (UCI Air Quality CSV or Excel, or a UCI Beijing station file). A GPU is optional.
+3. **Run All**. Change `POLLUTANT` in the first code cell to try another pollutant.
+
+If you'd rather use one plain script, paste the whole of `train_model.py` into a single cell instead. It trains every
+pollutant in the file at once.
 
 ## Test with Postman
 

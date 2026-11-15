@@ -1,0 +1,2582 @@
+{
+  "title": "O3 next-hour prediction - Beijing, Aotizhongxin station (UCI)",
+  "dataset": "Beijing, Aotizhongxin station (UCI)",
+  "pollutant": "O3",
+  "unit": "µg/m³",
+  "summary": "We predicted O3 one hour ahead using the Beijing, Aotizhongxin station (UCI) data. XGBoost did best on the validation period, so we used it. On the test period (12 May 2016 to 28 Feb 2017) its average error was 8.468 µg/m³. Just repeating the last hour's value gave 11.188 µg/m³, so the model was 24.3% better. 315 episodes were flagged: 265 look like unusual pollution and 50 look like data problems.",
+  "how_it_was_made": [
+    "Read the hourly data and treated empty cells and -200 as missing.",
+    "Built the inputs: hour, weekday, the reading 1 hour before, the reading 2 hours before, the reading 3 hours before, the reading at the same time the day before, temperature, air pressure, dew point, rain, wind speed.",
+    "Split the timeline in order: first 60% to train, next 20% to choose the model, last 20% to test.",
+    "Tried Linear Regression, Random Forest and XGBoost. Each predicts how much the level changes in the next hour.",
+    "Flagged test hours where the miss was more than 23.38 µg/m³ (bigger than 95% of the misses on the validation period).",
+    "Grouped flagged hours that were less than 3 hours apart and checked each group for missing data."
+  ],
+  "results": {
+    "chosen_model": "XGBoost",
+    "test_period": "12 May 2016 to 28 Feb 2017",
+    "average_error": 8.468,
+    "average_error_if_repeating_last_hour": 11.188,
+    "better_than_repeating_last_hour_percent": 24.3,
+    "r2": 0.956,
+    "test_hours": 6668
+  },
+  "models_compared": [
+    {
+      "model": "Linear Regression",
+      "validation_error": 8.135,
+      "test_error": 9.948
+    },
+    {
+      "model": "Random Forest",
+      "validation_error": 6.817,
+      "test_error": 8.386
+    },
+    {
+      "model": "XGBoost",
+      "validation_error": 6.798,
+      "test_error": 8.468
+    },
+    {
+      "model": "Persistence (same as previous hour)",
+      "validation_error": 9.12,
+      "test_error": 11.188
+    }
+  ],
+  "most_important_inputs": [
+    "hour",
+    "temperature",
+    "the reading 2 hours before"
+  ],
+  "episode_counts": {
+    "total": 315,
+    "Unusual pollution": 265,
+    "Data limitation": 50
+  },
+  "episodes": [
+    {
+      "id": 1,
+      "when": "Sat 14 May 2016, 02:00 to 04:00",
+      "type": "Data limitation",
+      "peak_value": 125.0,
+      "expected_value": 83.221,
+      "explanation": "Sat 14 May 2016, 02:00 to 04:00: O3 was 125.00 µg/m³ at 04:00, but the model expected about 83.22 µg/m³, so it was 41.78 higher than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 2,
+      "when": "Sun 15 May 2016, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 41.0,
+      "expected_value": 72.923,
+      "explanation": "Sun 15 May 2016, 20:00: O3 was 41.00 µg/m³ at 20:00, but the model expected about 72.92 µg/m³, so it was 31.92 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 3,
+      "when": "Tue 17 May 2016, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 32.087,
+      "explanation": "Tue 17 May 2016, 03:00: O3 was 2.00 µg/m³ at 03:00, but the model expected about 32.09 µg/m³, so it was 30.09 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 4,
+      "when": "Tue 17 May 2016, 13:00 to 14:00",
+      "type": "Unusual pollution",
+      "peak_value": 250.0,
+      "expected_value": 190.644,
+      "explanation": "Tue 17 May 2016, 13:00 to 14:00: O3 was 250.00 µg/m³ at 14:00, but the model expected about 190.64 µg/m³, so it was 59.36 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 5,
+      "when": "Tue 17 May 2016, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 235.0,
+      "expected_value": 207.657,
+      "explanation": "Tue 17 May 2016, 19:00: O3 was 235.00 µg/m³ at 19:00, but the model expected about 207.66 µg/m³, so it was 27.34 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 6,
+      "when": "Thu 19 May 2016, 10:00",
+      "type": "Data limitation",
+      "peak_value": 197.0,
+      "expected_value": 146.545,
+      "explanation": "Thu 19 May 2016, 10:00: O3 was 197.00 µg/m³ at 10:00, but the model expected about 146.55 µg/m³, so it was 50.45 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 7,
+      "when": "Thu 19 May 2016, 22:00 to 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 184.0,
+      "expected_value": 141.797,
+      "explanation": "Thu 19 May 2016, 22:00 to 23:00: O3 was 184.00 µg/m³ at 22:00, but the model expected about 141.80 µg/m³, so it was 42.20 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 8,
+      "when": "Fri 20 May 2016, 03:00 to 04:00",
+      "type": "Data limitation",
+      "peak_value": 77.0,
+      "expected_value": 24.283,
+      "explanation": "Fri 20 May 2016, 03:00 to 04:00: O3 was 77.00 µg/m³ at 04:00, but the model expected about 24.28 µg/m³, so it was 52.72 higher than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 9,
+      "when": "Fri 20 May 2016, 13:00",
+      "type": "Data limitation",
+      "peak_value": 237.0,
+      "expected_value": 211.326,
+      "explanation": "Fri 20 May 2016, 13:00: O3 was 237.00 µg/m³ at 13:00, but the model expected about 211.33 µg/m³, so it was 25.67 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 10,
+      "when": "Fri 20 May 2016, 18:00",
+      "type": "Unusual pollution",
+      "peak_value": 217.0,
+      "expected_value": 244.042,
+      "explanation": "Fri 20 May 2016, 18:00: O3 was 217.00 µg/m³ at 18:00, but the model expected about 244.04 µg/m³, so it was 27.04 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 11,
+      "when": "Sat 21 May 2016, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 58.0,
+      "expected_value": 31.596,
+      "explanation": "Sat 21 May 2016, 03:00: O3 was 58.00 µg/m³ at 03:00, but the model expected about 31.60 µg/m³, so it was 26.40 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 12,
+      "when": "Sat 21 May 2016, 08:00 to 10:00",
+      "type": "Data limitation",
+      "peak_value": 129.0,
+      "expected_value": 88.287,
+      "explanation": "Sat 21 May 2016, 08:00 to 10:00: O3 was 129.00 µg/m³ at 10:00, but the model expected about 88.29 µg/m³, so it was 40.71 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 13,
+      "when": "Sat 21 May 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 231.0,
+      "expected_value": 255.4,
+      "explanation": "Sat 21 May 2016, 17:00: O3 was 231.00 µg/m³ at 17:00, but the model expected about 255.40 µg/m³, so it was 24.40 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 14,
+      "when": "Sat 21 May 2016, 21:00 to 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 170.0,
+      "expected_value": 139.911,
+      "explanation": "Sat 21 May 2016, 21:00 to 23:00: O3 was 170.00 µg/m³ at 21:00, but the model expected about 139.91 µg/m³, so it was 30.09 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 15,
+      "when": "Sun 22 May 2016, 08:00 to 09:00",
+      "type": "Unusual pollution",
+      "peak_value": 52.0,
+      "expected_value": 13.804,
+      "explanation": "Sun 22 May 2016, 08:00 to 09:00: O3 was 52.00 µg/m³ at 08:00, but the model expected about 13.80 µg/m³, so it was 38.20 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 16,
+      "when": "Mon 23 May 2016, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 140.0,
+      "expected_value": 103.068,
+      "explanation": "Mon 23 May 2016, 00:00: O3 was 140.00 µg/m³ at 00:00, but the model expected about 103.07 µg/m³, so it was 36.93 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 17,
+      "when": "Mon 23 May 2016, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 102.0,
+      "expected_value": 58.886,
+      "explanation": "Mon 23 May 2016, 11:00: O3 was 102.00 µg/m³ at 11:00, but the model expected about 58.89 µg/m³, so it was 43.11 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 18,
+      "when": "Mon 23 May 2016, 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 170.0,
+      "expected_value": 194.201,
+      "explanation": "Mon 23 May 2016, 16:00: O3 was 170.00 µg/m³ at 16:00, but the model expected about 194.20 µg/m³, so it was 24.20 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 19,
+      "when": "Wed 25 May 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 8.0,
+      "expected_value": 48.543,
+      "explanation": "Wed 25 May 2016, 23:00: O3 was 8.00 µg/m³ at 23:00, but the model expected about 48.54 µg/m³, so it was 40.54 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 20,
+      "when": "Thu 26 May 2016, 04:00",
+      "type": "Data limitation",
+      "peak_value": 87.0,
+      "expected_value": 26.063,
+      "explanation": "Thu 26 May 2016, 04:00: O3 was 87.00 µg/m³ at 04:00, but the model expected about 26.06 µg/m³, so it was 60.94 higher than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 21,
+      "when": "Fri 27 May 2016, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 108.0,
+      "expected_value": 79.606,
+      "explanation": "Fri 27 May 2016, 00:00: O3 was 108.00 µg/m³ at 00:00, but the model expected about 79.61 µg/m³, so it was 28.39 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 22,
+      "when": "Fri 27 May 2016, 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 155.0,
+      "expected_value": 105.313,
+      "explanation": "Fri 27 May 2016, 12:00: O3 was 155.00 µg/m³ at 12:00, but the model expected about 105.31 µg/m³, so it was 49.69 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 23,
+      "when": "Sat 28 May 2016, 10:00",
+      "type": "Data limitation",
+      "peak_value": 109.0,
+      "expected_value": 74.641,
+      "explanation": "Sat 28 May 2016, 10:00: O3 was 109.00 µg/m³ at 10:00, but the model expected about 74.64 µg/m³, so it was 34.36 higher than expected. However, the O3 data had a gap of 2 hours just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 24,
+      "when": "Sun 29 May 2016, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 14.0,
+      "expected_value": 79.866,
+      "explanation": "Sun 29 May 2016, 03:00: O3 was 14.00 µg/m³ at 03:00, but the model expected about 79.87 µg/m³, so it was 65.87 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 25,
+      "when": "Mon 30 May 2016, 01:00 to 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 35.246,
+      "explanation": "Mon 30 May 2016, 01:00 to 03:00: O3 was 2.00 µg/m³ at 03:00, but the model expected about 35.25 µg/m³, so it was 33.25 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 26,
+      "when": "Mon 30 May 2016, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 330.0,
+      "expected_value": 264.716,
+      "explanation": "Mon 30 May 2016, 15:00: O3 was 330.00 µg/m³ at 15:00, but the model expected about 264.72 µg/m³, so it was 65.28 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 27,
+      "when": "Mon 30 May 2016, 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 160.0,
+      "expected_value": 188.422,
+      "explanation": "Mon 30 May 2016, 22:00: O3 was 160.00 µg/m³ at 22:00, but the model expected about 188.42 µg/m³, so it was 28.42 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 28,
+      "when": "Tue 31 May 2016, 07:00",
+      "type": "Data limitation",
+      "peak_value": 85.0,
+      "expected_value": 60.1,
+      "explanation": "Tue 31 May 2016, 07:00: O3 was 85.00 µg/m³ at 07:00, but the model expected about 60.10 µg/m³, so it was 24.90 higher than expected. However, the reading 3 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 29,
+      "when": "Tue 31 May 2016 22:00 to Wed 1 Jun 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 43.0,
+      "expected_value": 75.226,
+      "explanation": "Tue 31 May 2016 22:00 to Wed 1 Jun 00:00: O3 was 43.00 µg/m³ at 22:00, but the model expected about 75.23 µg/m³, so it was 32.23 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 30,
+      "when": "Wed 1 Jun 2016, 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 32.958,
+      "explanation": "Wed 1 Jun 2016, 05:00: O3 was 2.00 µg/m³ at 05:00, but the model expected about 32.96 µg/m³, so it was 30.96 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 31,
+      "when": "Wed 1 Jun 2016 23:00 to Thu 2 Jun 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 91.0,
+      "expected_value": 120.647,
+      "explanation": "Wed 1 Jun 2016 23:00 to Thu 2 Jun 00:00: O3 was 91.00 µg/m³ at 23:00, but the model expected about 120.65 µg/m³, so it was 29.65 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 32,
+      "when": "Thu 2 Jun 2016, 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 197.0,
+      "expected_value": 119.014,
+      "explanation": "Thu 2 Jun 2016, 12:00: O3 was 197.00 µg/m³ at 12:00, but the model expected about 119.01 µg/m³, so it was 77.99 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 33,
+      "when": "Fri 3 Jun 2016, 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 3.0,
+      "expected_value": 42.308,
+      "explanation": "Fri 3 Jun 2016, 05:00: O3 was 3.00 µg/m³ at 05:00, but the model expected about 42.31 µg/m³, so it was 39.31 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 34,
+      "when": "Fri 3 Jun 2016, 14:00 to 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 205.0,
+      "expected_value": 159.556,
+      "explanation": "Fri 3 Jun 2016, 14:00 to 15:00: O3 was 205.00 µg/m³ at 14:00, but the model expected about 159.56 µg/m³, so it was 45.44 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 35,
+      "when": "Sat 4 Jun 2016, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 189.0,
+      "expected_value": 139.733,
+      "explanation": "Sat 4 Jun 2016, 11:00: O3 was 189.00 µg/m³ at 11:00, but the model expected about 139.73 µg/m³, so it was 49.27 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 36,
+      "when": "Sun 5 Jun 2016, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 160.0,
+      "expected_value": 198.16,
+      "explanation": "Sun 5 Jun 2016, 20:00: O3 was 160.00 µg/m³ at 20:00, but the model expected about 198.16 µg/m³, so it was 38.16 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 37,
+      "when": "Mon 6 Jun 2016, 14:00",
+      "type": "Unusual pollution",
+      "peak_value": 265.0,
+      "expected_value": 235.986,
+      "explanation": "Mon 6 Jun 2016, 14:00: O3 was 265.00 µg/m³ at 14:00, but the model expected about 235.99 µg/m³, so it was 29.01 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 38,
+      "when": "Mon 6 Jun 2016 20:00 to Tue 7 Jun 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 140.0,
+      "expected_value": 191.408,
+      "explanation": "Mon 6 Jun 2016 20:00 to Tue 7 Jun 05:00: O3 was 140.00 µg/m³ at 22:00, but the model expected about 191.41 µg/m³, so it was 51.41 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 39,
+      "when": "Wed 8 Jun 2016, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 103.0,
+      "expected_value": 76.919,
+      "explanation": "Wed 8 Jun 2016, 00:00: O3 was 103.00 µg/m³ at 00:00, but the model expected about 76.92 µg/m³, so it was 26.08 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 40,
+      "when": "Wed 8 Jun 2016, 06:00 to 08:00",
+      "type": "Data limitation",
+      "peak_value": 48.0,
+      "expected_value": 10.946,
+      "explanation": "Wed 8 Jun 2016, 06:00 to 08:00: O3 was 48.00 µg/m³ at 08:00, but the model expected about 10.95 µg/m³, so it was 37.05 higher than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 41,
+      "when": "Wed 8 Jun 2016 19:00 to Thu 9 Jun 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 179.0,
+      "expected_value": 126.206,
+      "explanation": "Wed 8 Jun 2016 19:00 to Thu 9 Jun 02:00: O3 was 179.00 µg/m³ at 23:00, but the model expected about 126.21 µg/m³, so it was 52.79 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 42,
+      "when": "Thu 9 Jun 2016, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 175.0,
+      "expected_value": 129.506,
+      "explanation": "Thu 9 Jun 2016, 11:00: O3 was 175.00 µg/m³ at 11:00, but the model expected about 129.51 µg/m³, so it was 45.49 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 43,
+      "when": "Fri 10 Jun 2016, 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 134.0,
+      "expected_value": 108.873,
+      "explanation": "Fri 10 Jun 2016, 01:00: O3 was 134.00 µg/m³ at 01:00, but the model expected about 108.87 µg/m³, so it was 25.13 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 44,
+      "when": "Fri 10 Jun 2016, 07:00",
+      "type": "Data limitation",
+      "peak_value": 104.0,
+      "expected_value": 80.607,
+      "explanation": "Fri 10 Jun 2016, 07:00: O3 was 104.00 µg/m³ at 07:00, but the model expected about 80.61 µg/m³, so it was 23.39 higher than expected. However, the reading 3 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 45,
+      "when": "Fri 10 Jun 2016, 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 163.0,
+      "expected_value": 256.72,
+      "explanation": "Fri 10 Jun 2016, 16:00: O3 was 163.00 µg/m³ at 16:00, but the model expected about 256.72 µg/m³, so it was 93.72 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 46,
+      "when": "Sat 11 Jun 2016, 08:00",
+      "type": "Unusual pollution",
+      "peak_value": 71.0,
+      "expected_value": 44.579,
+      "explanation": "Sat 11 Jun 2016, 08:00: O3 was 71.00 µg/m³ at 08:00, but the model expected about 44.58 µg/m³, so it was 26.42 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 47,
+      "when": "Sat 11 Jun 2016 22:00 to Sun 12 Jun 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 51.0,
+      "expected_value": 8.281,
+      "explanation": "Sat 11 Jun 2016 22:00 to Sun 12 Jun 01:00: O3 was 51.00 µg/m³ at 01:00, but the model expected about 8.28 µg/m³, so it was 42.72 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 48,
+      "when": "Sun 12 Jun 2016, 12:00 to 15:00",
+      "type": "Data limitation",
+      "peak_value": 164.0,
+      "expected_value": 132.571,
+      "explanation": "Sun 12 Jun 2016, 12:00 to 15:00: O3 was 164.00 µg/m³ at 12:00, but the model expected about 132.57 µg/m³, so it was 31.43 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 49,
+      "when": "Sun 12 Jun 2016 22:00 to Mon 13 Jun 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 154.0,
+      "expected_value": 118.402,
+      "explanation": "Sun 12 Jun 2016 22:00 to Mon 13 Jun 01:00: O3 was 154.00 µg/m³ at 22:00, but the model expected about 118.40 µg/m³, so it was 35.60 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 50,
+      "when": "Mon 13 Jun 2016, 17:00",
+      "type": "Data limitation",
+      "peak_value": 104.0,
+      "expected_value": 76.386,
+      "explanation": "Mon 13 Jun 2016, 17:00: O3 was 104.00 µg/m³ at 17:00, but the model expected about 76.39 µg/m³, so it was 27.61 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 51,
+      "when": "Wed 15 Jun 2016, 03:00 to 04:00",
+      "type": "Data limitation",
+      "peak_value": 63.0,
+      "expected_value": 34.665,
+      "explanation": "Wed 15 Jun 2016, 03:00 to 04:00: O3 was 63.00 µg/m³ at 03:00, but the model expected about 34.66 µg/m³, so it was 28.34 higher than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 52,
+      "when": "Wed 15 Jun 2016, 19:00 to 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 168.0,
+      "expected_value": 132.067,
+      "explanation": "Wed 15 Jun 2016, 19:00 to 22:00: O3 was 168.00 µg/m³ at 19:00, but the model expected about 132.07 µg/m³, so it was 35.93 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 53,
+      "when": "Thu 16 Jun 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 36.0,
+      "expected_value": 10.379,
+      "explanation": "Thu 16 Jun 2016, 02:00: O3 was 36.00 µg/m³ at 02:00, but the model expected about 10.38 µg/m³, so it was 25.62 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 54,
+      "when": "Thu 16 Jun 2016, 16:00 to 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 81.0,
+      "expected_value": 125.116,
+      "explanation": "Thu 16 Jun 2016, 16:00 to 19:00: O3 was 81.00 µg/m³ at 19:00, but the model expected about 125.12 µg/m³, so it was 44.12 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 55,
+      "when": "Thu 16 Jun 2016 23:00 to Fri 17 Jun 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 33.0,
+      "expected_value": 66.51,
+      "explanation": "Thu 16 Jun 2016 23:00 to Fri 17 Jun 00:00: O3 was 33.00 µg/m³ at 23:00, but the model expected about 66.51 µg/m³, so it was 33.51 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 56,
+      "when": "Fri 17 Jun 2016, 16:00 to 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 63.0,
+      "expected_value": 101.505,
+      "explanation": "Fri 17 Jun 2016, 16:00 to 17:00: O3 was 63.00 µg/m³ at 17:00, but the model expected about 101.51 µg/m³, so it was 38.51 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 57,
+      "when": "Sat 18 Jun 2016, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 218.0,
+      "expected_value": 189.414,
+      "explanation": "Sat 18 Jun 2016, 13:00: O3 was 218.00 µg/m³ at 13:00, but the model expected about 189.41 µg/m³, so it was 28.59 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 58,
+      "when": "Sun 19 Jun 2016, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 145.0,
+      "expected_value": 109.214,
+      "explanation": "Sun 19 Jun 2016, 00:00: O3 was 145.00 µg/m³ at 00:00, but the model expected about 109.21 µg/m³, so it was 35.79 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 59,
+      "when": "Sun 19 Jun 2016, 06:00 to 09:00",
+      "type": "Unusual pollution",
+      "peak_value": 9.0,
+      "expected_value": 78.717,
+      "explanation": "Sun 19 Jun 2016, 06:00 to 09:00: O3 was 9.00 µg/m³ at 06:00, but the model expected about 78.72 µg/m³, so it was 69.72 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 60,
+      "when": "Sun 19 Jun 2016, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 212.0,
+      "expected_value": 274.314,
+      "explanation": "Sun 19 Jun 2016, 15:00: O3 was 212.00 µg/m³ at 15:00, but the model expected about 274.31 µg/m³, so it was 62.31 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 61,
+      "when": "Sun 19 Jun 2016, 22:00 to 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 187.0,
+      "expected_value": 117.016,
+      "explanation": "Sun 19 Jun 2016, 22:00 to 23:00: O3 was 187.00 µg/m³ at 22:00, but the model expected about 117.02 µg/m³, so it was 69.98 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 62,
+      "when": "Mon 20 Jun 2016, 07:00",
+      "type": "Data limitation",
+      "peak_value": 134.0,
+      "expected_value": 105.766,
+      "explanation": "Mon 20 Jun 2016, 07:00: O3 was 134.00 µg/m³ at 07:00, but the model expected about 105.77 µg/m³, so it was 28.23 higher than expected. However, the reading 3 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 63,
+      "when": "Mon 20 Jun 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 157.0,
+      "expected_value": 109.459,
+      "explanation": "Mon 20 Jun 2016, 23:00: O3 was 157.00 µg/m³ at 23:00, but the model expected about 109.46 µg/m³, so it was 47.54 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 64,
+      "when": "Tue 21 Jun 2016, 05:00 to 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 51.0,
+      "expected_value": 82.166,
+      "explanation": "Tue 21 Jun 2016, 05:00 to 12:00: O3 was 51.00 µg/m³ at 05:00, but the model expected about 82.17 µg/m³, so it was 31.17 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 65,
+      "when": "Tue 21 Jun 2016, 17:00 to 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 157.0,
+      "expected_value": 224.139,
+      "explanation": "Tue 21 Jun 2016, 17:00 to 20:00: O3 was 157.00 µg/m³ at 20:00, but the model expected about 224.14 µg/m³, so it was 67.14 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 66,
+      "when": "Wed 22 Jun 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 127.0,
+      "expected_value": 97.894,
+      "explanation": "Wed 22 Jun 2016, 02:00: O3 was 127.00 µg/m³ at 02:00, but the model expected about 97.89 µg/m³, so it was 29.11 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 67,
+      "when": "Wed 22 Jun 2016, 14:00",
+      "type": "Unusual pollution",
+      "peak_value": 260.0,
+      "expected_value": 229.423,
+      "explanation": "Wed 22 Jun 2016, 14:00: O3 was 260.00 µg/m³ at 14:00, but the model expected about 229.42 µg/m³, so it was 30.58 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 68,
+      "when": "Wed 22 Jun 2016, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 191.0,
+      "expected_value": 218.518,
+      "explanation": "Wed 22 Jun 2016, 19:00: O3 was 191.00 µg/m³ at 19:00, but the model expected about 218.52 µg/m³, so it was 27.52 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 69,
+      "when": "Wed 22 Jun 2016 23:00 to Thu 23 Jun 04:00",
+      "type": "Data limitation",
+      "peak_value": 145.0,
+      "expected_value": 89.262,
+      "explanation": "Wed 22 Jun 2016 23:00 to Thu 23 Jun 04:00: O3 was 145.00 µg/m³ at 23:00, but the model expected about 89.26 µg/m³, so it was 55.74 higher than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 70,
+      "when": "Thu 23 Jun 2016, 10:00",
+      "type": "Unusual pollution",
+      "peak_value": 66.0,
+      "expected_value": 105.357,
+      "explanation": "Thu 23 Jun 2016, 10:00: O3 was 66.00 µg/m³ at 10:00, but the model expected about 105.36 µg/m³, so it was 39.36 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 71,
+      "when": "Thu 23 Jun 2016, 22:00",
+      "type": "Data limitation",
+      "peak_value": 115.0,
+      "expected_value": 170.641,
+      "explanation": "Thu 23 Jun 2016, 22:00: O3 was 115.00 µg/m³ at 22:00, but the model expected about 170.64 µg/m³, so it was 55.64 lower than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 72,
+      "when": "Sun 26 Jun 2016, 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 30.661,
+      "explanation": "Sun 26 Jun 2016, 01:00: O3 was 2.00 µg/m³ at 01:00, but the model expected about 30.66 µg/m³, so it was 28.66 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 73,
+      "when": "Sun 26 Jun 2016, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 202.0,
+      "expected_value": 165.273,
+      "explanation": "Sun 26 Jun 2016, 19:00: O3 was 202.00 µg/m³ at 19:00, but the model expected about 165.27 µg/m³, so it was 36.73 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 74,
+      "when": "Mon 27 Jun 2016, 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 139.0,
+      "expected_value": 109.047,
+      "explanation": "Mon 27 Jun 2016, 01:00: O3 was 139.00 µg/m³ at 01:00, but the model expected about 109.05 µg/m³, so it was 29.95 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 75,
+      "when": "Mon 27 Jun 2016, 08:00",
+      "type": "Unusual pollution",
+      "peak_value": 33.0,
+      "expected_value": 77.657,
+      "explanation": "Mon 27 Jun 2016, 08:00: O3 was 33.00 µg/m³ at 08:00, but the model expected about 77.66 µg/m³, so it was 44.66 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 76,
+      "when": "Mon 27 Jun 2016, 12:00 to 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 128.0,
+      "expected_value": 163.265,
+      "explanation": "Mon 27 Jun 2016, 12:00 to 16:00: O3 was 128.00 µg/m³ at 16:00, but the model expected about 163.27 µg/m³, so it was 35.27 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 77,
+      "when": "Mon 27 Jun 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 157.0,
+      "expected_value": 130.918,
+      "explanation": "Mon 27 Jun 2016, 21:00: O3 was 157.00 µg/m³ at 21:00, but the model expected about 130.92 µg/m³, so it was 26.08 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 78,
+      "when": "Tue 28 Jun 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 75.0,
+      "expected_value": 50.484,
+      "explanation": "Tue 28 Jun 2016, 02:00: O3 was 75.00 µg/m³ at 02:00, but the model expected about 50.48 µg/m³, so it was 24.52 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 79,
+      "when": "Wed 29 Jun 2016, 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 50.0,
+      "expected_value": 18.485,
+      "explanation": "Wed 29 Jun 2016, 01:00: O3 was 50.00 µg/m³ at 01:00, but the model expected about 18.49 µg/m³, so it was 31.51 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 80,
+      "when": "Wed 29 Jun 2016, 08:00",
+      "type": "Unusual pollution",
+      "peak_value": 53.0,
+      "expected_value": 26.575,
+      "explanation": "Wed 29 Jun 2016, 08:00: O3 was 53.00 µg/m³ at 08:00, but the model expected about 26.57 µg/m³, so it was 26.43 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 81,
+      "when": "Wed 29 Jun 2016, 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 104.0,
+      "expected_value": 60.249,
+      "explanation": "Wed 29 Jun 2016, 22:00: O3 was 104.00 µg/m³ at 22:00, but the model expected about 60.25 µg/m³, so it was 43.75 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 82,
+      "when": "Thu 30 Jun 2016, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 57.0,
+      "expected_value": 26.08,
+      "explanation": "Thu 30 Jun 2016, 03:00: O3 was 57.00 µg/m³ at 03:00, but the model expected about 26.08 µg/m³, so it was 30.92 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 83,
+      "when": "Thu 30 Jun 2016, 09:00",
+      "type": "Data limitation",
+      "peak_value": 61.0,
+      "expected_value": 35.45,
+      "explanation": "Thu 30 Jun 2016, 09:00: O3 was 61.00 µg/m³ at 09:00, but the model expected about 35.45 µg/m³, so it was 25.55 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 84,
+      "when": "Thu 30 Jun 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 106.0,
+      "expected_value": 141.975,
+      "explanation": "Thu 30 Jun 2016, 23:00: O3 was 106.00 µg/m³ at 23:00, but the model expected about 141.98 µg/m³, so it was 35.98 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 85,
+      "when": "Fri 1 Jul 2016, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 185.0,
+      "expected_value": 120.583,
+      "explanation": "Fri 1 Jul 2016, 19:00: O3 was 185.00 µg/m³ at 19:00, but the model expected about 120.58 µg/m³, so it was 64.42 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 86,
+      "when": "Sat 2 Jul 2016, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 188.0,
+      "expected_value": 224.994,
+      "explanation": "Sat 2 Jul 2016, 15:00: O3 was 188.00 µg/m³ at 15:00, but the model expected about 224.99 µg/m³, so it was 36.99 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 87,
+      "when": "Sun 3 Jul 2016, 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 26.41,
+      "explanation": "Sun 3 Jul 2016, 05:00: O3 was 2.00 µg/m³ at 05:00, but the model expected about 26.41 µg/m³, so it was 24.41 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 88,
+      "when": "Sun 3 Jul 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 252.0,
+      "expected_value": 224.616,
+      "explanation": "Sun 3 Jul 2016, 17:00: O3 was 252.00 µg/m³ at 17:00, but the model expected about 224.62 µg/m³, so it was 27.38 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 89,
+      "when": "Mon 4 Jul 2016, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 48.0,
+      "expected_value": 71.928,
+      "explanation": "Mon 4 Jul 2016, 03:00: O3 was 48.00 µg/m³ at 03:00, but the model expected about 71.93 µg/m³, so it was 23.93 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 90,
+      "when": "Mon 4 Jul 2016, 21:00 to 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 142.0,
+      "expected_value": 186.394,
+      "explanation": "Mon 4 Jul 2016, 21:00 to 22:00: O3 was 142.00 µg/m³ at 21:00, but the model expected about 186.39 µg/m³, so it was 44.39 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 91,
+      "when": "Tue 5 Jul 2016 21:00 to Wed 6 Jul 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 132.0,
+      "expected_value": 165.287,
+      "explanation": "Tue 5 Jul 2016 21:00 to Wed 6 Jul 01:00: O3 was 132.00 µg/m³ at 01:00, but the model expected about 165.29 µg/m³, so it was 33.29 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 92,
+      "when": "Wed 6 Jul 2016, 10:00",
+      "type": "Data limitation",
+      "peak_value": 105.0,
+      "expected_value": 73.084,
+      "explanation": "Wed 6 Jul 2016, 10:00: O3 was 105.00 µg/m³ at 10:00, but the model expected about 73.08 µg/m³, so it was 31.92 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 93,
+      "when": "Wed 6 Jul 2016, 21:00 to 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 219.0,
+      "expected_value": 193.321,
+      "explanation": "Wed 6 Jul 2016, 21:00 to 22:00: O3 was 219.00 µg/m³ at 21:00, but the model expected about 193.32 µg/m³, so it was 25.68 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 94,
+      "when": "Fri 8 Jul 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 37.0,
+      "expected_value": 89.768,
+      "explanation": "Fri 8 Jul 2016, 02:00: O3 was 37.00 µg/m³ at 02:00, but the model expected about 89.77 µg/m³, so it was 52.77 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 95,
+      "when": "Fri 8 Jul 2016, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 239.0,
+      "expected_value": 212.106,
+      "explanation": "Fri 8 Jul 2016, 15:00: O3 was 239.00 µg/m³ at 15:00, but the model expected about 212.11 µg/m³, so it was 26.89 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 96,
+      "when": "Fri 8 Jul 2016, 21:00 to 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 100.0,
+      "expected_value": 137.904,
+      "explanation": "Fri 8 Jul 2016, 21:00 to 23:00: O3 was 100.00 µg/m³ at 23:00, but the model expected about 137.90 µg/m³, so it was 37.90 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 97,
+      "when": "Sat 9 Jul 2016, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 212.0,
+      "expected_value": 237.071,
+      "explanation": "Sat 9 Jul 2016, 15:00: O3 was 212.00 µg/m³ at 15:00, but the model expected about 237.07 µg/m³, so it was 25.07 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 98,
+      "when": "Sat 9 Jul 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 124.0,
+      "expected_value": 152.031,
+      "explanation": "Sat 9 Jul 2016, 23:00: O3 was 124.00 µg/m³ at 23:00, but the model expected about 152.03 µg/m³, so it was 28.03 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 99,
+      "when": "Sun 10 Jul 2016, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 193.0,
+      "expected_value": 245.294,
+      "explanation": "Sun 10 Jul 2016, 13:00: O3 was 193.00 µg/m³ at 13:00, but the model expected about 245.29 µg/m³, so it was 52.29 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 100,
+      "when": "Sun 10 Jul 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 228.0,
+      "expected_value": 204.585,
+      "explanation": "Sun 10 Jul 2016, 17:00: O3 was 228.00 µg/m³ at 17:00, but the model expected about 204.58 µg/m³, so it was 23.42 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 101,
+      "when": "Sun 10 Jul 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 148.0,
+      "expected_value": 173.808,
+      "explanation": "Sun 10 Jul 2016, 21:00: O3 was 148.00 µg/m³ at 21:00, but the model expected about 173.81 µg/m³, so it was 25.81 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 102,
+      "when": "Tue 12 Jul 2016, 06:00",
+      "type": "Data limitation",
+      "peak_value": 57.0,
+      "expected_value": 82.113,
+      "explanation": "Tue 12 Jul 2016, 06:00: O3 was 57.00 µg/m³ at 06:00, but the model expected about 82.11 µg/m³, so it was 25.11 lower than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 103,
+      "when": "Tue 12 Jul 2016, 10:00",
+      "type": "Data limitation",
+      "peak_value": 55.0,
+      "expected_value": 83.763,
+      "explanation": "Tue 12 Jul 2016, 10:00: O3 was 55.00 µg/m³ at 10:00, but the model expected about 83.76 µg/m³, so it was 28.76 lower than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 104,
+      "when": "Wed 13 Jul 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 13.0,
+      "expected_value": 39.821,
+      "explanation": "Wed 13 Jul 2016, 02:00: O3 was 13.00 µg/m³ at 02:00, but the model expected about 39.82 µg/m³, so it was 26.82 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 105,
+      "when": "Wed 13 Jul 2016, 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 120.0,
+      "expected_value": 166.585,
+      "explanation": "Wed 13 Jul 2016, 22:00: O3 was 120.00 µg/m³ at 22:00, but the model expected about 166.59 µg/m³, so it was 46.59 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 106,
+      "when": "Thu 14 Jul 2016, 06:00",
+      "type": "Data limitation",
+      "peak_value": 33.0,
+      "expected_value": 64.473,
+      "explanation": "Thu 14 Jul 2016, 06:00: O3 was 33.00 µg/m³ at 06:00, but the model expected about 64.47 µg/m³, so it was 31.47 lower than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 107,
+      "when": "Thu 14 Jul 2016, 15:00 to 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 131.0,
+      "expected_value": 175.302,
+      "explanation": "Thu 14 Jul 2016, 15:00 to 19:00: O3 was 131.00 µg/m³ at 19:00, but the model expected about 175.30 µg/m³, so it was 44.30 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 108,
+      "when": "Fri 15 Jul 2016, 14:00",
+      "type": "Unusual pollution",
+      "peak_value": 80.0,
+      "expected_value": 109.941,
+      "explanation": "Fri 15 Jul 2016, 14:00: O3 was 80.00 µg/m³ at 14:00, but the model expected about 109.94 µg/m³, so it was 29.94 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 109,
+      "when": "Sat 16 Jul 2016, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 59.0,
+      "expected_value": 83.17,
+      "explanation": "Sat 16 Jul 2016, 13:00: O3 was 59.00 µg/m³ at 13:00, but the model expected about 83.17 µg/m³, so it was 24.17 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 110,
+      "when": "Sun 17 Jul 2016, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 144.0,
+      "expected_value": 114.83,
+      "explanation": "Sun 17 Jul 2016, 11:00: O3 was 144.00 µg/m³ at 11:00, but the model expected about 114.83 µg/m³, so it was 29.17 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 111,
+      "when": "Sun 17 Jul 2016, 16:00 to 17:00",
+      "type": "Data limitation",
+      "peak_value": 293.0,
+      "expected_value": 257.334,
+      "explanation": "Sun 17 Jul 2016, 16:00 to 17:00: O3 was 293.00 µg/m³ at 17:00, but the model expected about 257.33 µg/m³, so it was 35.67 higher than expected. However, the reading 3 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 112,
+      "when": "Mon 18 Jul 2016, 06:00",
+      "type": "Data limitation",
+      "peak_value": 2.0,
+      "expected_value": 45.461,
+      "explanation": "Mon 18 Jul 2016, 06:00: O3 was 2.00 µg/m³ at 06:00, but the model expected about 45.46 µg/m³, so it was 43.46 lower than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 113,
+      "when": "Mon 18 Jul 2016, 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 151.0,
+      "expected_value": 121.237,
+      "explanation": "Mon 18 Jul 2016, 16:00: O3 was 151.00 µg/m³ at 16:00, but the model expected about 121.24 µg/m³, so it was 29.76 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 114,
+      "when": "Mon 18 Jul 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 126.0,
+      "expected_value": 98.468,
+      "explanation": "Mon 18 Jul 2016, 21:00: O3 was 126.00 µg/m³ at 21:00, but the model expected about 98.47 µg/m³, so it was 27.53 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 115,
+      "when": "Tue 19 Jul 2016, 06:00",
+      "type": "Unusual pollution",
+      "peak_value": 55.0,
+      "expected_value": 25.849,
+      "explanation": "Tue 19 Jul 2016, 06:00: O3 was 55.00 µg/m³ at 06:00, but the model expected about 25.85 µg/m³, so it was 29.15 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 116,
+      "when": "Tue 19 Jul 2016, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 52.0,
+      "expected_value": 26.0,
+      "explanation": "Tue 19 Jul 2016, 20:00: O3 was 52.00 µg/m³ at 20:00, but the model expected about 26.00 µg/m³, so it was 26.00 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 117,
+      "when": "Wed 20 Jul 2016, 14:00",
+      "type": "Unusual pollution",
+      "peak_value": 65.0,
+      "expected_value": 91.461,
+      "explanation": "Wed 20 Jul 2016, 14:00: O3 was 65.00 µg/m³ at 14:00, but the model expected about 91.46 µg/m³, so it was 26.46 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 118,
+      "when": "Thu 21 Jul 2016, 14:00 to 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 74.0,
+      "expected_value": 40.344,
+      "explanation": "Thu 21 Jul 2016, 14:00 to 16:00: O3 was 74.00 µg/m³ at 16:00, but the model expected about 40.34 µg/m³, so it was 33.66 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 119,
+      "when": "Fri 22 Jul 2016, 14:00 to 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 194.0,
+      "expected_value": 165.939,
+      "explanation": "Fri 22 Jul 2016, 14:00 to 15:00: O3 was 194.00 µg/m³ at 14:00, but the model expected about 165.94 µg/m³, so it was 28.06 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 120,
+      "when": "Sat 23 Jul 2016, 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 88.0,
+      "expected_value": 61.195,
+      "explanation": "Sat 23 Jul 2016, 01:00: O3 was 88.00 µg/m³ at 01:00, but the model expected about 61.20 µg/m³, so it was 26.80 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 121,
+      "when": "Sat 23 Jul 2016, 10:00",
+      "type": "Unusual pollution",
+      "peak_value": 55.0,
+      "expected_value": 26.215,
+      "explanation": "Sat 23 Jul 2016, 10:00: O3 was 55.00 µg/m³ at 10:00, but the model expected about 26.22 µg/m³, so it was 28.78 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 122,
+      "when": "Sat 23 Jul 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 68.0,
+      "expected_value": 101.021,
+      "explanation": "Sat 23 Jul 2016, 23:00: O3 was 68.00 µg/m³ at 23:00, but the model expected about 101.02 µg/m³, so it was 33.02 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 123,
+      "when": "Sun 24 Jul 2016, 15:00 to 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 289.0,
+      "expected_value": 232.269,
+      "explanation": "Sun 24 Jul 2016, 15:00 to 20:00: O3 was 289.00 µg/m³ at 16:00, but the model expected about 232.27 µg/m³, so it was 56.73 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 124,
+      "when": "Mon 25 Jul 2016, 01:00 to 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 46.0,
+      "expected_value": 16.543,
+      "explanation": "Mon 25 Jul 2016, 01:00 to 02:00: O3 was 46.00 µg/m³ at 02:00, but the model expected about 16.54 µg/m³, so it was 29.46 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 125,
+      "when": "Mon 25 Jul 2016, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 76.0,
+      "expected_value": 106.483,
+      "explanation": "Mon 25 Jul 2016, 13:00: O3 was 76.00 µg/m³ at 13:00, but the model expected about 106.48 µg/m³, so it was 30.48 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 126,
+      "when": "Tue 26 Jul 2016, 19:00",
+      "type": "Data limitation",
+      "peak_value": 165.0,
+      "expected_value": 134.493,
+      "explanation": "Tue 26 Jul 2016, 19:00: O3 was 165.00 µg/m³ at 19:00, but the model expected about 134.49 µg/m³, so it was 30.51 higher than expected. However, the reading 2 hours before, the reading at the same time the day before and the reading 3 hours before were missing and the O3 data had a gap of 5 hours just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 127,
+      "when": "Wed 27 Jul 2016, 02:00",
+      "type": "Data limitation",
+      "peak_value": 4.0,
+      "expected_value": 39.742,
+      "explanation": "Wed 27 Jul 2016, 02:00: O3 was 4.00 µg/m³ at 02:00, but the model expected about 39.74 µg/m³, so it was 35.74 lower than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 128,
+      "when": "Wed 27 Jul 2016, 13:00 to 22:00",
+      "type": "Data limitation",
+      "peak_value": 203.0,
+      "expected_value": 115.428,
+      "explanation": "Wed 27 Jul 2016, 13:00 to 22:00: O3 was 203.00 µg/m³ at 19:00, but the model expected about 115.43 µg/m³, so it was 87.57 higher than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 129,
+      "when": "Thu 28 Jul 2016, 14:00 to 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 247.0,
+      "expected_value": 218.796,
+      "explanation": "Thu 28 Jul 2016, 14:00 to 16:00: O3 was 247.00 µg/m³ at 14:00, but the model expected about 218.80 µg/m³, so it was 28.20 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 130,
+      "when": "Fri 29 Jul 2016, 00:00 to 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 11.0,
+      "expected_value": 68.608,
+      "explanation": "Fri 29 Jul 2016, 00:00 to 02:00: O3 was 11.00 µg/m³ at 00:00, but the model expected about 68.61 µg/m³, so it was 57.61 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 131,
+      "when": "Fri 29 Jul 2016, 15:00 to 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 264.0,
+      "expected_value": 208.038,
+      "explanation": "Fri 29 Jul 2016, 15:00 to 21:00: O3 was 264.00 µg/m³ at 17:00, but the model expected about 208.04 µg/m³, so it was 55.96 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 132,
+      "when": "Sat 30 Jul 2016, 16:00",
+      "type": "Data limitation",
+      "peak_value": 83.0,
+      "expected_value": 109.267,
+      "explanation": "Sat 30 Jul 2016, 16:00: O3 was 83.00 µg/m³ at 16:00, but the model expected about 109.27 µg/m³, so it was 26.27 lower than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 133,
+      "when": "Sun 31 Jul 2016, 00:00 to 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 85.0,
+      "expected_value": 49.19,
+      "explanation": "Sun 31 Jul 2016, 00:00 to 02:00: O3 was 85.00 µg/m³ at 00:00, but the model expected about 49.19 µg/m³, so it was 35.81 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 134,
+      "when": "Sun 31 Jul 2016, 09:00",
+      "type": "Data limitation",
+      "peak_value": 22.0,
+      "expected_value": 47.467,
+      "explanation": "Sun 31 Jul 2016, 09:00: O3 was 22.00 µg/m³ at 09:00, but the model expected about 47.47 µg/m³, so it was 25.47 lower than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 135,
+      "when": "Sun 31 Jul 2016, 18:00",
+      "type": "Unusual pollution",
+      "peak_value": 126.0,
+      "expected_value": 102.008,
+      "explanation": "Sun 31 Jul 2016, 18:00: O3 was 126.00 µg/m³ at 18:00, but the model expected about 102.01 µg/m³, so it was 23.99 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 136,
+      "when": "Mon 1 Aug 2016, 04:00",
+      "type": "Data limitation",
+      "peak_value": 58.0,
+      "expected_value": 34.073,
+      "explanation": "Mon 1 Aug 2016, 04:00: O3 was 58.00 µg/m³ at 04:00, but the model expected about 34.07 µg/m³, so it was 23.93 higher than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 137,
+      "when": "Tue 2 Aug 2016, 14:00",
+      "type": "Data limitation",
+      "peak_value": 163.0,
+      "expected_value": 189.014,
+      "explanation": "Tue 2 Aug 2016, 14:00: O3 was 163.00 µg/m³ at 14:00, but the model expected about 189.01 µg/m³, so it was 26.01 lower than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 138,
+      "when": "Wed 3 Aug 2016, 04:00",
+      "type": "Data limitation",
+      "peak_value": 17.0,
+      "expected_value": 42.703,
+      "explanation": "Wed 3 Aug 2016, 04:00: O3 was 17.00 µg/m³ at 04:00, but the model expected about 42.70 µg/m³, so it was 25.70 lower than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 139,
+      "when": "Wed 3 Aug 2016, 08:00",
+      "type": "Unusual pollution",
+      "peak_value": 58.0,
+      "expected_value": 17.835,
+      "explanation": "Wed 3 Aug 2016, 08:00: O3 was 58.00 µg/m³ at 08:00, but the model expected about 17.83 µg/m³, so it was 40.17 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 140,
+      "when": "Wed 3 Aug 2016, 15:00 to 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 264.0,
+      "expected_value": 211.436,
+      "explanation": "Wed 3 Aug 2016, 15:00 to 20:00: O3 was 264.00 µg/m³ at 17:00, but the model expected about 211.44 µg/m³, so it was 52.56 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 141,
+      "when": "Thu 4 Aug 2016, 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 145.0,
+      "expected_value": 114.625,
+      "explanation": "Thu 4 Aug 2016, 01:00: O3 was 145.00 µg/m³ at 01:00, but the model expected about 114.63 µg/m³, so it was 30.37 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 142,
+      "when": "Thu 4 Aug 2016, 06:00",
+      "type": "Data limitation",
+      "peak_value": 45.0,
+      "expected_value": 104.498,
+      "explanation": "Thu 4 Aug 2016, 06:00: O3 was 45.00 µg/m³ at 06:00, but the model expected about 104.50 µg/m³, so it was 59.50 lower than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 143,
+      "when": "Thu 4 Aug 2016, 13:00 to 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 259.0,
+      "expected_value": 221.086,
+      "explanation": "Thu 4 Aug 2016, 13:00 to 17:00: O3 was 259.00 µg/m³ at 13:00, but the model expected about 221.09 µg/m³, so it was 37.91 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 144,
+      "when": "Fri 5 Aug 2016, 06:00",
+      "type": "Unusual pollution",
+      "peak_value": 11.0,
+      "expected_value": 34.981,
+      "explanation": "Fri 5 Aug 2016, 06:00: O3 was 11.00 µg/m³ at 06:00, but the model expected about 34.98 µg/m³, so it was 23.98 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 145,
+      "when": "Fri 5 Aug 2016, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 160.0,
+      "expected_value": 192.325,
+      "explanation": "Fri 5 Aug 2016, 13:00: O3 was 160.00 µg/m³ at 13:00, but the model expected about 192.33 µg/m³, so it was 32.33 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 146,
+      "when": "Fri 5 Aug 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 146.0,
+      "expected_value": 169.688,
+      "explanation": "Fri 5 Aug 2016, 21:00: O3 was 146.00 µg/m³ at 21:00, but the model expected about 169.69 µg/m³, so it was 23.69 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 147,
+      "when": "Sat 6 Aug 2016, 06:00",
+      "type": "Data limitation",
+      "peak_value": 2.0,
+      "expected_value": 36.674,
+      "explanation": "Sat 6 Aug 2016, 06:00: O3 was 2.00 µg/m³ at 06:00, but the model expected about 36.67 µg/m³, so it was 34.67 lower than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 148,
+      "when": "Sat 6 Aug 2016, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 178.0,
+      "expected_value": 216.616,
+      "explanation": "Sat 6 Aug 2016, 15:00: O3 was 178.00 µg/m³ at 15:00, but the model expected about 216.62 µg/m³, so it was 38.62 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 149,
+      "when": "Sat 6 Aug 2016, 20:00 to 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 137.0,
+      "expected_value": 110.528,
+      "explanation": "Sat 6 Aug 2016, 20:00 to 23:00: O3 was 137.00 µg/m³ at 23:00, but the model expected about 110.53 µg/m³, so it was 26.47 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 150,
+      "when": "Sun 7 Aug 2016, 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 86.0,
+      "expected_value": 54.618,
+      "explanation": "Sun 7 Aug 2016, 05:00: O3 was 86.00 µg/m³ at 05:00, but the model expected about 54.62 µg/m³, so it was 31.38 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 151,
+      "when": "Tue 9 Aug 2016, 08:00",
+      "type": "Unusual pollution",
+      "peak_value": 43.0,
+      "expected_value": 14.535,
+      "explanation": "Tue 9 Aug 2016, 08:00: O3 was 43.00 µg/m³ at 08:00, but the model expected about 14.54 µg/m³, so it was 28.46 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 152,
+      "when": "Tue 9 Aug 2016, 18:00",
+      "type": "Unusual pollution",
+      "peak_value": 175.0,
+      "expected_value": 205.738,
+      "explanation": "Tue 9 Aug 2016, 18:00: O3 was 175.00 µg/m³ at 18:00, but the model expected about 205.74 µg/m³, so it was 30.74 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 153,
+      "when": "Wed 10 Aug 2016, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 166.0,
+      "expected_value": 192.977,
+      "explanation": "Wed 10 Aug 2016, 13:00: O3 was 166.00 µg/m³ at 13:00, but the model expected about 192.98 µg/m³, so it was 26.98 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 154,
+      "when": "Thu 11 Aug 2016, 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 200.0,
+      "expected_value": 231.468,
+      "explanation": "Thu 11 Aug 2016, 16:00: O3 was 200.00 µg/m³ at 16:00, but the model expected about 231.47 µg/m³, so it was 31.47 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 155,
+      "when": "Fri 12 Aug 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 39.0,
+      "expected_value": 67.238,
+      "explanation": "Fri 12 Aug 2016, 02:00: O3 was 39.00 µg/m³ at 02:00, but the model expected about 67.24 µg/m³, so it was 28.24 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 156,
+      "when": "Fri 12 Aug 2016, 11:00 to 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 82.0,
+      "expected_value": 131.532,
+      "explanation": "Fri 12 Aug 2016, 11:00 to 13:00: O3 was 82.00 µg/m³ at 13:00, but the model expected about 131.53 µg/m³, so it was 49.53 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 157,
+      "when": "Sat 13 Aug 2016, 10:00 to 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 16.0,
+      "expected_value": 53.881,
+      "explanation": "Sat 13 Aug 2016, 10:00 to 12:00: O3 was 16.00 µg/m³ at 12:00, but the model expected about 53.88 µg/m³, so it was 37.88 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 158,
+      "when": "Sat 13 Aug 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 48.0,
+      "expected_value": 97.194,
+      "explanation": "Sat 13 Aug 2016, 17:00: O3 was 48.00 µg/m³ at 17:00, but the model expected about 97.19 µg/m³, so it was 49.19 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 159,
+      "when": "Sat 13 Aug 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 49.0,
+      "expected_value": 24.208,
+      "explanation": "Sat 13 Aug 2016, 21:00: O3 was 49.00 µg/m³ at 21:00, but the model expected about 24.21 µg/m³, so it was 24.79 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 160,
+      "when": "Sun 14 Aug 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 234.0,
+      "expected_value": 197.506,
+      "explanation": "Sun 14 Aug 2016, 17:00: O3 was 234.00 µg/m³ at 17:00, but the model expected about 197.51 µg/m³, so it was 36.49 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 161,
+      "when": "Sun 14 Aug 2016 21:00 to Mon 15 Aug 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 85.381,
+      "explanation": "Sun 14 Aug 2016 21:00 to Mon 15 Aug 01:00: O3 was 2.00 µg/m³ at 01:00, but the model expected about 85.38 µg/m³, so it was 83.38 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 162,
+      "when": "Mon 15 Aug 2016, 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 80.0,
+      "expected_value": 21.393,
+      "explanation": "Mon 15 Aug 2016, 05:00: O3 was 80.00 µg/m³ at 05:00, but the model expected about 21.39 µg/m³, so it was 58.61 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 163,
+      "when": "Tue 16 Aug 2016, 16:00 to 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 151.0,
+      "expected_value": 182.635,
+      "explanation": "Tue 16 Aug 2016, 16:00 to 19:00: O3 was 151.00 µg/m³ at 17:00, but the model expected about 182.63 µg/m³, so it was 31.63 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 164,
+      "when": "Wed 17 Aug 2016, 04:00",
+      "type": "Data limitation",
+      "peak_value": 23.0,
+      "expected_value": 46.562,
+      "explanation": "Wed 17 Aug 2016, 04:00: O3 was 23.00 µg/m³ at 04:00, but the model expected about 46.56 µg/m³, so it was 23.56 lower than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 165,
+      "when": "Wed 17 Aug 2016, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 56.0,
+      "expected_value": 31.541,
+      "explanation": "Wed 17 Aug 2016, 19:00: O3 was 56.00 µg/m³ at 19:00, but the model expected about 31.54 µg/m³, so it was 24.46 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 166,
+      "when": "Thu 18 Aug 2016, 01:00 to 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 49.0,
+      "expected_value": 13.533,
+      "explanation": "Thu 18 Aug 2016, 01:00 to 02:00: O3 was 49.00 µg/m³ at 02:00, but the model expected about 13.53 µg/m³, so it was 35.47 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 167,
+      "when": "Thu 18 Aug 2016, 06:00",
+      "type": "Data limitation",
+      "peak_value": 10.0,
+      "expected_value": 35.593,
+      "explanation": "Thu 18 Aug 2016, 06:00: O3 was 10.00 µg/m³ at 06:00, but the model expected about 35.59 µg/m³, so it was 25.59 lower than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 168,
+      "when": "Fri 19 Aug 2016, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 121.0,
+      "expected_value": 146.341,
+      "explanation": "Fri 19 Aug 2016, 13:00: O3 was 121.00 µg/m³ at 13:00, but the model expected about 146.34 µg/m³, so it was 25.34 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 169,
+      "when": "Sat 20 Aug 2016, 17:00 to 18:00",
+      "type": "Unusual pollution",
+      "peak_value": 273.0,
+      "expected_value": 238.59,
+      "explanation": "Sat 20 Aug 2016, 17:00 to 18:00: O3 was 273.00 µg/m³ at 17:00, but the model expected about 238.59 µg/m³, so it was 34.41 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 170,
+      "when": "Sun 21 Aug 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 45.459,
+      "explanation": "Sun 21 Aug 2016, 02:00: O3 was 2.00 µg/m³ at 02:00, but the model expected about 45.46 µg/m³, so it was 43.46 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 171,
+      "when": "Sun 21 Aug 2016, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 350.0,
+      "expected_value": 267.153,
+      "explanation": "Sun 21 Aug 2016, 15:00: O3 was 350.00 µg/m³ at 15:00, but the model expected about 267.15 µg/m³, so it was 82.85 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 172,
+      "when": "Sun 21 Aug 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 218.0,
+      "expected_value": 184.767,
+      "explanation": "Sun 21 Aug 2016, 21:00: O3 was 218.00 µg/m³ at 21:00, but the model expected about 184.77 µg/m³, so it was 33.23 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 173,
+      "when": "Mon 22 Aug 2016, 06:00 to 07:00",
+      "type": "Data limitation",
+      "peak_value": 26.0,
+      "expected_value": 54.868,
+      "explanation": "Mon 22 Aug 2016, 06:00 to 07:00: O3 was 26.00 µg/m³ at 07:00, but the model expected about 54.87 µg/m³, so it was 28.87 lower than expected. However, the reading 2 hours before and the reading 3 hours before were missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 174,
+      "when": "Mon 22 Aug 2016, 12:00 to 14:00",
+      "type": "Unusual pollution",
+      "peak_value": 164.0,
+      "expected_value": 198.77,
+      "explanation": "Mon 22 Aug 2016, 12:00 to 14:00: O3 was 164.00 µg/m³ at 14:00, but the model expected about 198.77 µg/m³, so it was 34.77 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 175,
+      "when": "Tue 23 Aug 2016, 11:00 to 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 155.0,
+      "expected_value": 193.524,
+      "explanation": "Tue 23 Aug 2016, 11:00 to 15:00: O3 was 155.00 µg/m³ at 15:00, but the model expected about 193.52 µg/m³, so it was 38.52 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 176,
+      "when": "Wed 24 Aug 2016, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 25.0,
+      "expected_value": 55.162,
+      "explanation": "Wed 24 Aug 2016, 03:00: O3 was 25.00 µg/m³ at 03:00, but the model expected about 55.16 µg/m³, so it was 30.16 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 177,
+      "when": "Wed 24 Aug 2016, 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 124.0,
+      "expected_value": 165.886,
+      "explanation": "Wed 24 Aug 2016, 12:00: O3 was 124.00 µg/m³ at 12:00, but the model expected about 165.89 µg/m³, so it was 41.89 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 178,
+      "when": "Wed 24 Aug 2016, 16:00",
+      "type": "Data limitation",
+      "peak_value": 152.0,
+      "expected_value": 181.18,
+      "explanation": "Wed 24 Aug 2016, 16:00: O3 was 152.00 µg/m³ at 16:00, but the model expected about 181.18 µg/m³, so it was 29.18 lower than expected. However, the reading 3 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 179,
+      "when": "Wed 24 Aug 2016 23:00 to Thu 25 Aug 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 3.0,
+      "expected_value": 49.271,
+      "explanation": "Wed 24 Aug 2016 23:00 to Thu 25 Aug 02:00: O3 was 3.00 µg/m³ at 01:00, but the model expected about 49.27 µg/m³, so it was 46.27 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 180,
+      "when": "Thu 25 Aug 2016, 06:00",
+      "type": "Unusual pollution",
+      "peak_value": 102.0,
+      "expected_value": 74.234,
+      "explanation": "Thu 25 Aug 2016, 06:00: O3 was 102.00 µg/m³ at 06:00, but the model expected about 74.23 µg/m³, so it was 27.77 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 181,
+      "when": "Thu 25 Aug 2016, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 59.0,
+      "expected_value": 85.517,
+      "explanation": "Thu 25 Aug 2016, 11:00: O3 was 59.00 µg/m³ at 11:00, but the model expected about 85.52 µg/m³, so it was 26.52 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 182,
+      "when": "Sat 27 Aug 2016, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 25.615,
+      "explanation": "Sat 27 Aug 2016, 00:00: O3 was 2.00 µg/m³ at 00:00, but the model expected about 25.61 µg/m³, so it was 23.61 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 183,
+      "when": "Sun 28 Aug 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 103.0,
+      "expected_value": 48.244,
+      "explanation": "Sun 28 Aug 2016, 21:00: O3 was 103.00 µg/m³ at 21:00, but the model expected about 48.24 µg/m³, so it was 54.76 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 184,
+      "when": "Tue 30 Aug 2016, 10:00",
+      "type": "Data limitation",
+      "peak_value": 106.0,
+      "expected_value": 81.279,
+      "explanation": "Tue 30 Aug 2016, 10:00: O3 was 106.00 µg/m³ at 10:00, but the model expected about 81.28 µg/m³, so it was 24.72 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 185,
+      "when": "Tue 30 Aug 2016, 18:00 to 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 165.0,
+      "expected_value": 226.959,
+      "explanation": "Tue 30 Aug 2016, 18:00 to 19:00: O3 was 165.00 µg/m³ at 18:00, but the model expected about 226.96 µg/m³, so it was 61.96 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 186,
+      "when": "Tue 30 Aug 2016 23:00 to Wed 31 Aug 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 73.0,
+      "expected_value": 139.549,
+      "explanation": "Tue 30 Aug 2016 23:00 to Wed 31 Aug 01:00: O3 was 73.00 µg/m³ at 23:00, but the model expected about 139.55 µg/m³, so it was 66.55 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 187,
+      "when": "Thu 1 Sep 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 6.0,
+      "expected_value": 37.396,
+      "explanation": "Thu 1 Sep 2016, 23:00: O3 was 6.00 µg/m³ at 23:00, but the model expected about 37.40 µg/m³, so it was 31.40 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 188,
+      "when": "Fri 2 Sep 2016, 10:00",
+      "type": "Unusual pollution",
+      "peak_value": 19.0,
+      "expected_value": 42.517,
+      "explanation": "Fri 2 Sep 2016, 10:00: O3 was 19.00 µg/m³ at 10:00, but the model expected about 42.52 µg/m³, so it was 23.52 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 189,
+      "when": "Sat 3 Sep 2016, 16:00 to 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 207.0,
+      "expected_value": 172.574,
+      "explanation": "Sat 3 Sep 2016, 16:00 to 17:00: O3 was 207.00 µg/m³ at 17:00, but the model expected about 172.57 µg/m³, so it was 34.43 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 190,
+      "when": "Sun 4 Sep 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 46.0,
+      "expected_value": 73.681,
+      "explanation": "Sun 4 Sep 2016, 02:00: O3 was 46.00 µg/m³ at 02:00, but the model expected about 73.68 µg/m³, so it was 27.68 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 191,
+      "when": "Sun 4 Sep 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 169.0,
+      "expected_value": 192.611,
+      "explanation": "Sun 4 Sep 2016, 17:00: O3 was 169.00 µg/m³ at 17:00, but the model expected about 192.61 µg/m³, so it was 23.61 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 192,
+      "when": "Sun 4 Sep 2016, 22:00 to 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 108.0,
+      "expected_value": 60.469,
+      "explanation": "Sun 4 Sep 2016, 22:00 to 23:00: O3 was 108.00 µg/m³ at 23:00, but the model expected about 60.47 µg/m³, so it was 47.53 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 193,
+      "when": "Mon 5 Sep 2016, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 97.0,
+      "expected_value": 70.198,
+      "explanation": "Mon 5 Sep 2016, 03:00: O3 was 97.00 µg/m³ at 03:00, but the model expected about 70.20 µg/m³, so it was 26.80 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 194,
+      "when": "Mon 5 Sep 2016, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 122.0,
+      "expected_value": 63.548,
+      "explanation": "Mon 5 Sep 2016, 20:00: O3 was 122.00 µg/m³ at 20:00, but the model expected about 63.55 µg/m³, so it was 58.45 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 195,
+      "when": "Tue 6 Sep 2016, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 23.0,
+      "expected_value": 86.072,
+      "explanation": "Tue 6 Sep 2016, 00:00: O3 was 23.00 µg/m³ at 00:00, but the model expected about 86.07 µg/m³, so it was 63.07 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 196,
+      "when": "Wed 7 Sep 2016, 20:00",
+      "type": "Data limitation",
+      "peak_value": 109.0,
+      "expected_value": 140.31,
+      "explanation": "Wed 7 Sep 2016, 20:00: O3 was 109.00 µg/m³ at 20:00, but the model expected about 140.31 µg/m³, so it was 31.31 lower than expected. However, the reading 2 hours before, the reading at the same time the day before and the reading 3 hours before were missing and the O3 data had a gap of 2 hours just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 197,
+      "when": "Thu 8 Sep 2016, 18:00",
+      "type": "Data limitation",
+      "peak_value": 127.0,
+      "expected_value": 96.176,
+      "explanation": "Thu 8 Sep 2016, 18:00: O3 was 127.00 µg/m³ at 18:00, but the model expected about 96.18 µg/m³, so it was 30.82 higher than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 198,
+      "when": "Thu 8 Sep 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 31.0,
+      "expected_value": 55.649,
+      "explanation": "Thu 8 Sep 2016, 23:00: O3 was 31.00 µg/m³ at 23:00, but the model expected about 55.65 µg/m³, so it was 24.65 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 199,
+      "when": "Fri 9 Sep 2016, 20:00 to 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 16.0,
+      "expected_value": 52.06,
+      "explanation": "Fri 9 Sep 2016, 20:00 to 22:00: O3 was 16.00 µg/m³ at 20:00, but the model expected about 52.06 µg/m³, so it was 36.06 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 200,
+      "when": "Sat 10 Sep 2016, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 130.0,
+      "expected_value": 88.556,
+      "explanation": "Sat 10 Sep 2016, 19:00: O3 was 130.00 µg/m³ at 19:00, but the model expected about 88.56 µg/m³, so it was 41.44 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 201,
+      "when": "Sun 11 Sep 2016, 00:00 to 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 72.0,
+      "expected_value": 45.549,
+      "explanation": "Sun 11 Sep 2016, 00:00 to 03:00: O3 was 72.00 µg/m³ at 03:00, but the model expected about 45.55 µg/m³, so it was 26.45 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 202,
+      "when": "Mon 12 Sep 2016, 18:00",
+      "type": "Unusual pollution",
+      "peak_value": 162.0,
+      "expected_value": 133.986,
+      "explanation": "Mon 12 Sep 2016, 18:00: O3 was 162.00 µg/m³ at 18:00, but the model expected about 133.99 µg/m³, so it was 28.01 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 203,
+      "when": "Tue 13 Sep 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 4.0,
+      "expected_value": 49.781,
+      "explanation": "Tue 13 Sep 2016, 02:00: O3 was 4.00 µg/m³ at 02:00, but the model expected about 49.78 µg/m³, so it was 45.78 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 204,
+      "when": "Tue 13 Sep 2016, 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 187.0,
+      "expected_value": 130.653,
+      "explanation": "Tue 13 Sep 2016, 16:00: O3 was 187.00 µg/m³ at 16:00, but the model expected about 130.65 µg/m³, so it was 56.35 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 205,
+      "when": "Wed 14 Sep 2016, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 173.0,
+      "expected_value": 142.548,
+      "explanation": "Wed 14 Sep 2016, 13:00: O3 was 173.00 µg/m³ at 13:00, but the model expected about 142.55 µg/m³, so it was 30.45 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 206,
+      "when": "Wed 14 Sep 2016, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 105.0,
+      "expected_value": 155.652,
+      "explanation": "Wed 14 Sep 2016, 20:00: O3 was 105.00 µg/m³ at 20:00, but the model expected about 155.65 µg/m³, so it was 50.65 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 207,
+      "when": "Thu 15 Sep 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 237.0,
+      "expected_value": 196.933,
+      "explanation": "Thu 15 Sep 2016, 17:00: O3 was 237.00 µg/m³ at 17:00, but the model expected about 196.93 µg/m³, so it was 40.07 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 208,
+      "when": "Fri 16 Sep 2016, 00:00 to 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 20.0,
+      "expected_value": 73.263,
+      "explanation": "Fri 16 Sep 2016, 00:00 to 02:00: O3 was 20.00 µg/m³ at 02:00, but the model expected about 73.26 µg/m³, so it was 53.26 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 209,
+      "when": "Fri 16 Sep 2016, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 118.0,
+      "expected_value": 89.441,
+      "explanation": "Fri 16 Sep 2016, 11:00: O3 was 118.00 µg/m³ at 11:00, but the model expected about 89.44 µg/m³, so it was 28.56 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 210,
+      "when": "Fri 16 Sep 2016 19:00 to Sat 17 Sep 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 111.0,
+      "expected_value": 38.988,
+      "explanation": "Fri 16 Sep 2016 19:00 to Sat 17 Sep 03:00: O3 was 111.00 µg/m³ at 23:00, but the model expected about 38.99 µg/m³, so it was 72.01 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 211,
+      "when": "Sat 17 Sep 2016, 09:00",
+      "type": "Data limitation",
+      "peak_value": 24.0,
+      "expected_value": 48.051,
+      "explanation": "Sat 17 Sep 2016, 09:00: O3 was 24.00 µg/m³ at 09:00, but the model expected about 48.05 µg/m³, so it was 24.05 lower than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 212,
+      "when": "Sat 17 Sep 2016, 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 28.0,
+      "expected_value": 53.488,
+      "explanation": "Sat 17 Sep 2016, 16:00: O3 was 28.00 µg/m³ at 16:00, but the model expected about 53.49 µg/m³, so it was 25.49 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 213,
+      "when": "Mon 19 Sep 2016, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 32.339,
+      "explanation": "Mon 19 Sep 2016, 20:00: O3 was 2.00 µg/m³ at 20:00, but the model expected about 32.34 µg/m³, so it was 30.34 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 214,
+      "when": "Fri 23 Sep 2016, 00:00 to 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 66.0,
+      "expected_value": 11.868,
+      "explanation": "Fri 23 Sep 2016, 00:00 to 01:00: O3 was 66.00 µg/m³ at 00:00, but the model expected about 11.87 µg/m³, so it was 54.13 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 215,
+      "when": "Fri 23 Sep 2016, 11:00 to 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 179.0,
+      "expected_value": 152.415,
+      "explanation": "Fri 23 Sep 2016, 11:00 to 13:00: O3 was 179.00 µg/m³ at 13:00, but the model expected about 152.41 µg/m³, so it was 26.59 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 216,
+      "when": "Fri 23 Sep 2016 21:00 to Sat 24 Sep 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 85.0,
+      "expected_value": 32.127,
+      "explanation": "Fri 23 Sep 2016 21:00 to Sat 24 Sep 01:00: O3 was 85.00 µg/m³ at 01:00, but the model expected about 32.13 µg/m³, so it was 52.87 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 217,
+      "when": "Sat 24 Sep 2016, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 81.0,
+      "expected_value": 32.297,
+      "explanation": "Sat 24 Sep 2016, 11:00: O3 was 81.00 µg/m³ at 11:00, but the model expected about 32.30 µg/m³, so it was 48.70 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 218,
+      "when": "Sat 24 Sep 2016, 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 26.0,
+      "expected_value": 70.384,
+      "explanation": "Sat 24 Sep 2016, 22:00: O3 was 26.00 µg/m³ at 22:00, but the model expected about 70.38 µg/m³, so it was 44.38 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 219,
+      "when": "Sun 25 Sep 2016, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 56.0,
+      "expected_value": 14.939,
+      "explanation": "Sun 25 Sep 2016, 03:00: O3 was 56.00 µg/m³ at 03:00, but the model expected about 14.94 µg/m³, so it was 41.06 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 220,
+      "when": "Sun 25 Sep 2016, 21:00",
+      "type": "Data limitation",
+      "peak_value": 122.0,
+      "expected_value": 41.724,
+      "explanation": "Sun 25 Sep 2016, 21:00: O3 was 122.00 µg/m³ at 21:00, but the model expected about 41.72 µg/m³, so it was 80.28 higher than expected. However, dew point, air pressure, rain, temperature and wind speed were missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 221,
+      "when": "Mon 26 Sep 2016, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 98.0,
+      "expected_value": 38.936,
+      "explanation": "Mon 26 Sep 2016, 03:00: O3 was 98.00 µg/m³ at 03:00, but the model expected about 38.94 µg/m³, so it was 59.06 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 222,
+      "when": "Wed 28 Sep 2016, 19:00",
+      "type": "Data limitation",
+      "peak_value": 5.0,
+      "expected_value": 41.899,
+      "explanation": "Wed 28 Sep 2016, 19:00: O3 was 5.00 µg/m³ at 19:00, but the model expected about 41.90 µg/m³, so it was 36.90 lower than expected. However, the reading 3 hours before was missing and the O3 data had a gap of 2 hours just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 223,
+      "when": "Thu 29 Sep 2016, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 98.0,
+      "expected_value": 62.379,
+      "explanation": "Thu 29 Sep 2016, 13:00: O3 was 98.00 µg/m³ at 13:00, but the model expected about 62.38 µg/m³, so it was 35.62 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 224,
+      "when": "Fri 30 Sep 2016, 11:00 to 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 66.0,
+      "expected_value": 26.026,
+      "explanation": "Fri 30 Sep 2016, 11:00 to 13:00: O3 was 66.00 µg/m³ at 11:00, but the model expected about 26.03 µg/m³, so it was 39.97 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 225,
+      "when": "Fri 30 Sep 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 192.0,
+      "expected_value": 166.926,
+      "explanation": "Fri 30 Sep 2016, 17:00: O3 was 192.00 µg/m³ at 17:00, but the model expected about 166.93 µg/m³, so it was 25.07 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 226,
+      "when": "Fri 30 Sep 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 59.0,
+      "expected_value": 23.763,
+      "explanation": "Fri 30 Sep 2016, 21:00: O3 was 59.00 µg/m³ at 21:00, but the model expected about 23.76 µg/m³, so it was 35.24 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 227,
+      "when": "Sat 1 Oct 2016, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 40.465,
+      "explanation": "Sat 1 Oct 2016, 02:00: O3 was 2.00 µg/m³ at 02:00, but the model expected about 40.46 µg/m³, so it was 38.46 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 228,
+      "when": "Sat 1 Oct 2016, 11:00 to 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 85.0,
+      "expected_value": 56.238,
+      "explanation": "Sat 1 Oct 2016, 11:00 to 13:00: O3 was 85.00 µg/m³ at 11:00, but the model expected about 56.24 µg/m³, so it was 28.76 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 229,
+      "when": "Sat 1 Oct 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 51.113,
+      "explanation": "Sat 1 Oct 2016, 21:00: O3 was 2.00 µg/m³ at 21:00, but the model expected about 51.11 µg/m³, so it was 49.11 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 230,
+      "when": "Sun 2 Oct 2016, 02:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 59.0,
+      "expected_value": 32.949,
+      "explanation": "Sun 2 Oct 2016, 02:00 to 05:00: O3 was 59.00 µg/m³ at 05:00, but the model expected about 32.95 µg/m³, so it was 26.05 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 231,
+      "when": "Sun 2 Oct 2016, 11:00 to 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 117.0,
+      "expected_value": 72.614,
+      "explanation": "Sun 2 Oct 2016, 11:00 to 12:00: O3 was 117.00 µg/m³ at 12:00, but the model expected about 72.61 µg/m³, so it was 44.39 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 232,
+      "when": "Mon 3 Oct 2016 19:00 to Tue 4 Oct 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 7.0,
+      "expected_value": 73.519,
+      "explanation": "Mon 3 Oct 2016 19:00 to Tue 4 Oct 01:00: O3 was 7.00 µg/m³ at 20:00, but the model expected about 73.52 µg/m³, so it was 66.52 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 233,
+      "when": "Fri 7 Oct 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 58.0,
+      "expected_value": 25.763,
+      "explanation": "Fri 7 Oct 2016, 23:00: O3 was 58.00 µg/m³ at 23:00, but the model expected about 25.76 µg/m³, so it was 32.24 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 234,
+      "when": "Wed 12 Oct 2016, 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 4.0,
+      "expected_value": 35.912,
+      "explanation": "Wed 12 Oct 2016, 05:00: O3 was 4.00 µg/m³ at 05:00, but the model expected about 35.91 µg/m³, so it was 31.91 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 235,
+      "when": "Wed 12 Oct 2016, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 88.0,
+      "expected_value": 45.497,
+      "explanation": "Wed 12 Oct 2016, 15:00: O3 was 88.00 µg/m³ at 15:00, but the model expected about 45.50 µg/m³, so it was 42.50 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 236,
+      "when": "Thu 13 Oct 2016, 17:00 to 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 88.0,
+      "expected_value": 61.341,
+      "explanation": "Thu 13 Oct 2016, 17:00 to 19:00: O3 was 88.00 µg/m³ at 19:00, but the model expected about 61.34 µg/m³, so it was 26.66 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 237,
+      "when": "Fri 14 Oct 2016, 12:00",
+      "type": "Unusual pollution",
+      "peak_value": 67.0,
+      "expected_value": 41.051,
+      "explanation": "Fri 14 Oct 2016, 12:00: O3 was 67.00 µg/m³ at 12:00, but the model expected about 41.05 µg/m³, so it was 25.95 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 238,
+      "when": "Fri 14 Oct 2016, 17:00 to 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 37.848,
+      "explanation": "Fri 14 Oct 2016, 17:00 to 19:00: O3 was 2.00 µg/m³ at 19:00, but the model expected about 37.85 µg/m³, so it was 35.85 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 239,
+      "when": "Mon 17 Oct 2016, 17:00 to 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 31.0,
+      "expected_value": 71.3,
+      "explanation": "Mon 17 Oct 2016, 17:00 to 19:00: O3 was 31.00 µg/m³ at 19:00, but the model expected about 71.30 µg/m³, so it was 40.30 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 240,
+      "when": "Wed 19 Oct 2016, 14:00",
+      "type": "Unusual pollution",
+      "peak_value": 43.0,
+      "expected_value": 70.345,
+      "explanation": "Wed 19 Oct 2016, 14:00: O3 was 43.00 µg/m³ at 14:00, but the model expected about 70.35 µg/m³, so it was 27.35 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 241,
+      "when": "Fri 28 Oct 2016, 07:00",
+      "type": "Unusual pollution",
+      "peak_value": 40.0,
+      "expected_value": 15.996,
+      "explanation": "Fri 28 Oct 2016, 07:00: O3 was 40.00 µg/m³ at 07:00, but the model expected about 16.00 µg/m³, so it was 24.00 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 242,
+      "when": "Sun 30 Oct 2016, 15:00",
+      "type": "Unusual pollution",
+      "peak_value": 49.0,
+      "expected_value": 14.045,
+      "explanation": "Sun 30 Oct 2016, 15:00: O3 was 49.00 µg/m³ at 15:00, but the model expected about 14.05 µg/m³, so it was 34.95 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 243,
+      "when": "Sat 5 Nov 2016, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 42.0,
+      "expected_value": 7.683,
+      "explanation": "Sat 5 Nov 2016, 21:00: O3 was 42.00 µg/m³ at 21:00, but the model expected about 7.68 µg/m³, so it was 34.32 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 244,
+      "when": "Sun 6 Nov 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 34.666,
+      "explanation": "Sun 6 Nov 2016, 23:00: O3 was 2.00 µg/m³ at 23:00, but the model expected about 34.67 µg/m³, so it was 32.67 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 245,
+      "when": "Mon 14 Nov 2016, 06:00",
+      "type": "Data limitation",
+      "peak_value": 58.0,
+      "expected_value": 17.321,
+      "explanation": "Mon 14 Nov 2016, 06:00: O3 was 58.00 µg/m³ at 06:00, but the model expected about 17.32 µg/m³, so it was 40.68 higher than expected. However, the reading 2 hours before was missing and the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 246,
+      "when": "Thu 24 Nov 2016, 04:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 30.345,
+      "explanation": "Thu 24 Nov 2016, 04:00: O3 was 2.00 µg/m³ at 04:00, but the model expected about 30.35 µg/m³, so it was 28.35 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 247,
+      "when": "Wed 30 Nov 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 71.0,
+      "expected_value": 41.304,
+      "explanation": "Wed 30 Nov 2016, 17:00: O3 was 71.00 µg/m³ at 17:00, but the model expected about 41.30 µg/m³, so it was 29.70 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 248,
+      "when": "Thu 1 Dec 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 37.0,
+      "expected_value": 60.602,
+      "explanation": "Thu 1 Dec 2016, 17:00: O3 was 37.00 µg/m³ at 17:00, but the model expected about 60.60 µg/m³, so it was 23.60 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 249,
+      "when": "Sun 4 Dec 2016, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 4.0,
+      "expected_value": 33.922,
+      "explanation": "Sun 4 Dec 2016, 17:00: O3 was 4.00 µg/m³ at 17:00, but the model expected about 33.92 µg/m³, so it was 29.92 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 250,
+      "when": "Thu 8 Dec 2016, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 68.0,
+      "expected_value": 20.707,
+      "explanation": "Thu 8 Dec 2016, 11:00: O3 was 68.00 µg/m³ at 11:00, but the model expected about 20.71 µg/m³, so it was 47.29 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 251,
+      "when": "Tue 13 Dec 2016, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 33.0,
+      "expected_value": 8.862,
+      "explanation": "Tue 13 Dec 2016, 19:00: O3 was 33.00 µg/m³ at 19:00, but the model expected about 8.86 µg/m³, so it was 24.14 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 252,
+      "when": "Tue 13 Dec 2016, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 41.0,
+      "expected_value": 12.373,
+      "explanation": "Tue 13 Dec 2016, 23:00: O3 was 41.00 µg/m³ at 23:00, but the model expected about 12.37 µg/m³, so it was 28.63 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 253,
+      "when": "Fri 16 Dec 2016, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 75.762,
+      "explanation": "Fri 16 Dec 2016, 04:00 to 05:00: O3 was 2.00 µg/m³ at 05:00, but the model expected about 75.76 µg/m³, so it was 73.76 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 254,
+      "when": "Thu 22 Dec 2016, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 66.0,
+      "expected_value": 34.644,
+      "explanation": "Thu 22 Dec 2016, 20:00: O3 was 66.00 µg/m³ at 20:00, but the model expected about 34.64 µg/m³, so it was 31.36 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 255,
+      "when": "Fri 23 Dec 2016, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 32.0,
+      "expected_value": 57.648,
+      "explanation": "Fri 23 Dec 2016, 00:00: O3 was 32.00 µg/m³ at 00:00, but the model expected about 57.65 µg/m³, so it was 25.65 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 256,
+      "when": "Sat 24 Dec 2016, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 53.0,
+      "expected_value": 2.658,
+      "explanation": "Sat 24 Dec 2016, 04:00 to 05:00: O3 was 53.00 µg/m³ at 04:00, but the model expected about 2.66 µg/m³, so it was 50.34 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 257,
+      "when": "Thu 29 Dec 2016, 04:00 to 05:00",
+      "type": "Data limitation",
+      "peak_value": 22.0,
+      "expected_value": 63.625,
+      "explanation": "Thu 29 Dec 2016, 04:00 to 05:00: O3 was 22.00 µg/m³ at 05:00, but the model expected about 63.63 µg/m³, so it was 41.63 lower than expected. However, the reading at the same time the day before was missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 258,
+      "when": "Fri 30 Dec 2016, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 4.0,
+      "expected_value": 50.931,
+      "explanation": "Fri 30 Dec 2016, 04:00 to 05:00: O3 was 4.00 µg/m³ at 05:00, but the model expected about 50.93 µg/m³, so it was 46.93 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 259,
+      "when": "Tue 3 Jan 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 4.0,
+      "expected_value": 65.334,
+      "explanation": "Tue 3 Jan 2017, 04:00 to 05:00: O3 was 4.00 µg/m³ at 05:00, but the model expected about 65.33 µg/m³, so it was 61.33 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 260,
+      "when": "Tue 3 Jan 2017, 17:00 to 18:00",
+      "type": "Unusual pollution",
+      "peak_value": 3.0,
+      "expected_value": 37.699,
+      "explanation": "Tue 3 Jan 2017, 17:00 to 18:00: O3 was 3.00 µg/m³ at 18:00, but the model expected about 37.70 µg/m³, so it was 34.70 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 261,
+      "when": "Wed 4 Jan 2017, 02:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 43.53,
+      "explanation": "Wed 4 Jan 2017, 02:00 to 05:00: O3 was 2.00 µg/m³ at 03:00, but the model expected about 43.53 µg/m³, so it was 41.53 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 262,
+      "when": "Thu 5 Jan 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 36.062,
+      "explanation": "Thu 5 Jan 2017, 04:00 to 05:00: O3 was 2.00 µg/m³ at 05:00, but the model expected about 36.06 µg/m³, so it was 34.06 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 263,
+      "when": "Sat 7 Jan 2017, 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 31.795,
+      "explanation": "Sat 7 Jan 2017, 05:00: O3 was 2.00 µg/m³ at 05:00, but the model expected about 31.80 µg/m³, so it was 29.80 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 264,
+      "when": "Mon 9 Jan 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 79.0,
+      "expected_value": 42.652,
+      "explanation": "Mon 9 Jan 2017, 04:00 to 05:00: O3 was 79.00 µg/m³ at 04:00, but the model expected about 42.65 µg/m³, so it was 36.35 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 265,
+      "when": "Thu 12 Jan 2017, 05:00 to 07:00",
+      "type": "Unusual pollution",
+      "peak_value": 3.0,
+      "expected_value": 35.286,
+      "explanation": "Thu 12 Jan 2017, 05:00 to 07:00: O3 was 3.00 µg/m³ at 05:00, but the model expected about 35.29 µg/m³, so it was 32.29 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 266,
+      "when": "Thu 12 Jan 2017, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 80.0,
+      "expected_value": 9.853,
+      "explanation": "Thu 12 Jan 2017, 21:00: O3 was 80.00 µg/m³ at 21:00, but the model expected about 9.85 µg/m³, so it was 70.15 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 267,
+      "when": "Sat 14 Jan 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 40.0,
+      "expected_value": 87.39,
+      "explanation": "Sat 14 Jan 2017, 04:00 to 05:00: O3 was 40.00 µg/m³ at 05:00, but the model expected about 87.39 µg/m³, so it was 47.39 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 268,
+      "when": "Sun 15 Jan 2017, 04:00 to 06:00",
+      "type": "Unusual pollution",
+      "peak_value": 30.0,
+      "expected_value": 66.147,
+      "explanation": "Sun 15 Jan 2017, 04:00 to 06:00: O3 was 30.00 µg/m³ at 05:00, but the model expected about 66.15 µg/m³, so it was 36.15 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 269,
+      "when": "Sun 15 Jan 2017, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 28.0,
+      "expected_value": 54.086,
+      "explanation": "Sun 15 Jan 2017, 17:00: O3 was 28.00 µg/m³ at 17:00, but the model expected about 54.09 µg/m³, so it was 26.09 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 270,
+      "when": "Mon 16 Jan 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 13.0,
+      "expected_value": 56.81,
+      "explanation": "Mon 16 Jan 2017, 04:00 to 05:00: O3 was 13.00 µg/m³ at 05:00, but the model expected about 56.81 µg/m³, so it was 43.81 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 271,
+      "when": "Thu 19 Jan 2017, 04:00 to 05:00",
+      "type": "Data limitation",
+      "peak_value": 54.0,
+      "expected_value": 12.702,
+      "explanation": "Thu 19 Jan 2017, 04:00 to 05:00: O3 was 54.00 µg/m³ at 04:00, but the model expected about 12.70 µg/m³, so it was 41.30 higher than expected. However, dew point, the reading at the same time the day before, air pressure, rain, temperature and wind speed were missing. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 272,
+      "when": "Sat 21 Jan 2017, 04:00 to 06:00",
+      "type": "Unusual pollution",
+      "peak_value": 14.0,
+      "expected_value": 71.656,
+      "explanation": "Sat 21 Jan 2017, 04:00 to 06:00: O3 was 14.00 µg/m³ at 05:00, but the model expected about 71.66 µg/m³, so it was 57.66 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 273,
+      "when": "Sun 22 Jan 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 31.0,
+      "expected_value": 80.845,
+      "explanation": "Sun 22 Jan 2017, 04:00 to 05:00: O3 was 31.00 µg/m³ at 05:00, but the model expected about 80.85 µg/m³, so it was 49.85 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 274,
+      "when": "Sun 22 Jan 2017, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 12.0,
+      "expected_value": 42.518,
+      "explanation": "Sun 22 Jan 2017, 20:00: O3 was 12.00 µg/m³ at 20:00, but the model expected about 42.52 µg/m³, so it was 30.52 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 275,
+      "when": "Mon 23 Jan 2017, 04:00",
+      "type": "Unusual pollution",
+      "peak_value": 65.0,
+      "expected_value": 40.942,
+      "explanation": "Mon 23 Jan 2017, 04:00: O3 was 65.00 µg/m³ at 04:00, but the model expected about 40.94 µg/m³, so it was 24.06 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 276,
+      "when": "Mon 23 Jan 2017 23:00 to Tue 24 Jan 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 63.0,
+      "expected_value": 12.655,
+      "explanation": "Mon 23 Jan 2017 23:00 to Tue 24 Jan 13:00: O3 was 63.00 µg/m³ at 23:00, but the model expected about 12.66 µg/m³, so it was 50.34 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 277,
+      "when": "Tue 24 Jan 2017, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 49.0,
+      "expected_value": 20.906,
+      "explanation": "Tue 24 Jan 2017, 20:00: O3 was 49.00 µg/m³ at 20:00, but the model expected about 20.91 µg/m³, so it was 28.09 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 278,
+      "when": "Wed 25 Jan 2017, 10:00",
+      "type": "Unusual pollution",
+      "peak_value": 30.0,
+      "expected_value": 57.057,
+      "explanation": "Wed 25 Jan 2017, 10:00: O3 was 30.00 µg/m³ at 10:00, but the model expected about 57.06 µg/m³, so it was 27.06 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 279,
+      "when": "Wed 25 Jan 2017, 19:00 to 21:00",
+      "type": "Data limitation",
+      "peak_value": 57.0,
+      "expected_value": 29.723,
+      "explanation": "Wed 25 Jan 2017, 19:00 to 21:00: O3 was 57.00 µg/m³ at 21:00, but the model expected about 29.72 µg/m³, so it was 27.28 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 280,
+      "when": "Thu 26 Jan 2017, 07:00 to 08:00",
+      "type": "Unusual pollution",
+      "peak_value": 29.0,
+      "expected_value": 57.244,
+      "explanation": "Thu 26 Jan 2017, 07:00 to 08:00: O3 was 29.00 µg/m³ at 08:00, but the model expected about 57.24 µg/m³, so it was 28.24 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 281,
+      "when": "Sat 28 Jan 2017, 07:00",
+      "type": "Unusual pollution",
+      "peak_value": 66.0,
+      "expected_value": 89.494,
+      "explanation": "Sat 28 Jan 2017, 07:00: O3 was 66.00 µg/m³ at 07:00, but the model expected about 89.49 µg/m³, so it was 23.49 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 282,
+      "when": "Sun 29 Jan 2017, 03:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 77.0,
+      "expected_value": 134.765,
+      "explanation": "Sun 29 Jan 2017, 03:00 to 05:00: O3 was 77.00 µg/m³ at 05:00, but the model expected about 134.76 µg/m³, so it was 57.76 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 283,
+      "when": "Mon 30 Jan 2017, 17:00 to 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 133.0,
+      "expected_value": 96.104,
+      "explanation": "Mon 30 Jan 2017, 17:00 to 19:00: O3 was 133.00 µg/m³ at 18:00, but the model expected about 96.10 µg/m³, so it was 36.90 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 284,
+      "when": "Tue 31 Jan 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 46.0,
+      "expected_value": 137.016,
+      "explanation": "Tue 31 Jan 2017, 04:00 to 05:00: O3 was 46.00 µg/m³ at 05:00, but the model expected about 137.02 µg/m³, so it was 91.02 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 285,
+      "when": "Tue 31 Jan 2017, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 76.0,
+      "expected_value": 35.397,
+      "explanation": "Tue 31 Jan 2017, 21:00: O3 was 76.00 µg/m³ at 21:00, but the model expected about 35.40 µg/m³, so it was 40.60 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 286,
+      "when": "Thu 2 Feb 2017, 11:00",
+      "type": "Unusual pollution",
+      "peak_value": 51.0,
+      "expected_value": 90.13,
+      "explanation": "Thu 2 Feb 2017, 11:00: O3 was 51.00 µg/m³ at 11:00, but the model expected about 90.13 µg/m³, so it was 39.13 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 287,
+      "when": "Thu 2 Feb 2017, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 65.0,
+      "expected_value": 34.026,
+      "explanation": "Thu 2 Feb 2017, 19:00: O3 was 65.00 µg/m³ at 19:00, but the model expected about 34.03 µg/m³, so it was 30.97 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 288,
+      "when": "Fri 3 Feb 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 28.0,
+      "expected_value": 78.351,
+      "explanation": "Fri 3 Feb 2017, 04:00 to 05:00: O3 was 28.00 µg/m³ at 05:00, but the model expected about 78.35 µg/m³, so it was 50.35 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 289,
+      "when": "Fri 3 Feb 2017, 17:00",
+      "type": "Unusual pollution",
+      "peak_value": 94.0,
+      "expected_value": 58.707,
+      "explanation": "Fri 3 Feb 2017, 17:00: O3 was 94.00 µg/m³ at 17:00, but the model expected about 58.71 µg/m³, so it was 35.29 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 290,
+      "when": "Fri 3 Feb 2017, 22:00",
+      "type": "Unusual pollution",
+      "peak_value": 83.0,
+      "expected_value": 58.84,
+      "explanation": "Fri 3 Feb 2017, 22:00: O3 was 83.00 µg/m³ at 22:00, but the model expected about 58.84 µg/m³, so it was 24.16 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 291,
+      "when": "Sat 4 Feb 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 102.0,
+      "expected_value": 53.363,
+      "explanation": "Sat 4 Feb 2017, 04:00 to 05:00: O3 was 102.00 µg/m³ at 04:00, but the model expected about 53.36 µg/m³, so it was 48.64 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 292,
+      "when": "Sat 4 Feb 2017, 20:00",
+      "type": "Unusual pollution",
+      "peak_value": 53.0,
+      "expected_value": 29.043,
+      "explanation": "Sat 4 Feb 2017, 20:00: O3 was 53.00 µg/m³ at 20:00, but the model expected about 29.04 µg/m³, so it was 23.96 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 293,
+      "when": "Sun 5 Feb 2017, 04:00 to 05:00",
+      "type": "Unusual pollution",
+      "peak_value": 99.0,
+      "expected_value": 54.114,
+      "explanation": "Sun 5 Feb 2017, 04:00 to 05:00: O3 was 99.00 µg/m³ at 04:00, but the model expected about 54.11 µg/m³, so it was 44.89 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 294,
+      "when": "Mon 6 Feb 2017, 04:00 to 06:00",
+      "type": "Unusual pollution",
+      "peak_value": 107.0,
+      "expected_value": 68.211,
+      "explanation": "Mon 6 Feb 2017, 04:00 to 06:00: O3 was 107.00 µg/m³ at 04:00, but the model expected about 68.21 µg/m³, so it was 38.79 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 295,
+      "when": "Mon 6 Feb 2017 23:00 to Tue 7 Feb 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 92.0,
+      "expected_value": 18.561,
+      "explanation": "Mon 6 Feb 2017 23:00 to Tue 7 Feb 23:00: O3 was 92.00 µg/m³ at 04:00, but the model expected about 18.56 µg/m³, so it was 73.44 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 296,
+      "when": "Wed 8 Feb 2017, 04:00 to 07:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 68.923,
+      "explanation": "Wed 8 Feb 2017, 04:00 to 07:00: O3 was 2.00 µg/m³ at 05:00, but the model expected about 68.92 µg/m³, so it was 66.92 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 297,
+      "when": "Wed 8 Feb 2017, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 107.0,
+      "expected_value": 76.449,
+      "explanation": "Wed 8 Feb 2017, 23:00: O3 was 107.00 µg/m³ at 23:00, but the model expected about 76.45 µg/m³, so it was 30.55 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 298,
+      "when": "Thu 9 Feb 2017, 09:00",
+      "type": "Data limitation",
+      "peak_value": 77.0,
+      "expected_value": 108.22,
+      "explanation": "Thu 9 Feb 2017, 09:00: O3 was 77.00 µg/m³ at 09:00, but the model expected about 108.22 µg/m³, so it was 31.22 lower than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 299,
+      "when": "Sun 12 Feb 2017, 04:00",
+      "type": "Unusual pollution",
+      "peak_value": 34.0,
+      "expected_value": 5.202,
+      "explanation": "Sun 12 Feb 2017, 04:00: O3 was 34.00 µg/m³ at 04:00, but the model expected about 5.20 µg/m³, so it was 28.80 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 300,
+      "when": "Tue 14 Feb 2017, 02:00",
+      "type": "Unusual pollution",
+      "peak_value": 4.0,
+      "expected_value": 43.207,
+      "explanation": "Tue 14 Feb 2017, 02:00: O3 was 4.00 µg/m³ at 02:00, but the model expected about 43.21 µg/m³, so it was 39.21 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 301,
+      "when": "Wed 15 Feb 2017, 13:00",
+      "type": "Unusual pollution",
+      "peak_value": 64.0,
+      "expected_value": 39.265,
+      "explanation": "Wed 15 Feb 2017, 13:00: O3 was 64.00 µg/m³ at 13:00, but the model expected about 39.27 µg/m³, so it was 24.73 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 302,
+      "when": "Wed 15 Feb 2017, 19:00",
+      "type": "Unusual pollution",
+      "peak_value": 14.0,
+      "expected_value": 43.063,
+      "explanation": "Wed 15 Feb 2017, 19:00: O3 was 14.00 µg/m³ at 19:00, but the model expected about 43.06 µg/m³, so it was 29.06 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 303,
+      "when": "Thu 16 Feb 2017, 00:00",
+      "type": "Unusual pollution",
+      "peak_value": 64.0,
+      "expected_value": 1.642,
+      "explanation": "Thu 16 Feb 2017, 00:00: O3 was 64.00 µg/m³ at 00:00, but the model expected about 1.64 µg/m³, so it was 62.36 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 304,
+      "when": "Thu 16 Feb 2017, 07:00",
+      "type": "Unusual pollution",
+      "peak_value": 2.0,
+      "expected_value": 59.492,
+      "explanation": "Thu 16 Feb 2017, 07:00: O3 was 2.00 µg/m³ at 07:00, but the model expected about 59.49 µg/m³, so it was 57.49 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 305,
+      "when": "Fri 17 Feb 2017, 04:00",
+      "type": "Unusual pollution",
+      "peak_value": 24.0,
+      "expected_value": 47.486,
+      "explanation": "Fri 17 Feb 2017, 04:00: O3 was 24.00 µg/m³ at 04:00, but the model expected about 47.49 µg/m³, so it was 23.49 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 306,
+      "when": "Sat 18 Feb 2017, 16:00",
+      "type": "Unusual pollution",
+      "peak_value": 57.0,
+      "expected_value": 31.788,
+      "explanation": "Sat 18 Feb 2017, 16:00: O3 was 57.00 µg/m³ at 16:00, but the model expected about 31.79 µg/m³, so it was 25.21 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 307,
+      "when": "Sun 19 Feb 2017, 12:00 to 14:00",
+      "type": "Unusual pollution",
+      "peak_value": 32.0,
+      "expected_value": 87.32,
+      "explanation": "Sun 19 Feb 2017, 12:00 to 14:00: O3 was 32.00 µg/m³ at 13:00, but the model expected about 87.32 µg/m³, so it was 55.32 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 308,
+      "when": "Wed 22 Feb 2017, 23:00",
+      "type": "Data limitation",
+      "peak_value": 82.0,
+      "expected_value": 54.813,
+      "explanation": "Wed 22 Feb 2017, 23:00: O3 was 82.00 µg/m³ at 23:00, but the model expected about 54.81 µg/m³, so it was 27.19 higher than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 309,
+      "when": "Fri 24 Feb 2017, 21:00",
+      "type": "Unusual pollution",
+      "peak_value": 36.0,
+      "expected_value": 64.871,
+      "explanation": "Fri 24 Feb 2017, 21:00: O3 was 36.00 µg/m³ at 21:00, but the model expected about 64.87 µg/m³, so it was 28.87 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 310,
+      "when": "Sat 25 Feb 2017, 09:00",
+      "type": "Unusual pollution",
+      "peak_value": 38.0,
+      "expected_value": 11.059,
+      "explanation": "Sat 25 Feb 2017, 09:00: O3 was 38.00 µg/m³ at 09:00, but the model expected about 11.06 µg/m³, so it was 26.94 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 311,
+      "when": "Sat 25 Feb 2017, 23:00",
+      "type": "Unusual pollution",
+      "peak_value": 74.0,
+      "expected_value": 42.176,
+      "explanation": "Sat 25 Feb 2017, 23:00: O3 was 74.00 µg/m³ at 23:00, but the model expected about 42.18 µg/m³, so it was 31.82 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 312,
+      "when": "Sun 26 Feb 2017, 03:00",
+      "type": "Unusual pollution",
+      "peak_value": 9.0,
+      "expected_value": 48.045,
+      "explanation": "Sun 26 Feb 2017, 03:00: O3 was 9.00 µg/m³ at 03:00, but the model expected about 48.04 µg/m³, so it was 39.04 lower than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual drop in pollution."
+    },
+    {
+      "id": 313,
+      "when": "Sun 26 Feb 2017, 09:00",
+      "type": "Unusual pollution",
+      "peak_value": 43.0,
+      "expected_value": 9.287,
+      "explanation": "Sun 26 Feb 2017, 09:00: O3 was 43.00 µg/m³ at 09:00, but the model expected about 9.29 µg/m³, so it was 33.71 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    },
+    {
+      "id": 314,
+      "when": "Mon 27 Feb 2017, 19:00",
+      "type": "Data limitation",
+      "peak_value": 62.0,
+      "expected_value": 86.293,
+      "explanation": "Mon 27 Feb 2017, 19:00: O3 was 62.00 µg/m³ at 19:00, but the model expected about 86.29 µg/m³, so it was 24.29 lower than expected. However, the O3 data had a gap of 1 hour just before. The model had to fill those in, so it was partly guessing. This looks more like a data problem than real pollution."
+    },
+    {
+      "id": 315,
+      "when": "Tue 28 Feb 2017, 01:00",
+      "type": "Unusual pollution",
+      "peak_value": 71.0,
+      "expected_value": 16.885,
+      "explanation": "Tue 28 Feb 2017, 01:00: O3 was 71.00 µg/m³ at 01:00, but the model expected about 16.88 µg/m³, so it was 54.12 higher than expected. Every input reading was there and the data had no gap before it, so the model had full information. A miss this big points to a real, unusual rise in pollution."
+    }
+  ],
+  "limitations": [
+    "Results come from one place and period, so they may not hold elsewhere.",
+    "Episode labels come from simple rules. Nobody checked them against real events."
+  ]
+}
