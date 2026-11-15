@@ -1,51 +1,72 @@
 # Air Quality Prediction and Pollution Episode Detection
 
-**Problem statement:** predict a selected pollutant measurement using historical pollutant readings and relevant
-environmental variables. Engineer lagged features if timestamps permit, evaluate on future periods, and flag periods where
-observations differ substantially from model expectations. Analyze whether flagged episodes reflect unusual pollution
-behavior or data limitations.
+Our task was to predict a selected pollutant from its past readings and the weather, use lagged features, test on a
+later time period, flag the hours where the real value was far from the prediction, and work out whether those
+episodes were real pollution or just problems in the data.
 
-**Dataset:** [UCI Air Quality](https://archive.ics.uci.edu/dataset/360/air+quality): 9,357 hourly readings from an Italian city, Mar 2004 – Apr 2005.
+This project does exactly that. You pick a dataset and a pollutant, and you get a next-hour prediction model, its test
+results and a list of flagged episodes, each with a reason.
 
-## How the problem is solved
+## Datasets
 
-| Requirement | What the project does |
-|---|---|
-| Selected pollutant | Choose **CO, NO2, NOx or benzene (C6H6)**, each with its own model (NMHC is skipped because 90% of it is missing) |
-| Historical readings + environmental variables | Predict the **next hour** from the pollutant's past values and the previous hour's temperature and humidity |
-| Lagged features | Pollutant value 1, 2, 3 and 24 hours earlier, plus hour of day and weekday |
-| Evaluate on future periods | Time-ordered split: **train 60% → validation 20% → test 20%** (never shuffled) |
-| Flag large differences | A test hour is flagged when \|actual − predicted\| > the 95th percentile of validation errors |
-| Analyze flagged episodes | **Data limitation** if inputs were missing or the data had a gap in the 6 hours before; otherwise **unusual pollution** |
+| Dataset | Rows (hourly) | Pollutants | Weather used |
+|---|---|---|---|
+| [UCI Air Quality](https://archive.ics.uci.edu/dataset/360/air+quality), Italy, 2004–2005 | 9,357 | CO, NO2, NOx, C6H6 (benzene) | temperature, relative and absolute humidity |
+| [UCI Beijing Multi-Site](https://archive.ics.uci.edu/dataset/501/beijing+multi+site+air+quality+data), Aotizhongxin station, 2013–2017 | 35,064 | CO, NO2, PM2.5, PM10, SO2, O3 | temperature, pressure, dew point, rain, wind speed |
+| Your own file | any | any of the above | any of the above |
 
-Models compared: Linear Regression, Random Forest and XGBoost (trained on the GPU when available). Each is tuned on the
-validation period, the best one is retrained on train + validation, and the test period is scored once. Every model is
-compared with a **persistence baseline** ("same as the previous hour").
+You can upload your own hourly CSV from the dashboard. It needs a time column (`Date` + `Time`, `year/month/day/hour`
+or `datetime`) and at least one pollutant column. The other 11 Beijing stations from the UCI link work as they are.
 
-## Results (test period: 16 Jan – 4 Apr 2005)
+## Method
 
-| Pollutant | Unit | Chosen model | Test MAE | Persistence MAE | Better by | R² | Episodes (unusual / data) |
-|---|---|---|---|---|---|---|---|
-| CO | mg/m³ | Random Forest | 0.403 | 0.519 | 22.4% | 0.81 | 34 (29 / 5) |
-| NO2 | µg/m³ | Random Forest | 17.0 | 19.8 | 14.1% | 0.80 | 68 (42 / 26) |
-| NOx | ppb | Linear Regression | 66.2 | 72.7 | 8.9% | 0.77 | 48 (30 / 18) |
-| C6H6 | µg/m³ | XGBoost | 1.85 | 2.29 | 19.1% | 0.80 | 46 (45 / 1) |
+1. Read the hourly data. Empty cells and the UCI code `-200` count as missing.
+2. Lagged features: the pollutant 1, 2, 3 and 24 hours earlier, the previous hour's weather, and the hour and weekday.
+3. Split by time and never shuffle: the first 60% is for training, the next 20% for picking the model, the last 20% for testing.
+4. Try Linear Regression, Random Forest and XGBoost (XGBoost uses the GPU if there is one). Each model predicts how much
+   the level will change in the next hour, and that change is added to the last reading. Every model is compared with
+   simply repeating the last hour's value ("persistence").
+5. A test hour is flagged when the miss is bigger than 95% of the misses on the validation period.
+6. Flagged hours less than 3 hours apart form an episode. If inputs were missing or the data had a gap just before, it is
+   labelled **Data limitation**. If not, it is labelled **Unusual pollution**.
 
-For NOx, no model beat persistence on the validation period, so the NOx improvement is the least reliable.
+## Results on the test period
 
-## Project files
+Italy (test period 16 Jan – 4 Apr 2005):
+
+| Pollutant | Model | Test MAE | Persistence MAE | Better by | R² | Episodes (unusual / data) |
+|---|---|---|---|---|---|---|
+| CO | Random Forest | 0.393 mg/m³ | 0.519 | 24.2% | 0.82 | 25 (20 / 5) |
+| NO2 | Random Forest | 15.9 µg/m³ | 19.8 | 19.5% | 0.83 | 85 (58 / 27) |
+| NOx | Random Forest | 57.6 ppb | 72.7 | 20.9% | 0.83 | 25 (16 / 9) |
+| C6H6 | Random Forest | 1.72 µg/m³ | 2.29 | 25.1% | 0.83 | 33 (33 / 0) |
+
+Beijing, Aotizhongxin (test period Mar 2016 – Feb 2017):
+
+| Pollutant | Model | Test MAE (µg/m³) | Persistence MAE | Better by | R² |
+|---|---|---|---|---|---|
+| O3 | XGBoost | 8.47 | 11.19 | 24.3% | 0.96 |
+| NO2 | Random Forest | 6.95 | 7.53 | 7.7% | 0.90 |
+| PM2.5 | XGBoost | 9.69 | 10.34 | 6.2% | 0.96 |
+| PM10 | XGBoost | 14.8 | 15.0 | 0.8% | 0.92 |
+| CO | XGBoost | 192 | 191 | −0.3% | 0.90 |
+| SO2 | XGBoost | 1.78 | 1.70 | −4.6% | 0.92 |
+
+In Beijing, CO, SO2 and PM10 change slowly and are recorded in coarse steps (CO in steps of 100), so last hour's
+value is already a very good guess and no model really beats it. The high R² there mostly comes from that.
+
+## Files
 
 ```
-data/AirQualityUCI.csv     the dataset (original UCI file)
-train_model.py             cleans data, builds lag features, trains/tunes/evaluates, flags and analyzes episodes
-models/<pollutant>.pkl     saved models (one per pollutant)
-artifacts/<pollutant>.json results used by the dashboard (metrics, test predictions, episodes)
-main.py                    FastAPI: GET /, GET /health, POST /predict + dashboard data
-frontend/                  one-page dashboard (HTML, CSS, JavaScript, ECharts)
-tests/test_api.py          automated API tests
-postman/                   Postman collection
-notebooks/                 the same ML code as a Kaggle notebook
-research/, docs/           planning-phase research and the project documents
+train_model.py            the whole ML part (also runs on Kaggle)
+main.py                   FastAPI: GET /, GET /health, POST /predict, dataset upload and dashboard data
+frontend/                 one-page dashboard (HTML, CSS, JavaScript, ECharts)
+data/                     the two built-in datasets
+models/<dataset>/         saved models, one .pkl per pollutant
+artifacts/<dataset>/      results the dashboard reads
+tests/test_api.py         API tests
+postman/                  Postman collection
+research/, docs/          planning-phase research and project documents
 ```
 
 ## Run it
@@ -53,19 +74,27 @@ research/, docs/           planning-phase research and the project documents
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\pip install -r requirements.txt
-.\.venv\Scripts\python train_model.py            # optional: the trained models are already included
 .\.venv\Scripts\python -m uvicorn main:app --reload
 ```
 
-* API: http://127.0.0.1:8000
-* API docs: http://127.0.0.1:8000/docs
-* Dashboard: http://127.0.0.1:8000/dashboard/
+Then open http://127.0.0.1:8000/dashboard/ (API docs at http://127.0.0.1:8000/docs). The trained models are already
+in the repo. To retrain:
+
+```powershell
+.\.venv\Scripts\python train_model.py data\AirQualityUCI.csv
+.\.venv\Scripts\python train_model.py data\Beijing_Aotizhongxin.csv
+```
+
+## Run the ML part on Kaggle
+
+1. Make a new notebook and add a dataset as input (UCI Air Quality, UCI Beijing, or your own CSV). Turning on a GPU is optional.
+2. Paste the whole of `train_model.py` into one cell and run it. It finds the CSV under `/kaggle/input` by itself.
+   If there is none and Internet is on, it downloads the UCI Air Quality data.
+3. It prints the results table and draws actual vs predicted for each pollutant. Models are saved under `models/`.
 
 ## Test with Postman
 
-Import `postman/AirQuality.postman_collection.json`, or create the request by hand:
-
-* Method **POST**, URL **http://127.0.0.1:8000/predict**, Body → **raw** → **JSON**:
+Method **POST**, URL **http://127.0.0.1:8000/predict**, Body → raw → JSON:
 
 ```json
 {
@@ -76,21 +105,22 @@ Import `postman/AirQuality.postman_collection.json`, or create the request by ha
 }
 ```
 
-The response is the predicted next-hour value, for example `{"pollutant": "CO", "prediction": 2.851, "unit": "mg/m³", ...}`.
-Change `"pollutant"` to `"NO2"`, `"NOx"` or `"C6H6"`; the lag values must then be in that pollutant's unit.
-`lag_2`, `lag_3` and `lag_24` are optional. If you add `"observed"` (the actual value), the response also says whether that hour would be flagged.
+You get back the predicted value for the next hour, for example `{"pollutant": "CO", "prediction": 2.948, "unit": "mg/m³", ...}`.
+To use the Beijing models, add `"dataset": "beijing-aotizhongxin"` and send its weather fields (`temperature`,
+`pressure`, `dew_point`, `rain`, `wind_speed`). Optional fields can be left out. If you add `"observed"`, the reply also
+says whether that hour would be flagged.
 
 | Status | Meaning |
 |---|---|
-| 200 | Success |
-| 404 | Wrong URL |
-| 422 | Missing field, wrong type or value out of range |
-| 500 | Server error (see the terminal) |
+| 200 | It worked |
+| 404 | Wrong URL, or a dataset/pollutant that doesn't exist |
+| 422 | A field is missing, has the wrong type or is out of range |
+| 500 | Server error (check the terminal) |
 
-Automated tests: `.\.venv\Scripts\python -m pytest -q`
+Run the automated tests with `.\.venv\Scripts\python -m pytest -q`.
 
-## Share it (optional)
+## Sharing
 
-* Same Wi-Fi: `powershell -ExecutionPolicy Bypass -File scripts\run_local.ps1` prints a network URL.
-* Temporary public link: install `cloudflared` (`winget install --id Cloudflare.cloudflared`), keep the server running,
-  then run `scripts\public_url.ps1`. Add `/dashboard/` to the printed `trycloudflare.com` address.
+* Same Wi-Fi: `powershell -ExecutionPolicy Bypass -File scripts\run_local.ps1` prints a network address.
+* Temporary public link: install `cloudflared` (`winget install --id Cloudflare.cloudflared`), keep the server running
+  and run `scripts\public_url.ps1`. Add `/dashboard/` to the `trycloudflare.com` address it prints.

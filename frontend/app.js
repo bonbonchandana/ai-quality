@@ -1,23 +1,21 @@
-// Air Quality dashboard: loads results for the selected pollutant from the API and draws them.
+// Air quality dashboard. Pick a dataset and a pollutant, and the page loads its results from the API.
 
-const FIELDS = [
-  { key: "hour", label: "Hour (0-23)", step: 1 },
-  { key: "weekday", label: "Weekday (0 = Mon)", step: 1 },
-  { key: "lag_1", label: "Value 1 h earlier", step: "any" },
-  { key: "lag_2", label: "Value 2 h earlier", step: "any" },
-  { key: "lag_3", label: "Value 3 h earlier", step: "any" },
-  { key: "lag_24", label: "Value 24 h earlier", step: "any" },
-  { key: "temperature", label: "Temperature (°C)", step: "any" },
-  { key: "relative_humidity", label: "Relative humidity (%)", step: "any" },
-  { key: "absolute_humidity", label: "Absolute humidity", step: "any" },
-  { key: "observed", label: "Actual value (optional)", step: "any" },
-];
+const LABELS = {
+  hour: "Hour (0-23)", weekday: "Weekday (0 = Mon)",
+  lag_1: "Value 1 h earlier", lag_2: "Value 2 h earlier", lag_3: "Value 3 h earlier", lag_24: "Value 24 h earlier",
+  temperature: "Temperature (°C)", relative_humidity: "Relative humidity (%)", absolute_humidity: "Absolute humidity",
+  pressure: "Pressure (hPa)", dew_point: "Dew point (°C)", rain: "Rain (mm)", wind_speed: "Wind speed (m/s)",
+  observed: "Actual value (optional)",
+};
 
 const charts = {};
+let allDatasets = [];
 let current = null; // results of the selected pollutant
+let currentDataset = null;
 
 const $ = (id) => document.getElementById(id);
 const fmt = (v, d = 2) => (v == null ? "–" : Number(v).toFixed(d));
+const unitOf = (r) => r.unit || "units";
 
 async function getJSON(url, options) {
   const res = await fetch(url, options);
@@ -31,26 +29,35 @@ function chart(id) {
   return charts[id];
 }
 
-// ---------- page setup ----------
+// ---------- pickers ----------
 async function init() {
-  const pollutants = await getJSON("/api/pollutants");
-  $("pollutant").innerHTML = pollutants
-    .map((p) => `<option value="${p.key}">${p.key} – ${p.name} (${p.unit})</option>`)
-    .join("");
-  $("predict-form").innerHTML = FIELDS.map(
-    (f) => `<label>${f.label}<input name="${f.key}" type="number" step="${f.step}"></label>`
-  ).join("");
-
+  $("dataset").addEventListener("change", () => showDataset($("dataset").value));
   $("pollutant").addEventListener("change", () => load($("pollutant").value));
   $("episode-filter").addEventListener("change", renderEpisodes);
   $("load-sample").addEventListener("click", loadSample);
   $("predict-form").addEventListener("submit", predict);
+  $("upload-form").addEventListener("submit", upload);
   window.addEventListener("resize", () => Object.values(charts).forEach((c) => c.resize()));
-  load(pollutants[0].key);
+  await refreshDatasets();
+}
+
+async function refreshDatasets(selectId) {
+  allDatasets = await getJSON("/api/datasets");
+  $("dataset").innerHTML = allDatasets.map((d) => `<option value="${d.id}">${d.title}</option>`).join("");
+  showDataset(selectId || allDatasets[0].id);
+}
+
+function showDataset(id) {
+  currentDataset = allDatasets.find((d) => d.id === id);
+  $("dataset").value = id;
+  $("pollutant").innerHTML = currentDataset.pollutants
+    .map((p) => `<option value="${p.key}">${p.pollutant}${p.unit ? ` (${p.unit})` : ""}</option>`)
+    .join("");
+  load(currentDataset.pollutants[0].key);
 }
 
 async function load(key) {
-  current = await getJSON(`/api/results/${key}`);
+  current = await getJSON(`/api/results/${currentDataset.id}/${key}`);
   renderCards();
   renderTestChart();
   renderModelChart();
@@ -58,6 +65,7 @@ async function load(key) {
   renderDaily();
   renderHourly();
   renderEpisodes();
+  buildForm();
   $("predict-result").hidden = true;
   loadSample();
 }
@@ -65,13 +73,15 @@ async function load(key) {
 // ---------- summary cards ----------
 function renderCards() {
   const r = current;
-  const best = r.models.find((m) => m.model === r.selected_model);
+  const best = r.models.find((m) => m.model === r.model);
   const counts = r.episode_counts;
+  const gain = r.improvement_vs_persistence_pct;
   const cards = [
-    ["Chosen model", r.selected_model, r.selected_model === "XGBoost" && r.device_used === "cuda" ? "picked on the validation period · trained on GPU" : "picked on the validation period"],
-    ["Test error (MAE)", `${fmt(best.test.MAE)} ${r.unit}`, `average miss per hour, ${best.test.n} test hours`],
+    ["Chosen model", r.model, r.model === "XGBoost" && r.device === "cuda" ? "picked on validation · trained on GPU" : "picked on the validation period"],
+    ["Test error (MAE)", `${fmt(best.test.MAE)} ${unitOf(r)}`, `average miss per hour over ${best.test.n} test hours`],
     ["R² on test", fmt(best.test.R2), "1.0 would be perfect"],
-    ["Better than persistence", `${fmt(r.improvement_vs_persistence_pct, 1)}%`, "vs. 'same as previous hour'"],
+    ["vs. 'same as last hour'", `${gain >= 0 ? "" : "−"}${fmt(Math.abs(gain), 1)}% ${gain >= 0 ? "better" : "worse"}`,
+      gain >= 1 ? "the model does better than just repeating the last value" : "this pollutant changes slowly, so the last value is hard to beat"],
     ["Flagged episodes", counts.total, `${counts["Unusual pollution"]} unusual pollution · ${counts["Data limitation"]} data limitation`],
   ];
   $("cards").innerHTML = cards
@@ -83,13 +93,14 @@ function renderCards() {
 // ---------- charts ----------
 function renderTestChart() {
   const pts = current.test_predictions;
+  const end = Math.min(100, Math.round((24 * 14 / pts.length) * 100)) || 100; // start zoomed on two weeks
   chart("chart-test").setOption({
     tooltip: { trigger: "axis" },
     legend: { data: ["Actual", "Predicted", "Flagged"] },
-    grid: { left: 50, right: 20, top: 40, bottom: 70 },
+    grid: { left: 55, right: 20, top: 40, bottom: 70 },
     xAxis: { type: "time" },
-    yAxis: { type: "value", name: current.unit },
-    dataZoom: [{ type: "inside", start: 0, end: 20 }, { type: "slider", start: 0, end: 20 }],
+    yAxis: { type: "value", name: unitOf(current) },
+    dataZoom: [{ type: "inside", start: 0, end }, { type: "slider", start: 0, end }],
     series: [
       { name: "Actual", type: "line", showSymbol: false, lineStyle: { width: 1 }, color: "#2563eb",
         data: pts.map((p) => [p.t, p.actual]) },
@@ -104,15 +115,15 @@ function renderTestChart() {
 function renderModelChart() {
   const rows = current.models;
   chart("chart-models").setOption({
-    tooltip: { trigger: "axis", valueFormatter: (v) => `${fmt(v, 3)} ${current.unit}` },
-    grid: { left: 150, right: 30, top: 10, bottom: 30 },
-    xAxis: { type: "value", name: current.unit },
-    yAxis: { type: "category", data: rows.map((m) => m.model), inverse: true },
+    tooltip: { trigger: "axis", valueFormatter: (v) => `${fmt(v, 3)} ${unitOf(current)}` },
+    grid: { left: 150, right: 50, top: 10, bottom: 30 },
+    xAxis: { type: "value", name: unitOf(current) },
+    yAxis: { type: "category", data: rows.map((m) => m.model.replace(" (same as previous hour)", "")), inverse: true },
     series: [{
       type: "bar",
       data: rows.map((m) => ({
         value: m.test.MAE,
-        itemStyle: { color: m.model === current.selected_model ? "#2563eb" : m.model.startsWith("Persistence") ? "#9ca3af" : "#93c5fd" },
+        itemStyle: { color: m.model === current.model ? "#2563eb" : m.model.startsWith("Persistence") ? "#9ca3af" : "#93c5fd" },
       })),
       label: { show: true, position: "right", formatter: (p) => fmt(p.value, 3) },
     }],
@@ -133,20 +144,19 @@ function renderImportance() {
 function renderDaily() {
   chart("chart-daily").setOption({
     tooltip: { trigger: "axis" },
-    grid: { left: 50, right: 20, top: 20, bottom: 30 },
+    grid: { left: 55, right: 20, top: 20, bottom: 30 },
     xAxis: { type: "time" },
-    yAxis: { type: "value", name: current.unit },
-    series: [{ type: "line", showSymbol: false, color: "#2563eb", areaStyle: { opacity: 0.1 },
-               data: current.data.daily, connectNulls: false }],
+    yAxis: { type: "value", name: unitOf(current) },
+    series: [{ type: "line", showSymbol: false, color: "#2563eb", areaStyle: { opacity: 0.1 }, data: current.data.daily }],
   }, true);
 }
 
 function renderHourly() {
   chart("chart-hourly").setOption({
     tooltip: { trigger: "axis" },
-    grid: { left: 50, right: 20, top: 20, bottom: 30 },
+    grid: { left: 55, right: 20, top: 20, bottom: 30 },
     xAxis: { type: "category", data: [...Array(24).keys()], name: "hour" },
-    yAxis: { type: "value", name: current.unit },
+    yAxis: { type: "value", name: unitOf(current) },
     series: [{ type: "bar", color: "#0891b2", data: current.data.hourly_profile }],
   }, true);
 }
@@ -166,32 +176,37 @@ function renderEpisodes() {
 }
 
 // ---------- prediction form ----------
+function buildForm() {
+  const fields = [...current.features, "observed"];
+  $("predict-form").innerHTML = fields
+    .map((f) => `<label>${LABELS[f] || f}<input name="${f}" type="number" step="any"></label>`)
+    .join("");
+}
+
 async function loadSample() {
-  const sample = await getJSON(`/api/sample/${current.key}`);
-  for (const f of FIELDS) $("predict-form").elements[f.key].value = sample.input[f.key] ?? "";
+  const sample = await getJSON(`/api/sample/${currentDataset.id}/${current.pollutant}`);
+  for (const input of $("predict-form").elements) input.value = sample.input[input.name] ?? "";
   $("load-sample").textContent = `Load a real hour (now: ${sample.time.replace("T", " ").slice(0, 16)})`;
 }
 
 async function predict(event) {
   event.preventDefault();
-  const body = { pollutant: current.key };
-  for (const f of FIELDS) {
-    const raw = $("predict-form").elements[f.key].value;
-    body[f.key] = raw === "" ? null : Number(raw);
-  }
+  const body = { dataset: currentDataset.id, pollutant: current.pollutant };
+  for (const input of $("predict-form").elements) body[input.name] = input.value === "" ? null : Number(input.value);
   const box = $("predict-result");
   box.hidden = false;
   try {
     const r = await getJSON("/predict", {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     });
-    let html = `<div>Predicted ${r.name} next hour (${r.model})</div><div class="big">${fmt(r.prediction, 3)} ${r.unit}</div>`;
+    let html = `<div>Predicted ${r.pollutant} for the next hour (${r.model})</div>
+                <div class="big">${fmt(r.prediction, 3)} ${r.unit}</div>`;
     box.className = "result";
     if (r.episode_check) {
       const c = r.episode_check;
       box.className = c.flagged ? "result flagged" : "result";
-      html += `<div>Actual ${fmt(c.observed, 3)} ${r.unit} · deviation ${fmt(c.deviation, 3)} (threshold ±${fmt(c.threshold, 3)}) →
-               <b>${c.flagged ? "FLAGGED as a possible episode" : "normal"}</b></div>`;
+      html += `<div>Actual ${fmt(c.observed, 3)} · off by ${fmt(c.deviation, 3)} (limit ±${fmt(c.threshold, 3)}) →
+               <b>${c.flagged ? "flagged as a possible episode" : "normal"}</b></div>`;
     }
     box.innerHTML = html;
   } catch (err) {
@@ -199,6 +214,27 @@ async function predict(event) {
     box.innerHTML = Array.isArray(err.detail)
       ? err.detail.map((d) => `${d.loc[d.loc.length - 1]}: ${d.msg}`).join("<br>")
       : err.detail || "Request failed";
+  }
+}
+
+// ---------- upload your own dataset ----------
+async function upload(event) {
+  event.preventDefault();
+  const box = $("upload-result");
+  const form = new FormData();
+  form.append("file", $("upload-file").files[0]);
+  form.append("name", $("upload-name").value);
+  box.hidden = false;
+  box.className = "result";
+  box.textContent = "Training on your file. A big file can take a couple of minutes.";
+  try {
+    const r = await getJSON("/api/upload", { method: "POST", body: form });
+    box.innerHTML = `<b>${r.title}</b> is ready. Trained ${r.pollutants.length} pollutant(s): ` +
+      r.pollutants.map((p) => `${p.pollutant} (${p.model}, ${p["better_than_persistence_%"]}% vs. last hour)`).join(", ");
+    await refreshDatasets(r.id);
+  } catch (err) {
+    box.className = "result error";
+    box.textContent = err.detail || "Upload failed";
   }
 }
 

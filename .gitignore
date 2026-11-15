@@ -8,3 +8,6 @@ research/.mplconfig/
 tools/
 ml_code_for_team.zip
 *.log.tmp
+uploads/
+models/upload-*/
+artifacts/upload-*/

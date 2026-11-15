@@ -11,11 +11,12 @@
   <header>
     <div>
       <h1>Air Quality Prediction &amp; Pollution Episode Detection</h1>
-      <p class="muted">Next-hour prediction from past pollutant readings and weather · UCI Air Quality data (Italy, 2004–2005)</p>
+      <p class="muted">Next-hour prediction from past pollutant readings and weather</p>
     </div>
-    <label class="picker">Pollutant
-      <select id="pollutant"></select>
-    </label>
+    <div class="pickers">
+      <label class="picker">Dataset <select id="dataset"></select></label>
+      <label class="picker">Pollutant <select id="pollutant"></select></label>
+    </div>
   </header>
 
   <main>
@@ -23,7 +24,7 @@
 
     <section class="panel">
       <h2>Actual vs predicted (test period)</h2>
-      <p class="muted">Red dots are flagged hours: the measured value differed from the prediction by more than the threshold.</p>
+      <p class="muted">Red dots mark flagged hours, where the measured value was much further from the prediction than usual.</p>
       <div id="chart-test" class="chart tall"></div>
     </section>
 
@@ -35,17 +36,17 @@
       </section>
       <section class="panel">
         <h2>Most important inputs</h2>
-        <p class="muted">How much the chosen model relies on each input.</p>
+        <p class="muted">Which inputs the chosen model leans on the most.</p>
         <div id="chart-importance" class="chart"></div>
       </section>
       <section class="panel">
         <h2>Daily average</h2>
-        <p class="muted">Whole dataset; gaps are missing data.</p>
+        <p class="muted">Whole dataset. Gaps are missing data.</p>
         <div id="chart-daily" class="chart"></div>
       </section>
       <section class="panel">
         <h2>Average by hour of day</h2>
-        <p class="muted">Rush-hour peaks are clearly visible.</p>
+        <p class="muted">Shows at what time of day the levels usually go up.</p>
         <div id="chart-hourly" class="chart"></div>
       </section>
     </div>
@@ -59,7 +60,7 @@
           <option value="Data limitation">Data limitation</option>
         </select>
       </div>
-      <p class="muted">Each episode is a group of flagged hours, analyzed to see if it is real pollution or a data problem.</p>
+      <p class="muted">Flagged hours close together are grouped into an episode. Each one is checked to see if it looks like real pollution or a problem with the data.</p>
       <div class="table-wrap">
         <table>
           <thead><tr><th>#</th><th>Start</th><th>End</th><th>Flagged hours</th><th>Max deviation</th><th>Type</th><th>Reason</th></tr></thead>
@@ -70,7 +71,7 @@
 
     <section class="panel">
       <h2>Try a prediction</h2>
-      <p class="muted">Sends the values to <code>POST /predict</code>. Use "Load a real hour" to fill in values from the test period.</p>
+      <p class="muted">This sends the values to <code>POST /predict</code>. "Load a real hour" fills the boxes with an hour from the test period.</p>
       <form id="predict-form" class="form"></form>
       <div class="row">
         <button type="button" id="load-sample" class="secondary">Load a real hour</button>
@@ -80,13 +81,28 @@
     </section>
 
     <section class="panel">
+      <h2>Use your own dataset</h2>
+      <p class="muted">Upload an hourly CSV (or ZIP) with a time column (<code>Date</code> + <code>Time</code>,
+        <code>year/month/day/hour</code> or <code>datetime</code>) and pollutant columns such as CO, NO2, NOx, C6H6,
+        PM2.5, PM10, SO2 or O3. Weather columns (temperature, humidity, pressure, wind…) are used when present.
+        Example: the <a href="https://archive.ics.uci.edu/dataset/501/beijing+multi+site+air+quality+data" target="_blank" rel="noopener">UCI Beijing</a> station files.</p>
+      <form id="upload-form" class="row upload">
+        <input type="file" id="upload-file" accept=".csv,.zip" required>
+        <input type="text" id="upload-name" placeholder="Name (optional), e.g. Delhi 2023" maxlength="60">
+        <button type="submit">Upload &amp; train</button>
+      </form>
+      <div id="upload-result" class="result" hidden></div>
+    </section>
+
+    <section class="panel">
       <h2>How it works</h2>
       <ol>
-        <li><b>Data:</b> hourly readings; the value -200 means missing.</li>
-        <li><b>Lagged features:</b> the pollutant 1, 2, 3 and 24 hours earlier, plus the previous hour's temperature and humidity.</li>
-        <li><b>Future-period evaluation:</b> train on the first 60% of the timeline, pick the best model on the next 20%, test on the last 20%.</li>
-        <li><b>Flagging:</b> a test hour is flagged when |actual − predicted| is larger than the 95th percentile of validation errors.</li>
-        <li><b>Analysis:</b> if inputs were missing or the data had a gap just before, it is a <i>data limitation</i>; otherwise an <i>unusual pollution</i> event.</li>
+        <li><b>Data:</b> hourly readings. In the UCI file, -200 means the value is missing.</li>
+        <li><b>Lagged features:</b> the pollutant 1, 2, 3 and 24 hours earlier, plus the previous hour's weather.</li>
+        <li><b>Model:</b> it predicts how much the level will go up or down in the next hour and adds that to the last reading.</li>
+        <li><b>Testing on the future:</b> the first 60% of the timeline is for training, the next 20% for picking the model, and the last 20% for the final test.</li>
+        <li><b>Flagging:</b> a test hour is flagged when the miss is bigger than 95% of the misses on the validation period.</li>
+        <li><b>Analysis:</b> if some inputs were missing or the data had a gap just before, the episode is a <i>data limitation</i>. If not, it is treated as <i>unusual pollution</i>.</li>
       </ol>
     </section>
   </main>

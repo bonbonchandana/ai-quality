@@ -21,7 +21,10 @@ header {
   display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
   padding: 20px 24px; background: var(--card); border-bottom: 1px solid var(--border);
 }
+.pickers { display: flex; gap: 12px; flex-wrap: wrap; }
 .picker { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.upload input[type=text] { flex: 1; min-width: 180px; }
+.upload input[type=file] { max-width: 100%; }
 select, input { font: inherit; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; }
 
 main { max-width: 1200px; margin: 0 auto; padding: 20px 16px 40px; }

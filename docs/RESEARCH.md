@@ -1,7 +1,7 @@
 # Air quality prediction and episode detection — research
 
 Phases 1–3 (domain, existing products, dataset findings) come from the planning-phase research. Phases 4–6 describe the
-model and system that were built. The method is deliberately simple and follows the problem statement step by step.
+model and system that were built. We kept the method simple on purpose so each step maps to a line of the problem statement.
 
 ## Phase 1 — domain and problem
 
@@ -100,44 +100,63 @@ Pollutant choice: the app lets the user **select CO, NO2, NOx or benzene (C6H6)*
 ![Test predictions, intervals and episode flags](../research/figures/06_episodes.png)
 ![Validation feature importance](../research/figures/07_importance.png)
 
-## Phase 4 — final method
+## Phase 4 — what we built
 
-* **Pollutants:** CO (mg/m³), NO2 (µg/m³), NOx (ppb), C6H6 (µg/m³). NMHC is skipped because 90% of it is missing.
-* **Task:** predict the pollutant at hour *t* using only information available before *t*.
-* **Features (lagged):** the pollutant at *t−1, t−2, t−3, t−24*, temperature, relative and absolute humidity at *t−1*,
-  hour of day and weekday. Missing inputs are filled with the training median.
-* **Split (future-period evaluation):** train on the first 60% of the timeline (Mar–Oct 2004), validate on the next 20%
-  (Oct 2004 – Jan 2005), test on the last 20% (16 Jan – 4 Apr 2005). The data are never shuffled.
-* **Models:** Linear Regression, Random Forest (small grid) and XGBoost (small grid, trained on an RTX GPU). The best
-  model on validation is retrained on train + validation and scored once on test. The baseline is persistence (same as the previous hour).
-* **Flagging:** a test hour is flagged when |actual − predicted| exceeds the 95th percentile of validation errors.
-  Flagged hours less than 3 hours apart form one episode.
-* **Analysis:** an episode is a *data limitation* when any input was missing or the pollutant had missing values in the
-  6 hours before it. Otherwise it is *unusual pollution*: the inputs were complete, but the level was much higher or lower than expected.
+Pollutants: whatever the dataset has. The UCI Italy file gives CO, NO2, NOx and benzene (NMHC is skipped because 90% of
+it is missing). We added the UCI Beijing data (Aotizhongxin station) to get PM2.5, PM10, SO2 and O3, and to check the
+method on a city with different patterns. Users can also upload their own hourly CSV.
 
-## Phase 5 — results (test period)
+For each pollutant we predict the value at hour *t* using only what is known before *t*: the pollutant at *t−1, t−2,
+t−3* and *t−24*, the weather at *t−1* (whatever weather columns the file has), plus hour and weekday. Missing inputs are
+filled with the training median.
 
-| Pollutant | Linear Regression | Random Forest | XGBoost | Persistence | Chosen (on validation) | Better than persistence |
-|---|---|---|---|---|---|---|
-| CO (mg/m³) | 0.472 | **0.403** | 0.409 | 0.519 | Random Forest | 22.4% |
-| NO2 (µg/m³) | 18.17 | **17.01** | 16.64 | 19.79 | Random Forest | 14.1% |
-| NOx (ppb) | **66.24** | 62.73 | 61.74 | 72.73 | Linear Regression | 8.9% |
-| C6H6 (µg/m³) | 2.191 | 1.717 | **1.854** | 2.291 | XGBoost | 19.1% |
+The data is split by time. The first 60% is used to train, the next 20% to pick the model, and the last 20% to test.
+We try Linear Regression, Random Forest and XGBoost (on the GPU when there is one), each with a couple of settings.
 
-Values are test MAE. The bold value is the model chosen on the validation period. Choosing on validation (not test)
-keeps the evaluation honest, even where another model happened to score slightly better on test.
+One change made a big difference. At first the models predicted the level directly, and in Beijing several of them did
+worse than just repeating the last value. We switched to predicting the change from the last hour and adding it back.
+That helped on 9 of the 10 pollutants (only Beijing SO2 got slightly worse). Italy's NOx went from 9% to 21% better than persistence, and Beijing PM2.5 went from 3% to 6%.
 
-* For all four pollutants, the most important input is the previous hour's value (`lag_1`), followed by hour of day and `lag_24`.
-* For NOx, persistence was slightly better than every model on validation (91.4 vs 92.9 ppb). The 8.9% test gain is therefore the least reliable.
-* Episodes (unusual pollution / data limitation): CO 34 (29 / 5), NO2 68 (42 / 26), NOx 48 (30 / 18), C6H6 46 (45 / 1).
-  NO2 and NOx have more data-limitation episodes because their reference analyzers have more gaps.
+A test hour is flagged when its miss is bigger than 95% of the misses on the validation period. Flagged hours under
+3 hours apart are joined into an episode. An episode is a data limitation if some inputs were missing or the pollutant
+had missing values in the 6 hours before. Otherwise we call it unusual pollution.
 
-## Phase 6 — architecture
+## Phase 5 — results (test MAE; better/worse is compared with repeating the last hour)
 
-`train_model.py` trains and saves `models/<pollutant>.pkl` with joblib and writes `artifacts/<pollutant>.json`.
-`main.py` (FastAPI) loads the models and serves `GET /`, `GET /health` and `POST /predict` (Pydantic validation; a
-`pollutant` field selects the model), plus the data for the one-page dashboard in `frontend/` at `/dashboard/`.
-It is tested with pytest and Postman.
+Italy, test period 16 Jan – 4 Apr 2005:
 
-Future work: validate on another site or a later period, add more environmental variables, and check episode causes
-against real event records. The archived first experiment (a same-hour "virtual sensor") is in `research/` and in the git tag `v1-advanced`.
+| Pollutant | Chosen model | Test MAE | Persistence | Change | Episodes (unusual / data) |
+|---|---|---|---|---|---|
+| CO (mg/m³) | Random Forest | 0.393 | 0.519 | 24.2% better | 25 (20 / 5) |
+| NO2 (µg/m³) | Random Forest | 15.94 | 19.79 | 19.5% better | 85 (58 / 27) |
+| NOx (ppb) | Random Forest | 57.56 | 72.73 | 20.9% better | 25 (16 / 9) |
+| C6H6 (µg/m³) | Random Forest | 1.716 | 2.291 | 25.1% better | 33 (33 / 0) |
+
+Beijing Aotizhongxin, test period Mar 2016 – Feb 2017 (all µg/m³):
+
+| Pollutant | Chosen model | Test MAE | Persistence | Change | Episodes (unusual / data) |
+|---|---|---|---|---|---|
+| O3 | XGBoost | 8.47 | 11.19 | 24.3% better | 315 (265 / 50) |
+| NO2 | Random Forest | 6.95 | 7.53 | 7.7% better | 227 (195 / 32) |
+| PM2.5 | XGBoost | 9.69 | 10.34 | 6.2% better | 165 (154 / 11) |
+| PM10 | XGBoost | 14.84 | 14.96 | 0.8% better | 181 (177 / 4) |
+| CO | XGBoost | 191.8 | 191.2 | 0.3% worse | 150 (139 / 11) |
+| SO2 | XGBoost | 1.78 | 1.70 | 4.6% worse | 106 (101 / 5) |
+
+The models are chosen on the validation period, not the test period. That keeps the test honest, even where another
+model happened to score a little better on test.
+
+In both cities the previous hour's value is the input the models rely on most. Italy's pollutants are driven by
+traffic and move a lot from hour to hour, so the models gain 20–25% there. In Beijing, CO, SO2 and PM10 move slowly and
+are stored in coarse steps, so the last value is already close to the best you can do with these inputs. Their high R²
+comes mostly from that and doesn't mean the model is clever.
+
+## Phase 6 — how it runs
+
+`train_model.py` trains every pollutant in a dataset and saves `models/<dataset>/<pollutant>.pkl` with joblib, plus
+`artifacts/<dataset>/<pollutant>.json` for the dashboard. `main.py` (FastAPI) loads them and serves `GET /`,
+`GET /health` and `POST /predict` (checked with Pydantic), a dataset upload endpoint, and the one-page dashboard at
+`/dashboard/`. The API is tested with pytest and Postman.
+
+Next steps, if there was more time: add wind direction and rolling averages, try more stations or cities, and check the
+flagged episodes against real event records. The first, more complex version of the project is kept in the git tag `v1-advanced`.
