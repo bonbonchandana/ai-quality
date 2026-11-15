@@ -71,10 +71,13 @@ The link works only while both windows stay open, and you get a new address ever
 
 ## Test with Postman
 
-Import `postman/AirQuality.postman_collection.json` (the `base_url` variable is `http://127.0.0.1:8000`) and run the collection.
-It covers `GET /`, `GET /health`, `POST /predict` (full and minimal bodies), a 422 validation error and a 404 path.
-
-Example `POST /predict` body (a real hour from the test period; the optional fields can be omitted):
+1. Start the server from the project folder: `python -m uvicorn main:app --reload`. Wait for *Application startup complete*,
+   and keep that terminal open.
+2. Check it in a browser: http://127.0.0.1:8000 (root) and http://127.0.0.1:8000/docs (three endpoints).
+3. In Postman, import `postman/AirQuality.postman_collection.json`, or create the request by hand:
+   * Method: **POST**
+   * URL: **http://127.0.0.1:8000/predict**
+   * Body → **raw** → **JSON**:
 
 ```json
 {
@@ -82,13 +85,14 @@ Example `POST /predict` body (a real hour from the test period; the optional fie
   "pt08_s1_co": 1411, "pt08_s2_nmhc": 1191, "pt08_s3_nox": 519, "pt08_s4_no2": 1426, "pt08_s5_o3": 1920,
   "temperature": 13.4, "relative_humidity": 51.2, "absolute_humidity": 0.7808,
   "co_lag_1": 3.3, "co_lag_2": 3.0, "co_lag_3": 2.9, "co_lag_24": 4.5,
-  "pt08_s1_co_prev": 1551, "pt08_s2_nmhc_prev": 1303, "pt08_s3_nox_prev": 469, "pt08_s4_no2_prev": 1520, "pt08_s5_o3_prev": 2171,
-  "observed_co": 1.4
+  "pt08_s1_co_prev": 1551, "pt08_s2_nmhc_prev": 1303, "pt08_s3_nox_prev": 469, "pt08_s4_no2_prev": 1520, "pt08_s5_o3_prev": 2171
 }
 ```
 
-The response contains the CO estimate, a 90% interval, per-feature contributions (SHAP values) and, when `observed_co`
-is given, an anomaly verdict with hints.
+4. Click **Send**. The expected status is 200 OK, with `"estimated_co_mg_m3": 3.3002`.
+
+The response contains the CO estimate, a 90% interval and per-feature contributions (SHAP values). If you add
+`"observed_co"` to the body, it also returns an anomaly verdict.
 
 | Status | Meaning |
 |---|---|

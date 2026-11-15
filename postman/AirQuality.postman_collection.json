@@ -1,42 +1,28 @@
 {
   "info": {
     "name": "Air Quality Prediction API",
-    "description": "Tests for the FastAPI air-quality service. Sample body is the real hour 2005-01-21T17:00:00 from the test period.",
+    "description": "Start the server with: python -m uvicorn main:app --reload",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://127.0.0.1:8000"
-    }
-  ],
   "item": [
     {
-      "name": "GET / (root)",
+      "name": "GET /",
       "request": {
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/",
+          "raw": "http://127.0.0.1:8000/",
+          "protocol": "http",
           "host": [
-            "{{base_url}}"
+            "127",
+            "0",
+            "0",
+            "1"
           ],
+          "port": "8000",
           "path": []
-        },
-        "description": ""
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));",
-              "pm.test('API running', () => pm.expect(pm.response.json().message).to.include('running'));"
-            ]
-          }
         }
-      ]
+      }
     },
     {
       "name": "GET /health",
@@ -44,31 +30,23 @@
         "method": "GET",
         "header": [],
         "url": {
-          "raw": "{{base_url}}/health",
+          "raw": "http://127.0.0.1:8000/health",
+          "protocol": "http",
           "host": [
-            "{{base_url}}"
+            "127",
+            "0",
+            "0",
+            "1"
           ],
+          "port": "8000",
           "path": [
             "health"
           ]
-        },
-        "description": ""
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));",
-              "pm.test('healthy', () => pm.expect(pm.response.json().status).to.eql('ok'));"
-            ]
-          }
         }
-      ]
+      }
     },
     {
-      "name": "POST /predict (full input + anomaly check)",
+      "name": "POST /predict",
       "request": {
         "method": "POST",
         "header": [
@@ -77,211 +55,30 @@
             "value": "application/json"
           }
         ],
-        "url": {
-          "raw": "{{base_url}}/predict",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "predict"
-          ]
-        },
-        "description": "Full real hour including optional history and observed CO.",
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"hour\": 17,\n  \"weekday\": 4,\n  \"pt08_s1_co\": 1411.0,\n  \"pt08_s2_nmhc\": 1191.0,\n  \"pt08_s3_nox\": 519.0,\n  \"pt08_s4_no2\": 1426.0,\n  \"pt08_s5_o3\": 1920.0,\n  \"temperature\": 13.4,\n  \"relative_humidity\": 51.2,\n  \"absolute_humidity\": 0.7808,\n  \"co_lag_1\": 3.3,\n  \"co_lag_2\": 3.0,\n  \"co_lag_3\": 2.9,\n  \"co_lag_24\": 4.5,\n  \"pt08_s1_co_prev\": 1551.0,\n  \"pt08_s2_nmhc_prev\": 1303.0,\n  \"pt08_s3_nox_prev\": 469.0,\n  \"pt08_s4_no2_prev\": 1520.0,\n  \"pt08_s5_o3_prev\": 2171.0,\n  \"observed_co\": 1.4\n}",
+          "raw": "{\n  \"hour\": 17,\n  \"weekday\": 4,\n  \"pt08_s1_co\": 1411,\n  \"pt08_s2_nmhc\": 1191,\n  \"pt08_s3_nox\": 519,\n  \"pt08_s4_no2\": 1426,\n  \"pt08_s5_o3\": 1920,\n  \"temperature\": 13.4,\n  \"relative_humidity\": 51.2,\n  \"absolute_humidity\": 0.7808,\n  \"co_lag_1\": 3.3,\n  \"co_lag_2\": 3.0,\n  \"co_lag_3\": 2.9,\n  \"co_lag_24\": 4.5,\n  \"pt08_s1_co_prev\": 1551,\n  \"pt08_s2_nmhc_prev\": 1303,\n  \"pt08_s3_nox_prev\": 469,\n  \"pt08_s4_no2_prev\": 1520,\n  \"pt08_s5_o3_prev\": 2171\n}",
           "options": {
             "raw": {
               "language": "json"
             }
           }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));",
-              "const j = pm.response.json();",
-              "pm.test('has estimate', () => pm.expect(j.estimated_co_mg_m3).to.be.a('number'));",
-              "pm.test('has anomaly verdict', () => pm.expect(j.anomaly.classification_hint).to.be.a('string'));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "POST /predict (required fields only)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
+        },
         "url": {
-          "raw": "{{base_url}}/predict",
+          "raw": "http://127.0.0.1:8000/predict",
+          "protocol": "http",
           "host": [
-            "{{base_url}}"
+            "127",
+            "0",
+            "0",
+            "1"
           ],
+          "port": "8000",
           "path": [
             "predict"
           ]
-        },
-        "description": "Optional history omitted: the pipeline imputes it with training medians.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hour\": 17,\n  \"weekday\": 4,\n  \"pt08_s1_co\": 1411.0,\n  \"pt08_s2_nmhc\": 1191.0,\n  \"pt08_s3_nox\": 519.0,\n  \"pt08_s4_no2\": 1426.0,\n  \"pt08_s5_o3\": 1920.0,\n  \"temperature\": 13.4,\n  \"relative_humidity\": 51.2,\n  \"absolute_humidity\": 0.7808\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
         }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));",
-              "pm.test('optional fields imputed', () => pm.expect(pm.response.json().imputed_fields).to.include('co_lag_1'));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "POST /predict (invalid -> 422)",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{base_url}}/predict",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "predict"
-          ]
-        },
-        "description": "hour=25 and relative_humidity=140 violate the Pydantic Field limits.",
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"hour\": 25,\n  \"weekday\": 4,\n  \"pt08_s1_co\": 1411.0,\n  \"pt08_s2_nmhc\": 1191.0,\n  \"pt08_s3_nox\": 519.0,\n  \"pt08_s4_no2\": 1426.0,\n  \"pt08_s5_o3\": 1920.0,\n  \"temperature\": 13.4,\n  \"relative_humidity\": 140,\n  \"absolute_humidity\": 0.7808,\n  \"co_lag_1\": 3.3,\n  \"co_lag_2\": 3.0,\n  \"co_lag_3\": 2.9,\n  \"co_lag_24\": 4.5,\n  \"pt08_s1_co_prev\": 1551.0,\n  \"pt08_s2_nmhc_prev\": 1303.0,\n  \"pt08_s3_nox_prev\": 469.0,\n  \"pt08_s4_no2_prev\": 1520.0,\n  \"pt08_s5_o3_prev\": 2171.0,\n  \"observed_co\": 1.4\n}",
-          "options": {
-            "raw": {
-              "language": "json"
-            }
-          }
-        }
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('422 Unprocessable Entity', () => pm.response.to.have.status(422));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "GET wrong path (-> 404)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/predictions",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "predictions"
-          ]
-        },
-        "description": ""
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('404 Not Found', () => pm.response.to.have.status(404));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "GET /api/summary",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/api/summary",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "api",
-            "summary"
-          ]
-        },
-        "description": ""
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));"
-            ]
-          }
-        }
-      ]
-    },
-    {
-      "name": "GET /api/episodes",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/api/episodes",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "api",
-            "episodes"
-          ]
-        },
-        "description": ""
-      },
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "type": "text/javascript",
-            "exec": [
-              "pm.test('200 OK', () => pm.response.to.have.status(200));"
-            ]
-          }
-        }
-      ]
+      }
     }
   ]
 }
