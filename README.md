@@ -1,6 +1,6 @@
 # Air Quality Prediction and Pollution Episode Detection
 
-This is a real-data ML analytics app for the UCI Air Quality datasets. Select a pollutant and an exact date/time to make a specific prediction. The dashboard compares actual and predicted values, filters episodes for the selected pollutant, and reports model performance. Episode labels are candidates and include evidence reasons.
+This is a real-data ML analytics app for the supplied UCI Italy Air Quality dataset. Select a pollutant and an exact date/time to make a specific prediction. The dashboard compares actual and predicted values, filters episodes for the selected pollutant, and reports model performance. Other datasets and uploads are disabled so predictions stay within the supplied data domain.
 
 ## Run locally
 

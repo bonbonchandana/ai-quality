@@ -32,8 +32,9 @@ import train_model
 BASE = Path(__file__).resolve().parent
 ARTIFACTS = BASE / "artifacts"
 UPLOADS = BASE / "uploads"
+PRIMARY_DATASET = "uci-italy"
 MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "30"))
-ALLOW_UPLOAD = os.environ.get("ALLOW_UPLOAD", "true").lower() != "false"
+ALLOW_UPLOAD = os.environ.get("ALLOW_UPLOAD", "false").lower() == "true"
 # On a small free server we train a lighter model set on at most two years of data (LIGHT_TRAINING=true).
 LIGHT_TRAINING = os.environ.get("LIGHT_TRAINING", "false").lower() == "true"
 JOBS = {}                          # upload job id -> its status
@@ -51,10 +52,12 @@ app = FastAPI(default_response_class=UTF8JSONResponse, title="Air Quality Predic
 def datasets():
     """Each trained dataset, built-in or uploaded, has a dataset.json in artifacts/<id>/."""
     found = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(ARTIFACTS.glob("*/dataset.json"))]
-    return sorted(found, key=lambda d: d["id"] != "uci-italy")      # Italy first
+    return [d for d in found if d["id"] == PRIMARY_DATASET]
 
 
 def find_pollutant(dataset_id, pollutant):
+    if dataset_id != PRIMARY_DATASET:
+        raise HTTPException(404, f"Only the supplied dataset '{PRIMARY_DATASET}' is enabled.")
     for d in datasets():
         if d["id"] == dataset_id:
             for p in d["pollutants"]:
