@@ -10,7 +10,7 @@ const LABELS = {
 const TOP = 6;   // episodes shown before "Show all"
 const KINDS = ["Unusual pollution", "Data limitation", "Unclear"];
 const KIND_CLASS = { "Unusual pollution": "unusual", "Data limitation": "data", "Unclear": "unclear" };
-const KIND_COLOR = { "Unusual pollution": "#c2410c", "Data limitation": "#6d28d9", "Unclear": "#64748b" };
+const KIND_COLOR = { "Unusual pollution": "#ea580c", "Data limitation": "#7c3aed", "Unclear": "#94a3b8" };
 
 let datasets = [];
 let dataset = null;   // the selected dataset
@@ -22,6 +22,93 @@ let chart = null;
 let patternChart = null;
 
 const $ = (id) => document.getElementById(id);
+const CALM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;   // no animation for people who asked for less motion
+
+// Counts a number up from 0, e.g. 0.000 -> 0.393, over about 0.8 seconds
+function countUp(el, value, decimals, before = "", afterHtml = "") {
+  const show = (v) => { el.innerHTML = `${before}${v.toFixed(decimals)}${afterHtml}`; };
+  const token = (el.dataset.run = String(Math.random()));   // a newer count on the same element wins
+  if (CALM || !Number.isFinite(value)) { show(value); return; }
+  const start = performance.now();
+  const step = (now) => {
+    if (el.dataset.run !== token) return;
+    const t = Math.min(1, (now - start) / 800);
+    show(value * (1 - Math.pow(1 - t, 3)));
+    if (t < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  // Safety net: browsers pause animations in hidden tabs, so make sure the final number always shows
+  setTimeout(() => { if (el.dataset.run === token) { el.dataset.run = ""; show(value); } }, 1000);
+}
+
+// Sections fade in as they scroll into view
+function revealOnScroll() {
+  const items = document.querySelectorAll("main .card, main .grid2");
+  if (CALM || !("IntersectionObserver" in window)) return;
+  const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (e.isIntersecting) { e.target.classList.add("shown"); io.unobserve(e.target); }
+  }), { threshold: 0.08 });
+  items.forEach((el) => { el.classList.add("reveal"); io.observe(el); });
+  // Safety net: if the browser never reports visibility (e.g. a background tab), show everything anyway
+  setTimeout(() => items.forEach((el) => el.classList.add("shown")), 1500);
+}
+
+// Lets a width transition play: render at 0, then set the real width on the next frame
+// ---------- parallax ----------
+// The header moves slower than the page, and each chart drifts a little as it passes through the screen.
+function parallax() {
+  if (CALM) return;
+  const layers = () => document.querySelectorAll("[data-parallax]");
+  let ticking = false;
+  const update = () => {
+    ticking = false;
+    if (document.documentElement.classList.contains("no-motion")) return;
+    document.documentElement.style.setProperty("--scroll", String(Math.min(window.scrollY, 600)));
+    const middle = window.innerHeight / 2;
+    layers().forEach((el) => {
+      const r = el.parentElement.getBoundingClientRect();
+      const raw = (r.top + r.height / 2 - middle) * parseFloat(el.dataset.parallax);
+      const shift = Math.max(-16, Math.min(16, raw));    // small drift, so nothing gets cut off
+      el.style.transform = `translate3d(0, ${shift.toFixed(1)}px, 0)`;
+    });
+  };
+  const schedule = () => {
+    if (ticking) return;
+    ticking = true;
+    const run = () => { if (ticking) update(); };
+    requestAnimationFrame(run);
+    setTimeout(run, 100);      // fallback: hidden tabs may never deliver an animation frame
+  };
+  window.addEventListener("scroll", schedule, { passive: true });
+  window.addEventListener("resize", update);
+  update();
+}
+
+// Runs `play` the first time `el` scrolls into view (or straight away if it is already on screen).
+const pending = new Map();
+let watcher = null;
+function playWhenVisible(el, play) {
+  if (CALM || !("IntersectionObserver" in window)) { play(); return; }
+  watcher = watcher || new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (e.isIntersecting && pending.has(e.target)) {
+      const run = pending.get(e.target);
+      pending.delete(e.target);
+      watcher.unobserve(e.target);
+      run();
+    }
+  }), { threshold: 0.25 });
+  pending.set(el, play);
+  watcher.unobserve(el);
+  watcher.observe(el);
+  // Safety net for tabs where the browser never reports visibility
+  setTimeout(() => { if (pending.get(el) === play) { pending.delete(el); watcher.unobserve(el); play(); } }, 2500);
+}
+
+function growWidths(container) {
+  const apply = () => container.querySelectorAll("[data-width]").forEach((el) => { el.style.width = el.dataset.width; });
+  if (CALM) { apply(); return; }
+  setTimeout(apply, 50);   // a short delay lets the bar start at 0 and grow (works in background tabs too)
+}
 const fmt = (v, d = 2) => (v == null || Number.isNaN(Number(v)) ? "–" : Number(v).toFixed(d));
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -40,7 +127,16 @@ async function start() {
   $("predict-form").addEventListener("submit", predict);
   $("upload-form").addEventListener("submit", upload);
   window.addEventListener("resize", () => [chart, patternChart].forEach((c) => c && c.resize()));
+  revealOnScroll();
+  parallax();
   await loadDatasets();
+  // Safety net: if the browser froze the animations (some background tabs and capture tools do),
+  // switch motion off so nothing is left half-faded
+  setTimeout(() => {
+    const stuck = document.getAnimations && document.getAnimations()
+      .some((a) => a.playState === "running" && (a.currentTime || 0) < 600);
+    if (stuck) document.documentElement.classList.add("no-motion");
+  }, 1500);
   const health = await getJSON("/health");
   if (!health.upload_enabled) {
     $("upload-form").hidden = true;
@@ -89,18 +185,19 @@ function showKpis() {
   const best = results.models.find((m) => m.model === results.model);
   const unit = results.unit || "";
   const gain = results.improvement_vs_persistence_pct;
-  $("kpi-error").innerHTML = `${fmt(best.test.MAE, best.test.MAE < 10 ? 3 : 1)}<span class="unit">${esc(unit)}</span>`;
+  countUp($("kpi-error"), best.test.MAE, best.test.MAE < 10 ? 3 : 1, "", `<span class="unit">${esc(unit)}</span>`);
   $("kpi-model").textContent = `${results.model}, per hour`;
-  $("kpi-gain").textContent = `${gain >= 0 ? "+" : "−"}${fmt(Math.abs(gain), 1)}%`;
+  countUp($("kpi-gain"), Math.abs(gain), 1, gain >= 0 ? "+" : "−", "%");
   $("kpi-gain").className = "kpi-value " + (gain >= 1 ? "good" : gain <= -1 ? "bad" : "");
   $("kpi-gain-note").textContent = gain >= 1 ? "more accurate than the simple guess"
     : gain <= -1 ? "the simple guess wins here" : "about the same as the simple guess";
-  $("kpi-r2").textContent = fmt(best.test.R2, 2);
+  countUp($("kpi-r2"), best.test.R2, 2);
 
   const counts = results.episode_counts;
-  $("kpi-episodes").textContent = counts.total;
+  countUp($("kpi-episodes"), counts.total, 0);
   $("kpi-mix").innerHTML = KINDS.map((k) => counts.total
-    ? `<span style="width:${(100 * (counts[k] || 0)) / counts.total}%;background:${KIND_COLOR[k]}"></span>` : "").join("");
+    ? `<span data-width="${(100 * (counts[k] || 0)) / counts.total}%" style="background:${KIND_COLOR[k]}"></span>` : "").join("");
+  growWidths($("kpi-mix"));
   $("kpi-mix-note").textContent = `${counts["Unusual pollution"] || 0} unusual · ${counts["Data limitation"] || 0} data · ${counts["Unclear"] || 0} unclear`;
 }
 
@@ -117,11 +214,15 @@ function showHeadline() {
 
 // ---------- charts ----------
 function showChart() {
+  playWhenVisible($("chart"), drawChart);
+}
+
+function drawChart() {
   const points = results.test_predictions;
   const end = Math.min(100, Math.round((24 * 14 / points.length) * 100)) || 100;
   chart = chart || echarts.init($("chart"));
   chart.setOption({
-    animation: false,
+    animation: !CALM, animationDuration: 900, animationEasing: "cubicOut",
     tooltip: { trigger: "axis" },
     legend: { data: ["Actual", "Predicted", "Flagged"], top: 0 },
     grid: { left: 50, right: 16, top: 34, bottom: 60 },
@@ -129,11 +230,13 @@ function showChart() {
     yAxis: { type: "value", name: results.unit, splitLine: { lineStyle: { color: "#eef2f7" } } },
     dataZoom: [{ type: "inside", start: 0, end }, { type: "slider", start: 0, end, height: 18 }],
     series: [
-      { name: "Actual", type: "line", showSymbol: false, color: "#1e293b", lineStyle: { width: 1.2 },
+      { name: "Actual", type: "line", showSymbol: false, color: "#4f46e5", lineStyle: { width: 1.4 },
+        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: "rgba(79,70,229,0.28)" }, { offset: 1, color: "rgba(14,165,233,0.02)" }]) },
         data: points.map((p) => [p.t, p.actual]) },
-      { name: "Predicted", type: "line", showSymbol: false, color: "#2563eb", lineStyle: { width: 1.2, type: "dashed" },
+      { name: "Predicted", type: "line", showSymbol: false, color: "#0d9488", lineStyle: { width: 1.4, type: "dashed" },
         data: points.map((p) => [p.t, p.predicted]) },
-      { name: "Flagged", type: "scatter", symbolSize: 7, color: "#dc2626",
+      { name: "Flagged", type: "scatter", symbolSize: 8, color: "#ea580c", itemStyle: { borderColor: "#fff", borderWidth: 1 },
         data: points.filter((p) => p.flagged).map((p) => [p.t, p.actual]) },
     ],
   }, true);
@@ -147,18 +250,24 @@ function showModels() {
     const name = baseline ? "Repeat last hour" : m.model;
     const cls = m.model === results.model ? "chosen" : baseline ? "baseline" : "";
     return `<div class="bar-row ${cls}"><span>${esc(name)}</span>
-      <div class="bar-track"><div class="bar-fill" style="width:${(100 * m.test_error) / max}%"></div></div>
+      <div class="bar-track"><div class="bar-fill" data-width="${(100 * m.test_error) / max}%"></div></div>
       <span class="bar-value">${fmt(m.test_error, m.test_error < 10 ? 3 : 1)}</span></div>`;
-  }).join("") + `<p class="small">Lower is better. The dark bar is the model we chose (picked on the validation period).</p>`;
+  }).join("") + `<p class="small">Lower is better. The coloured bar is the model we chose (picked on the validation period).</p>`;
+  playWhenVisible($("models"), () => growWidths($("models")));
 }
 
 function showPatterns() {
+  playWhenVisible($("chart-patterns"), drawPatterns);
+}
+
+function drawPatterns() {
   const p = results.patterns;
   $("patterns").textContent = p ? p.text : "Run the training again to see when episodes happen.";
   if (!p) { if (patternChart) patternChart.clear(); return; }
   patternChart = patternChart || echarts.init($("chart-patterns"));
   patternChart.setOption({
-    animation: false,
+    animation: !CALM, animationDuration: 700, animationEasing: "cubicOut",
+    animationDelay: (i) => i * 25,
     tooltip: { trigger: "axis" },
     legend: { show: false },
     grid: { left: 30, right: 8, top: 10, bottom: 24 },
@@ -166,6 +275,7 @@ function showPatterns() {
     yAxis: { type: "value", minInterval: 1, splitLine: { lineStyle: { color: "#eef2f7" } } },
     series: KINDS.filter((k) => p.by_hour[k]).map((k) => ({
       name: k, type: "bar", stack: "all", data: p.by_hour[k], color: KIND_COLOR[k], barWidth: "60%",
+      itemStyle: { borderRadius: [3, 3, 0, 0] },
     })),
   }, true);
 }
