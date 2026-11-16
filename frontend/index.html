@@ -4,107 +4,133 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Air Quality Prediction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="style.css">
   <script src="vendor/echarts.min.js"></script>
 </head>
 <body>
-  <header>
-    <h1>Air Quality Prediction and Pollution Episode Detection</h1>
-    <p>Pick a dataset and a pollutant to see how well its next hour can be predicted, and which hours looked unusual.</p>
-    <div class="controls">
-      <label>Dataset <select id="dataset"></select></label>
-      <label>Pollutant <select id="pollutant"></select></label>
-      <a id="download" class="button" href="#">Download report (JSON)</a>
+  <header class="top">
+    <div class="wrap">
+      <div>
+        <h1>Air Quality Prediction</h1>
+        <p class="sub">Next-hour pollutant prediction and pollution episode detection</p>
+      </div>
+      <div class="controls">
+        <label>Dataset <select id="dataset"></select></label>
+        <label>Pollutant <select id="pollutant"></select></label>
+        <a id="download" class="btn ghost" href="#">Download report (JSON)</a>
+      </div>
     </div>
   </header>
 
-  <main>
-    <section>
-      <h2>Summary</h2>
-      <p id="summary">Loading…</p>
+  <main class="wrap">
+    <section class="kpis" aria-label="Key results">
+      <div class="kpi">
+        <span class="kpi-label">Average error</span>
+        <span class="kpi-value" id="kpi-error">–</span>
+        <span class="kpi-note" id="kpi-model"></span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">vs. repeating last hour</span>
+        <span class="kpi-value" id="kpi-gain">–</span>
+        <span class="kpi-note" id="kpi-gain-note"></span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">R² on test data</span>
+        <span class="kpi-value" id="kpi-r2">–</span>
+        <span class="kpi-note">1.0 would be perfect</span>
+      </div>
+      <div class="kpi">
+        <span class="kpi-label">Flagged episodes</span>
+        <span class="kpi-value" id="kpi-episodes">–</span>
+        <div class="mix" id="kpi-mix" aria-hidden="true"></div>
+        <span class="kpi-note" id="kpi-mix-note"></span>
+      </div>
     </section>
 
-    <section>
-      <h2>Results</h2>
-      <p>Average error per hour (lower is better). The chosen model is in bold. "Repeat last hour" is the simple guess we compare against.</p>
-      <table>
-        <thead><tr><th>Model</th><th>Validation error</th><th>Test error</th></tr></thead>
-        <tbody id="results"></tbody>
-      </table>
-    </section>
-
-    <section>
-      <h2>Actual vs predicted</h2>
-      <p>The test period, starting with its first two weeks (drag the slider to see more). Red dots are flagged hours.</p>
-      <div id="chart"></div>
-    </section>
-
-    <section>
-      <h2>Flagged episodes</h2>
-      <p>An episode is a run of hours where the real value was much further from the prediction than usual. Each one is
-        checked in this order:</p>
-      <ul>
-        <li><b>Data limitation</b>: inputs were missing, the data had a gap just before, the reading was stuck on one
-          value, or it jumped suddenly while nothing else moved.</li>
-        <li><b>Unusual pollution</b>: the data looked fine and other pollutants rose or fell at the same time. They are
-          measured by separate instruments, so this points to a real event.</li>
-        <li><b>Unclear</b>: the data looked fine but nothing else moved with it. It may be a small local event, or the
-          model may simply have missed a normal change.</li>
-      </ul>
-      <p id="counts"></p>
-
-      <h3>When do they happen?</h3>
-      <p id="patterns"></p>
-      <div id="chart-patterns"></div>
-
-      <h3 id="episodes-title">The 10 biggest episodes</h3>
-      <label class="filter">Show
-        <select id="episode-filter">
-          <option value="all">all types</option>
-          <option value="Unusual pollution">unusual pollution only</option>
-          <option value="Data limitation">data limitations only</option>
-          <option value="Unclear">unclear only</option>
-        </select>
-      </label>
-      <div id="episodes"></div>
-      <button type="button" id="more" class="secondary">Show all episodes in time order</button>
-    </section>
-
-    <section>
-      <h2>How we did it</h2>
-      <ol id="steps"></ol>
-    </section>
-
-    <section>
-      <h2>Use your own data</h2>
-      <p>Upload an hourly CSV, Excel or ZIP file. It needs a time column (<code>Date</code> and <code>Time</code>,
-        <code>year/month/day/hour</code>, or <code>datetime</code>) and at least one pollutant column such as CO, NO2,
-        NOx, C6H6, PM2.5, PM10, SO2 or O3. Any weather columns in the file are used too. The
-        <a href="https://archive.ics.uci.edu/dataset/501/beijing+multi+site+air+quality+data" target="_blank" rel="noopener">UCI Beijing</a>
-        station files work as they are.</p>
-      <form id="upload-form" class="buttons">
-        <input type="file" id="upload-file" accept=".csv,.xlsx,.zip" required>
-        <input type="text" id="upload-name" placeholder="Name (optional)" maxlength="60">
-        <button type="submit">Upload and train</button>
-      </form>
-      <p id="upload-result" class="result" hidden></p>
-    </section>
-
-    <section>
+    <section class="card lead">
+      <p id="headline">Loading…</p>
       <details>
-        <summary>API demo: try <code>POST /predict</code></summary>
-        <p>This is the same request Postman sends. "Load a real hour" fills the boxes in from the test period.</p>
+        <summary>Read the full summary</summary>
+        <p id="summary"></p>
+      </details>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Actual vs predicted</h2>
+        <span class="hint">Test period · red dots are flagged hours · drag the slider to move</span>
+      </div>
+      <div id="chart" class="chart tall"></div>
+    </section>
+
+    <div class="grid2">
+      <section class="card">
+        <div class="card-head"><h2>Model comparison</h2><span class="hint">average error on test data</span></div>
+        <div id="models" class="bars"></div>
+      </section>
+      <section class="card">
+        <div class="card-head"><h2>When episodes happen</h2><span class="hint">by hour of day</span></div>
+        <div id="chart-patterns" class="chart"></div>
+        <p id="patterns" class="small"></p>
+      </section>
+    </div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Flagged episodes</h2>
+        <span class="hint">biggest first</span>
+      </div>
+      <div class="legend">
+        <span class="chip unusual">Unusual pollution</span> data fine, other pollutants moved too
+        <span class="chip data">Data limitation</span> missing, stuck or glitchy data
+        <span class="chip unclear">Unclear</span> data fine, nothing else moved
+      </div>
+      <div class="segmented" id="filters" role="group" aria-label="Filter episodes"></div>
+      <div id="episodes"></div>
+      <button type="button" id="more" class="btn ghost">Show all</button>
+    </section>
+
+    <section class="card fold">
+      <details>
+        <summary>How it works</summary>
+        <ol id="steps"></ol>
+      </details>
+    </section>
+
+    <section class="card fold">
+      <details>
+        <summary>Use your own data</summary>
+        <p class="small">Upload an hourly CSV, Excel or ZIP file with a time column (<code>Date</code> + <code>Time</code>,
+          <code>year/month/day/hour</code> or <code>datetime</code>) and at least one pollutant column (CO, NO2, NOx,
+          C6H6, PM2.5, PM10, SO2 or O3). Weather columns are used if present. The
+          <a href="https://archive.ics.uci.edu/dataset/501/beijing+multi+site+air+quality+data" target="_blank" rel="noopener">UCI Beijing</a>
+          station files work as they are.</p>
+        <form id="upload-form" class="row">
+          <input type="file" id="upload-file" accept=".csv,.xlsx,.zip" required>
+          <input type="text" id="upload-name" placeholder="Name (optional)" maxlength="60">
+          <button type="submit" class="btn">Upload and train</button>
+        </form>
+        <p id="upload-result" class="result" hidden></p>
+      </details>
+    </section>
+
+    <section class="card fold">
+      <details>
+        <summary>API demo: <code>POST /predict</code></summary>
+        <p class="small">The same request Postman sends. "Load a real hour" fills the boxes in from the test period.</p>
         <form id="predict-form" class="form"></form>
-        <div class="buttons">
-          <button type="button" id="load-sample" class="secondary">Load a real hour</button>
-          <button type="submit" form="predict-form">Predict</button>
+        <div class="row">
+          <button type="button" id="load-sample" class="btn ghost">Load a real hour</button>
+          <button type="submit" form="predict-form" class="btn">Predict</button>
         </div>
         <p id="predict-result" class="result" hidden></p>
       </details>
     </section>
   </main>
 
-  <footer>Data from the UCI Machine Learning Repository. Made with scikit-learn, XGBoost and FastAPI.</footer>
+  <footer class="wrap">Data: UCI Machine Learning Repository · scikit-learn, XGBoost, FastAPI</footer>
   <script src="app.js"></script>
 </body>
 </html>
