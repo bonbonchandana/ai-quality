@@ -157,3 +157,30 @@ def test_aqi_bands():
     assert live.aqi_from_pm25(9)["aqi"] == 50
     assert live.aqi_from_pm25(40)["category"] == "Unhealthy for sensitive groups"
     assert live.aqi_from_pm25(900)["aqi"] == 500
+
+
+def test_live_plain_explanations():
+    import numpy as np
+    import pandas as pd
+    import live
+    hours = pd.date_range("2026-01-01", periods=24 * 40, freq="h")
+    pm = pd.Series(20.0, index=hours)
+    pm.iloc[-24:] = 60.0                      # the last day is much dirtier than the rest
+    normal = live.compare_with_normal(pm, hours[-1])
+    assert normal["verdict"] == "much worse than usual" and normal["cigarettes"] == round(60 / 22, 1)
+    assert len(normal["daily"]) == 40
+
+    weather = pd.DataFrame({"wind_speed": 3.0, "rain": 0.0, "relative_humidity": 90.0},
+                           index=pd.date_range(hours[-1], periods=30, freq="h"))
+    reasons = live.weather_reasons(weather, hours[-1], pd.Timestamp("2026-02-10 06:00"))
+    assert any("Light winds" in r for r in reasons) and any("No real rain" in r for r in reasons)
+    assert any("humid" in r for r in reasons) and any("night" in r for r in reasons)
+
+
+def test_unusual_periods_csv():
+    r = client.get("/api/episodes/uci-italy/CO")
+    assert r.status_code == 200 and "attachment" in r.headers["content-disposition"]
+    lines = r.content.decode("utf-8-sig").splitlines()
+    assert lines[0].startswith("start,end,hours_flagged,what_we_think")
+    assert len(lines) > 1 and any(k in lines[1] for k in ("Real pollution event", "Probably a data problem", "Not sure"))
+    assert client.get("/api/episodes/uci-italy/XYZ").status_code == 404

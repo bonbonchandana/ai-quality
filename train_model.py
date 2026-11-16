@@ -12,6 +12,7 @@ How it works:
   - split by time: first 60% to train, next 20% to pick the model, last 20% to test
   - try Linear Regression, Random Forest and XGBoost, and compare them with simply
     repeating the last hour's value
+  - check for overfitting: the error on the hours the model learned from vs. on the test hours
   - flag test hours where the real value was far from the prediction, group them into
     episodes and label each one "Data limitation" or "Unusual pollution"
 """
@@ -157,13 +158,26 @@ def candidate_models(dev, light=False):
     if light:   # small and quick, for a free online server with little memory and CPU
         return {"Linear Regression": [LinearRegression()],
                 "XGBoost": [XGBRegressor(n_estimators=200, max_depth=4, learning_rate=0.1, n_jobs=1, verbosity=0, random_state=42)]}
+    # Settings that stop the trees from memorising the training hours: forest trees stop at depth 10 with 5+ hours
+    # per leaf; XGBoost sees 80% of the rows and inputs per tree and has a penalty on big leaf values.
+    # XGBoost learns to keep the average miss small (absolute error), the same measure used to pick the model.
+    xgb = dict(learning_rate=0.05, subsample=0.8, colsample_bytree=0.8, min_child_weight=10, reg_lambda=5,
+               objective="reg:absoluteerror", device=dev, n_jobs=2, verbosity=0, random_state=42)
     return {
         "Linear Regression": [LinearRegression()],
-        "Random Forest": [RandomForestRegressor(n_estimators=150, max_depth=d, min_samples_leaf=5, n_jobs=2, random_state=42)
-                          for d in (10, None)],
-        "XGBoost": [XGBRegressor(n_estimators=400, max_depth=d, learning_rate=0.05, device=dev, verbosity=0, random_state=42)
-                    for d in (4, 6)],
+        "Random Forest": [RandomForestRegressor(n_estimators=150, max_depth=10, min_samples_leaf=5, n_jobs=2, random_state=42)],
+        "XGBoost": [XGBRegressor(n_estimators=n, max_depth=d, **xgb) for d in (4, 6) for n in (300, 600)],
     }
+
+
+SETTINGS = ["n_estimators", "max_depth", "min_samples_leaf", "max_features", "learning_rate", "subsample",
+            "colsample_bytree", "min_child_weight", "reg_lambda", "objective"]
+
+
+def settings(model):
+    """The main settings of a model, e.g. {'max_depth': 4, 'n_estimators': 300}. No depth limit shows as null."""
+    params = model.get_params()
+    return {k: params[k] for k in SETTINGS if k in params and (params[k] is not None or k == "max_depth")}
 
 
 def make_pipeline(model):
@@ -176,8 +190,40 @@ def predict_level(model, X):
 
 
 def scores(y_true, y_pred):
+    # Share of hours where the prediction was within 20% of the real value. Readings below the 10th percentile
+    # are measured against that percentile instead, so a tiny miss on a near-zero reading doesn't count as a big one.
+    actual, pred = np.asarray(y_true, dtype=float), np.asarray(y_pred, dtype=float)
+    within = np.abs(pred - actual) <= 0.2 * np.maximum(actual, np.quantile(actual, 0.1))
     return {"MAE": float(mean_absolute_error(y_true, y_pred)), "RMSE": float(np.sqrt(mean_squared_error(y_true, y_pred))),
-            "R2": float(r2_score(y_true, y_pred)), "n": int(len(y_true))}
+            "R2": float(r2_score(y_true, y_pred)), "accuracy_within_20pct": float(within.mean() * 100), "n": int(len(y_true))}
+
+
+def overfitting_check(learned, test, persistence_learned, persistence_test):
+    """Compares the final model's error on the hours it learned from with its error on the test hours.
+
+    Some periods are simply harder to predict than others, so the verdict uses the gap after allowing for that
+    (each error divided by the error of repeating the last hour in the same period). Up to 20% counts as no sign
+    of overfitting, up to 50% as mild, more than that as overfitting.
+    """
+    gap = (test / learned - 1) * 100
+    harder = (persistence_test / persistence_learned - 1) * 100
+    fair_gap = ((test / persistence_test) / (learned / persistence_learned) - 1) * 100
+    allow = (f", once you allow for the test period being {abs(harder):.0f}% {'harder' if harder > 0 else 'easier'} "
+             "to predict") if abs(harder) >= 10 else ""
+    if fair_gap <= 20:
+        verdict = "No sign of overfitting"
+        text = f"the error on new data is close to the error on the data it learned from{allow}."
+    elif fair_gap <= 50:
+        verdict = "Mild overfitting"
+        text = (f"the error on new data is somewhat higher than on the data it learned from{allow}. Some gap is normal, "
+                "and the settings were picked on separate data, so the test score is still a fair one.")
+    else:
+        verdict = "Overfitting"
+        text = (f"the error on new data is much higher than on the data it learned from{allow}, so the model has "
+                "partly memorised its training data.")
+    return {"mae_on_learned_data": float(learned), "mae_on_test": float(test), "gap_pct": float(gap),
+            "persistence_mae_on_learned_data": float(persistence_learned), "persistence_mae_on_test": float(persistence_test),
+            "gap_allowing_for_period_pct": float(fair_gap), "verdict": verdict, "explanation": f"{verdict}: {text}"}
 
 
 # ---------------------------------------------------------------- 4-6. train, flag, analyze
@@ -217,6 +263,10 @@ def train_pollutant(df, name, column, weather, dev="cpu", light=False, others=No
     baseline = {"model": "Persistence (same as previous hour)", "validation": scores(y.iloc[val], X["lag_1"].iloc[val]),
                 "test": scores(y.iloc[test], X["lag_1"].iloc[test])}
     final = chosen["final"]
+    learned = mean_absolute_error(y.iloc[train_val], predict_level(final, X.iloc[train_val]))
+    overfitting = overfitting_check(learned, chosen["test"]["MAE"],
+                                    mean_absolute_error(y.iloc[train_val], X["lag_1"].iloc[train_val]),
+                                    baseline["test"]["MAE"])
 
     pred = pd.DataFrame({"actual": y.iloc[test], "predicted": predict_level(final, X.iloc[test])})
     pred["residual"] = pred["actual"] - pred["predicted"]
@@ -245,12 +295,15 @@ def train_pollutant(df, name, column, weather, dev="cpu", light=False, others=No
     imp = imp.feature_importances_ if hasattr(imp, "feature_importances_") else np.abs(imp.coef_)
     info = {
         "pollutant": name, "column": column, "unit": UNITS.get(column, ""), "features": list(X.columns),
-        "model": chosen["model"], "threshold": threshold, "device": dev,
+        "model": chosen["model"], "settings": settings(chosen["estimator"]), "threshold": threshold, "device": dev,
         "improvement_vs_persistence_pct": float((1 - chosen["test"]["MAE"] / baseline["test"]["MAE"]) * 100),
+        "accuracy_within_20pct": chosen["test"]["accuracy_within_20pct"],
+        "overfitting_check": overfitting,
         "periods": {"train": [str(df.index[24]), str(df.index[train_end - 1])],
                     "validation": [str(df.index[train_end]), str(df.index[val_end - 1])],
                     "test": [str(df.index[val_end]), str(df.index[-1])]},
-        "models": [{"model": r["model"], "validation": r["validation"], "test": r["test"]} for r in results] + [baseline],
+        "models": [{"model": r["model"], "settings": settings(r["estimator"]), "validation": r["validation"], "test": r["test"]}
+                   for r in results] + [baseline],
         "feature_importance": sorted(({"feature": f, "importance": float(v / imp.sum())} for f, v in zip(X.columns, imp)),
                                      key=lambda d: -d["importance"]),
         "data": {"observed_pct": float(y.notna().mean() * 100),
@@ -432,15 +485,47 @@ def build_report(info, dataset_title=""):
                f"{abs(gain):.1f}% {'better' if gain >= 0 else 'worse'}. "
                f"{counts['total']} episodes were flagged: {counts.get('Unusual pollution', 0)} look like unusual pollution, "
                f"{counts.get('Data limitation', 0)} look like data problems and {counts.get('Unclear', 0)} are unclear.")
-    return {
+    within = best["test"].get("accuracy_within_20pct")      # older results files don't have these two
+    overfit = info.get("overfitting_check")
+    if within is not None:
+        summary += f" Its prediction was within 20% of the real value in {within:.0f}% of the test hours."
+    if overfit:
+        summary += " " + overfit["explanation"]
+    steps = [
+        "Read the hourly data and treated empty cells and -200 as missing.",
+        f"Built the inputs: {', '.join(READABLE.get(f, f) for f in info['features'])}.",
+        "Split the timeline in order: first 60% to train, next 20% to choose the model, last 20% to test.",
+        "Tried Linear Regression, Random Forest and XGBoost, each with a few settings that keep it from memorising "
+        "the training hours. Each predicts how much the level changes in the next hour.",
+    ]
+    if overfit:
+        steps.append("Checked for overfitting: compared the chosen model's average error on the hours it learned from "
+                     "with its error on the test hours, allowing for some periods being harder to predict than others.")
+    if within is not None:
+        steps.append("Counted the test hours where the prediction was within 20% of the real value. Readings below the "
+                     "10th percentile were measured against that percentile, so tiny misses on near-zero readings don't "
+                     "count as big ones.")
+    report_results = {"chosen_model": info["model"], "test_period": f"{nice_date(test_from)} to {nice_date(test_to)}",
+                      "average_error": round(best["test"]["MAE"], 3), "average_error_if_repeating_last_hour":
+                      round(persistence["test"]["MAE"], 3), "better_than_repeating_last_hour_percent": round(gain, 1),
+                      "r2": round(best["test"]["R2"], 3), "test_hours": best["test"]["n"]}
+    if within is not None:
+        report_results["accuracy_within_20pct"] = round(within, 1)
+    if "settings" in info:
+        report_results["model_settings"] = info["settings"]
+    compared = []
+    for m in info["models"]:
+        row = {"model": m["model"], "validation_error": round(m["validation"]["MAE"], 3), "test_error": round(m["test"]["MAE"], 3)}
+        if "accuracy_within_20pct" in m["test"]:
+            row["test_within_20pct"] = round(m["test"]["accuracy_within_20pct"], 1)
+        if "settings" in m:
+            row["settings"] = m["settings"]
+        compared.append(row)
+    report = {
         "title": f"{info['pollutant']} next-hour prediction" + (f" - {dataset_title}" if dataset_title else ""),
         "dataset": dataset_title, "pollutant": info["pollutant"], "unit": info.get("unit", ""),
         "summary": summary,
-        "how_it_was_made": [
-            "Read the hourly data and treated empty cells and -200 as missing.",
-            f"Built the inputs: {', '.join(READABLE.get(f, f) for f in info['features'])}.",
-            "Split the timeline in order: first 60% to train, next 20% to choose the model, last 20% to test.",
-            "Tried Linear Regression, Random Forest and XGBoost. Each predicts how much the level changes in the next hour.",
+        "how_it_was_made": steps + [
             f"Flagged test hours where the miss was more than {info['threshold']:.2f} {unit} "
             "(bigger than 95% of the misses on the validation period).",
             f"By design this limit flags 5% of the validation hours; on the test period it flagged "
@@ -449,12 +534,8 @@ def build_report(info, dataset_title=""):
             "a stuck reading, or a sudden jump that nothing else shared mean a data problem; other pollutants moving the "
             "same way at the same time mean unusual pollution; anything else is unclear.",
         ],
-        "results": {"chosen_model": info["model"], "test_period": f"{nice_date(test_from)} to {nice_date(test_to)}",
-                    "average_error": round(best["test"]["MAE"], 3), "average_error_if_repeating_last_hour":
-                    round(persistence["test"]["MAE"], 3), "better_than_repeating_last_hour_percent": round(gain, 1),
-                    "r2": round(best["test"]["R2"], 3), "test_hours": best["test"]["n"]},
-        "models_compared": [{"model": m["model"], "validation_error": round(m["validation"]["MAE"], 3),
-                             "test_error": round(m["test"]["MAE"], 3)} for m in info["models"]],
+        "results": report_results,
+        "models_compared": compared,
         "most_important_inputs": top,
         "episode_counts": counts,
         "patterns": info.get("patterns", {}).get("text", ""),
@@ -465,6 +546,13 @@ def build_report(info, dataset_title=""):
             "Episode labels come from simple rules. Nobody checked them against real events.",
         ],
     }
+    if overfit:
+        report["overfitting_check"] = {"error_on_learned_data": round(overfit["mae_on_learned_data"], 3),
+                                       "error_on_test": round(overfit["mae_on_test"], 3),
+                                       "gap_percent": round(overfit["gap_pct"], 1),
+                                       "gap_allowing_for_period_percent": round(overfit["gap_allowing_for_period_pct"], 1),
+                                       "verdict": overfit["verdict"], "explanation": overfit["explanation"]}
+    return report
 
 
 def train_dataset(path, dataset_id, title, out_root=".", light=False):
@@ -492,10 +580,15 @@ def train_dataset(path, dataset_id, title, out_root=".", light=False):
         summary.append({"pollutant": name, "key": key, "unit": info["unit"], "model": info["model"],
                         "test_MAE": round(best["test"]["MAE"], 3), "test_R2": round(best["test"]["R2"], 3),
                         "better_than_persistence_%": round(info["improvement_vs_persistence_pct"], 1),
+                        "test_within_20pct": round(info["accuracy_within_20pct"], 1),
+                        "overfitting": info["overfitting_check"]["verdict"],
                         "episodes": info["episode_counts"]["total"]})
         preds[name] = (info, pred)
+        check = info["overfitting_check"]
         print(f"  {name:6s} {info['model']:17s} test MAE {best['test']['MAE']:9.3f} R2 {best['test']['R2']:.3f} "
-              f"| {info['improvement_vs_persistence_pct']:5.1f}% better than persistence | {info['episode_counts']}")
+              f"within 20% {info['accuracy_within_20pct']:4.1f}% | {info['improvement_vs_persistence_pct']:5.1f}% better "
+              f"than persistence | learned-data MAE {check['mae_on_learned_data']:.3f}, gap {check['gap_pct']:.0f}% "
+              f"({check['gap_allowing_for_period_pct']:.0f}% allowing for period): {check['verdict']}")
     df.to_csv(art_dir / "data.csv")
     (art_dir / "dataset.json").write_text(json.dumps({
         "id": dataset_id, "title": title, "rows": len(df), "start": str(df.index.min()), "end": str(df.index.max()),

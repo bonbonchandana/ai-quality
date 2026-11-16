@@ -3,415 +3,547 @@
   "dataset": "Italy (UCI Air Quality)",
   "pollutant": "NOx",
   "unit": "ppb",
-  "summary": "We predicted NOx one hour ahead using the Italy (UCI Air Quality) data. Random Forest did best on the validation period, so we used it. On the test period (16 Jan 2005 to 4 Apr 2005) its average error was 57.562 ppb. Just repeating the last hour's value gave 72.734 ppb, so the model was 20.9% better. 25 episodes were flagged: 10 look like unusual pollution, 12 look like data problems and 3 are unclear.",
+  "summary": "We predicted NOx one hour ahead using the Italy (UCI Air Quality) data. XGBoost did best on the validation period, so we used it. On the test period (16 Jan 2005 to 4 Apr 2005) its average error was 57.993 ppb. Just repeating the last hour's value gave 72.734 ppb, so the model was 20.3% better. 34 episodes were flagged: 12 look like unusual pollution, 19 look like data problems and 3 are unclear. Its prediction was within 20% of the real value in 63% of the test hours. No sign of overfitting: the error on new data is close to the error on the data it learned from, once you allow for the test period being 31% harder to predict.",
   "how_it_was_made": [
     "Read the hourly data and treated empty cells and -200 as missing.",
     "Built the inputs: hour, weekday, the reading 1 hour before, the reading 2 hours before, the reading 3 hours before, the reading at the same time the day before, temperature, relative humidity, absolute humidity.",
     "Split the timeline in order: first 60% to train, next 20% to choose the model, last 20% to test.",
-    "Tried Linear Regression, Random Forest and XGBoost. Each predicts how much the level changes in the next hour.",
-    "Flagged test hours where the miss was more than 269.90 ppb (bigger than 95% of the misses on the validation period).",
-    "By design this limit flags 5% of the validation hours; on the test period it flagged 1.6% of hours. So the number of episodes partly depends on where the limit is set.",
+    "Tried Linear Regression, Random Forest and XGBoost, each with a few settings that keep it from memorising the training hours. Each predicts how much the level changes in the next hour.",
+    "Checked for overfitting: compared the chosen model's average error on the hours it learned from with its error on the test hours, allowing for some periods being harder to predict than others.",
+    "Counted the test hours where the prediction was within 20% of the real value. Readings below the 10th percentile were measured against that percentile, so tiny misses on near-zero readings don't count as big ones.",
+    "Flagged test hours where the miss was more than 251.70 ppb (bigger than 95% of the misses on the validation period).",
+    "By design this limit flags 5% of the validation hours; on the test period it flagged 2.4% of hours. So the number of episodes partly depends on where the limit is set.",
     "Grouped flagged hours that were less than 3 hours apart and checked each group: missing inputs or a gap, a stuck reading, or a sudden jump that nothing else shared mean a data problem; other pollutants moving the same way at the same time mean unusual pollution; anything else is unclear."
   ],
   "results": {
-    "chosen_model": "Random Forest",
+    "chosen_model": "XGBoost",
     "test_period": "16 Jan 2005 to 4 Apr 2005",
-    "average_error": 57.562,
+    "average_error": 57.993,
     "average_error_if_repeating_last_hour": 72.734,
-    "better_than_repeating_last_hour_percent": 20.9,
-    "r2": 0.832,
-    "test_hours": 1757
+    "better_than_repeating_last_hour_percent": 20.3,
+    "r2": 0.823,
+    "test_hours": 1757,
+    "accuracy_within_20pct": 63.3,
+    "model_settings": {
+      "n_estimators": 300,
+      "max_depth": 4,
+      "learning_rate": 0.05,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "min_child_weight": 10,
+      "reg_lambda": 5,
+      "objective": "reg:absoluteerror"
+    }
   },
   "models_compared": [
     {
       "model": "Linear Regression",
       "validation_error": 91.31,
-      "test_error": 65.882
+      "test_error": 65.882,
+      "test_within_20pct": 55.8,
+      "settings": {}
     },
     {
       "model": "Random Forest",
       "validation_error": 90.565,
-      "test_error": 57.562
+      "test_error": 57.562,
+      "test_within_20pct": 61.6,
+      "settings": {
+        "n_estimators": 150,
+        "max_depth": 10,
+        "min_samples_leaf": 5,
+        "max_features": 1.0
+      }
     },
     {
       "model": "XGBoost",
-      "validation_error": 93.647,
-      "test_error": 62.575
+      "validation_error": 85.806,
+      "test_error": 57.993,
+      "test_within_20pct": 63.3,
+      "settings": {
+        "n_estimators": 300,
+        "max_depth": 4,
+        "learning_rate": 0.05,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "min_child_weight": 10,
+        "reg_lambda": 5,
+        "objective": "reg:absoluteerror"
+      }
     },
     {
       "model": "Persistence (same as previous hour)",
       "validation_error": 91.356,
-      "test_error": 72.734
+      "test_error": 72.734,
+      "test_within_20pct": 54.0
     }
   ],
   "most_important_inputs": [
     "hour",
     "the reading 2 hours before",
-    "the reading 1 hour before"
+    "the reading at the same time the day before"
   ],
   "episode_counts": {
-    "total": 25,
-    "Unusual pollution": 10,
-    "Data limitation": 12,
+    "total": 34,
+    "Unusual pollution": 12,
+    "Data limitation": 19,
     "Unclear": 3
   },
-  "patterns": "Most episodes peaked around 08:00, 20:00 and 21:00, and 80% fell on weekdays, more than the 71% you'd expect, so they lean towards working days. The busiest month was Feb 2005 with 11 episodes.",
+  "patterns": "Most episodes peaked around 08:00, 10:00 and 20:00, and 85% fell on weekdays, more than the 71% you'd expect, so they lean towards working days. The busiest month was Feb 2005 with 13 episodes.",
   "most_severe": [
     {
-      "id": 1,
+      "id": 2,
       "when": "Mon 17 Jan 2005, 18:00 to 20:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.9,
+      "severity": 2.14,
       "peak_value": 582.0,
-      "expected_value": 1095.053,
-      "explanation": "Mon 17 Jan 2005, 18:00 to 20:00: NOx was 582.00 ppb at 20:00, but the model expected about 1095.05 ppb, so it was 513.05 lower. The inputs were complete, and CO, NO2 and C6H6 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 1121.113,
+      "explanation": "Mon 17 Jan 2005, 18:00 to 20:00: NOx was 582.00 ppb at 20:00, but the model expected about 1121.11 ppb, so it was 539.11 lower. The inputs were complete, and CO, NO2 and C6H6 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 12,
       "when": "Thu 3 Feb 2005, 18:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.71,
+      "severity": 1.86,
       "peak_value": 980.0,
-      "expected_value": 519.457,
-      "explanation": "Thu 3 Feb 2005, 18:00: NOx was 980.00 ppb at 18:00, but the model expected about 519.46 ppb, so it was 460.54 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 511.443,
+      "explanation": "Thu 3 Feb 2005, 18:00: NOx was 980.00 ppb at 18:00, but the model expected about 511.44 ppb, so it was 468.56 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 15,
-      "when": "Thu 10 Feb 2005, 20:00",
+      "id": 25,
+      "when": "Thu 10 Mar 2005, 08:00 to 09:00",
       "type": "Data limitation",
-      "confidence": "medium",
-      "severity": 1.6,
-      "peak_value": 1028.0,
-      "expected_value": 597.066,
-      "explanation": "Thu 10 Feb 2005, 20:00: NOx was 1028.00 ppb at 20:00, but the model expected about 597.07 ppb, so it was 430.93 higher. But absolute humidity, relative humidity and temperature were missing. So this is more likely a problem with the data than real pollution."
+      "confidence": "high",
+      "severity": 1.67,
+      "peak_value": 863.0,
+      "expected_value": 442.052,
+      "explanation": "Thu 10 Mar 2005, 08:00 to 09:00: NOx was 863.00 ppb at 08:00, but the model expected about 442.05 ppb, so it was 420.95 higher. But the NOx data had a gap of 1 hour just before and the value jumped about 10 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
-      "id": 5,
+      "id": 6,
       "when": "Fri 21 Jan 2005, 20:00 to 21:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.58,
-      "peak_value": 1200.0,
-      "expected_value": 773.024,
-      "explanation": "Fri 21 Jan 2005, 20:00 to 21:00: NOx was 1200.00 ppb at 21:00, but the model expected about 773.02 ppb, so it was 426.98 higher. The inputs were complete, and CO, NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 4,
-      "when": "Fri 21 Jan 2005, 14:00",
-      "type": "Data limitation",
-      "confidence": "high",
-      "severity": 1.48,
-      "peak_value": 402.0,
-      "expected_value": 801.885,
-      "explanation": "Fri 21 Jan 2005, 14:00: NOx was 402.00 ppb at 14:00, but the model expected about 801.88 ppb, so it was 399.88 lower. But the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
-    },
-    {
-      "id": 21,
-      "when": "Fri 11 Mar 2005, 12:00",
-      "type": "Data limitation",
-      "confidence": "high",
-      "severity": 1.44,
-      "peak_value": 339.0,
-      "expected_value": 728.246,
-      "explanation": "Fri 11 Mar 2005, 12:00: NOx was 339.00 ppb at 12:00, but the model expected about 728.25 ppb, so it was 389.25 lower. But absolute humidity, relative humidity and temperature were missing and the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+      "severity": 1.65,
+      "peak_value": 983.0,
+      "expected_value": 567.59,
+      "explanation": "Fri 21 Jan 2005, 20:00 to 21:00: NOx was 983.00 ppb at 20:00, but the model expected about 567.59 ppb, so it was 415.41 higher. The inputs were complete, and CO, NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 14,
       "when": "Sat 5 Feb 2005, 10:00",
       "type": "Data limitation",
       "confidence": "high",
-      "severity": 1.43,
+      "severity": 1.65,
       "peak_value": 302.0,
-      "expected_value": 687.939,
-      "explanation": "Sat 5 Feb 2005, 10:00: NOx was 302.00 ppb at 10:00, but the model expected about 687.94 ppb, so it was 385.94 lower. But the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+      "expected_value": 717.652,
+      "explanation": "Sat 5 Feb 2005, 10:00: NOx was 302.00 ppb at 10:00, but the model expected about 717.65 ppb, so it was 415.65 lower. But the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
-      "id": 8,
-      "when": "Tue 1 Feb 2005, 08:00",
-      "type": "Data limitation",
-      "confidence": "high",
-      "severity": 1.27,
-      "peak_value": 896.0,
-      "expected_value": 552.413,
-      "explanation": "Tue 1 Feb 2005, 08:00: NOx was 896.00 ppb at 08:00, but the model expected about 552.41 ppb, so it was 343.59 higher. But the NOx data had a gap of 1 hour just before and the value jumped about 8 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
-    },
-    {
-      "id": 24,
-      "when": "Thu 31 Mar 2005, 07:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.27,
-      "peak_value": 673.0,
-      "expected_value": 330.472,
-      "explanation": "Thu 31 Mar 2005, 07:00: NOx was 673.00 ppb at 07:00, but the model expected about 330.47 ppb, so it was 342.53 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 2,
-      "when": "Tue 18 Jan 2005, 21:00",
-      "type": "Data limitation",
-      "confidence": "high",
-      "severity": 1.23,
-      "peak_value": 339.0,
-      "expected_value": 670.623,
-      "explanation": "Tue 18 Jan 2005, 21:00: NOx was 339.00 ppb at 21:00, but the model expected about 670.62 ppb, so it was 331.62 lower. But the value jumped about 6 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
-    }
-  ],
-  "episodes": [
-    {
-      "id": 1,
-      "when": "Mon 17 Jan 2005, 18:00 to 20:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.9,
-      "peak_value": 582.0,
-      "expected_value": 1095.053,
-      "explanation": "Mon 17 Jan 2005, 18:00 to 20:00: NOx was 582.00 ppb at 20:00, but the model expected about 1095.05 ppb, so it was 513.05 lower. The inputs were complete, and CO, NO2 and C6H6 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
-    },
-    {
-      "id": 2,
-      "when": "Tue 18 Jan 2005, 21:00",
-      "type": "Data limitation",
-      "confidence": "high",
-      "severity": 1.23,
-      "peak_value": 339.0,
-      "expected_value": 670.623,
-      "explanation": "Tue 18 Jan 2005, 21:00: NOx was 339.00 ppb at 21:00, but the model expected about 670.62 ppb, so it was 331.62 lower. But the value jumped about 6 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
-    },
-    {
-      "id": 3,
-      "when": "Thu 20 Jan 2005, 08:00",
+      "id": 15,
+      "when": "Thu 10 Feb 2005, 20:00",
       "type": "Data limitation",
       "confidence": "medium",
-      "severity": 1.19,
-      "peak_value": 636.0,
-      "expected_value": 315.752,
-      "explanation": "Thu 20 Jan 2005, 08:00: NOx was 636.00 ppb at 08:00, but the model expected about 315.75 ppb, so it was 320.25 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+      "severity": 1.65,
+      "peak_value": 1028.0,
+      "expected_value": 613.516,
+      "explanation": "Thu 10 Feb 2005, 20:00: NOx was 1028.00 ppb at 20:00, but the model expected about 613.52 ppb, so it was 414.48 higher. But absolute humidity, relative humidity and temperature were missing. So this is more likely a problem with the data than real pollution."
     },
     {
-      "id": 4,
-      "when": "Fri 21 Jan 2005, 14:00",
+      "id": 26,
+      "when": "Fri 11 Mar 2005, 12:00",
       "type": "Data limitation",
       "confidence": "high",
-      "severity": 1.48,
-      "peak_value": 402.0,
-      "expected_value": 801.885,
-      "explanation": "Fri 21 Jan 2005, 14:00: NOx was 402.00 ppb at 14:00, but the model expected about 801.88 ppb, so it was 399.88 lower. But the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+      "severity": 1.58,
+      "peak_value": 339.0,
+      "expected_value": 735.513,
+      "explanation": "Fri 11 Mar 2005, 12:00: NOx was 339.00 ppb at 12:00, but the model expected about 735.51 ppb, so it was 396.51 lower. But absolute humidity, relative humidity and temperature were missing and the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 5,
-      "when": "Fri 21 Jan 2005, 20:00 to 21:00",
-      "type": "Unusual pollution",
+      "when": "Fri 21 Jan 2005, 14:00",
+      "type": "Data limitation",
       "confidence": "high",
-      "severity": 1.58,
-      "peak_value": 1200.0,
-      "expected_value": 773.024,
-      "explanation": "Fri 21 Jan 2005, 20:00 to 21:00: NOx was 1200.00 ppb at 21:00, but the model expected about 773.02 ppb, so it was 426.98 higher. The inputs were complete, and CO, NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 6,
-      "when": "Sat 22 Jan 2005, 21:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.22,
-      "peak_value": 794.0,
-      "expected_value": 465.153,
-      "explanation": "Sat 22 Jan 2005, 21:00: NOx was 794.00 ppb at 21:00, but the model expected about 465.15 ppb, so it was 328.85 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 7,
-      "when": "Mon 31 Jan 2005, 19:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.08,
-      "peak_value": 954.0,
-      "expected_value": 663.212,
-      "explanation": "Mon 31 Jan 2005, 19:00: NOx was 954.00 ppb at 19:00, but the model expected about 663.21 ppb, so it was 290.79 higher. The inputs were complete, and CO, NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 1.56,
+      "peak_value": 402.0,
+      "expected_value": 795.646,
+      "explanation": "Fri 21 Jan 2005, 14:00: NOx was 402.00 ppb at 14:00, but the model expected about 795.65 ppb, so it was 393.65 lower. But the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 8,
       "when": "Tue 1 Feb 2005, 08:00",
       "type": "Data limitation",
       "confidence": "high",
-      "severity": 1.27,
+      "severity": 1.55,
       "peak_value": 896.0,
-      "expected_value": 552.413,
-      "explanation": "Tue 1 Feb 2005, 08:00: NOx was 896.00 ppb at 08:00, but the model expected about 552.41 ppb, so it was 343.59 higher. But the NOx data had a gap of 1 hour just before and the value jumped about 8 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
-    },
-    {
-      "id": 9,
-      "when": "Tue 1 Feb 2005, 13:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.05,
-      "peak_value": 683.0,
-      "expected_value": 967.34,
-      "explanation": "Tue 1 Feb 2005, 13:00: NOx was 683.00 ppb at 13:00, but the model expected about 967.34 ppb, so it was 284.34 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 10,
-      "when": "Wed 2 Feb 2005, 09:00",
-      "type": "Data limitation",
-      "confidence": "medium",
-      "severity": 1.0,
-      "peak_value": 883.0,
-      "expected_value": 611.916,
-      "explanation": "Wed 2 Feb 2005, 09:00: NOx was 883.00 ppb at 09:00, but the model expected about 611.92 ppb, so it was 271.08 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+      "expected_value": 505.277,
+      "explanation": "Tue 1 Feb 2005, 08:00: NOx was 896.00 ppb at 08:00, but the model expected about 505.28 ppb, so it was 390.72 higher. But the NOx data had a gap of 1 hour just before and the value jumped about 8 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 11,
       "when": "Thu 3 Feb 2005, 08:00",
       "type": "Data limitation",
       "confidence": "medium",
-      "severity": 1.08,
+      "severity": 1.54,
       "peak_value": 728.0,
-      "expected_value": 437.526,
-      "explanation": "Thu 3 Feb 2005, 08:00: NOx was 728.00 ppb at 08:00, but the model expected about 437.53 ppb, so it was 290.47 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+      "expected_value": 340.249,
+      "explanation": "Thu 3 Feb 2005, 08:00: NOx was 728.00 ppb at 08:00, but the model expected about 340.25 ppb, so it was 387.75 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+    }
+  ],
+  "episodes": [
+    {
+      "id": 1,
+      "when": "Mon 17 Jan 2005, 08:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.19,
+      "peak_value": 552.0,
+      "expected_value": 253.366,
+      "explanation": "Mon 17 Jan 2005, 08:00: NOx was 552.00 ppb at 08:00, but the model expected about 253.37 ppb, so it was 298.63 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 2,
+      "when": "Mon 17 Jan 2005, 18:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 2.14,
+      "peak_value": 582.0,
+      "expected_value": 1121.113,
+      "explanation": "Mon 17 Jan 2005, 18:00 to 20:00: NOx was 582.00 ppb at 20:00, but the model expected about 1121.11 ppb, so it was 539.11 lower. The inputs were complete, and CO, NO2 and C6H6 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 3,
+      "when": "Tue 18 Jan 2005, 21:00",
+      "type": "Data limitation",
+      "confidence": "high",
+      "severity": 1.26,
+      "peak_value": 339.0,
+      "expected_value": 654.913,
+      "explanation": "Tue 18 Jan 2005, 21:00: NOx was 339.00 ppb at 21:00, but the model expected about 654.91 ppb, so it was 315.91 lower. But the value jumped about 6 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 4,
+      "when": "Thu 20 Jan 2005, 08:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.52,
+      "peak_value": 636.0,
+      "expected_value": 253.171,
+      "explanation": "Thu 20 Jan 2005, 08:00: NOx was 636.00 ppb at 08:00, but the model expected about 253.17 ppb, so it was 382.83 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 5,
+      "when": "Fri 21 Jan 2005, 14:00",
+      "type": "Data limitation",
+      "confidence": "high",
+      "severity": 1.56,
+      "peak_value": 402.0,
+      "expected_value": 795.646,
+      "explanation": "Fri 21 Jan 2005, 14:00: NOx was 402.00 ppb at 14:00, but the model expected about 795.65 ppb, so it was 393.65 lower. But the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 6,
+      "when": "Fri 21 Jan 2005, 20:00 to 21:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.65,
+      "peak_value": 983.0,
+      "expected_value": 567.59,
+      "explanation": "Fri 21 Jan 2005, 20:00 to 21:00: NOx was 983.00 ppb at 20:00, but the model expected about 567.59 ppb, so it was 415.41 higher. The inputs were complete, and CO, NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 7,
+      "when": "Sat 22 Jan 2005, 21:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.42,
+      "peak_value": 794.0,
+      "expected_value": 436.958,
+      "explanation": "Sat 22 Jan 2005, 21:00: NOx was 794.00 ppb at 21:00, but the model expected about 436.96 ppb, so it was 357.04 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 8,
+      "when": "Tue 1 Feb 2005, 08:00",
+      "type": "Data limitation",
+      "confidence": "high",
+      "severity": 1.55,
+      "peak_value": 896.0,
+      "expected_value": 505.277,
+      "explanation": "Tue 1 Feb 2005, 08:00: NOx was 896.00 ppb at 08:00, but the model expected about 505.28 ppb, so it was 390.72 higher. But the NOx data had a gap of 1 hour just before and the value jumped about 8 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 9,
+      "when": "Tue 1 Feb 2005, 13:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.15,
+      "peak_value": 683.0,
+      "expected_value": 973.235,
+      "explanation": "Tue 1 Feb 2005, 13:00: NOx was 683.00 ppb at 13:00, but the model expected about 973.24 ppb, so it was 290.24 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 10,
+      "when": "Wed 2 Feb 2005, 13:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.11,
+      "peak_value": 388.0,
+      "expected_value": 668.128,
+      "explanation": "Wed 2 Feb 2005, 13:00: NOx was 388.00 ppb at 13:00, but the model expected about 668.13 ppb, so it was 280.13 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 11,
+      "when": "Thu 3 Feb 2005, 08:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.54,
+      "peak_value": 728.0,
+      "expected_value": 340.249,
+      "explanation": "Thu 3 Feb 2005, 08:00: NOx was 728.00 ppb at 08:00, but the model expected about 340.25 ppb, so it was 387.75 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 12,
       "when": "Thu 3 Feb 2005, 18:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.71,
+      "severity": 1.86,
       "peak_value": 980.0,
-      "expected_value": 519.457,
-      "explanation": "Thu 3 Feb 2005, 18:00: NOx was 980.00 ppb at 18:00, but the model expected about 519.46 ppb, so it was 460.54 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 511.443,
+      "explanation": "Thu 3 Feb 2005, 18:00: NOx was 980.00 ppb at 18:00, but the model expected about 511.44 ppb, so it was 468.56 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 13,
-      "when": "Fri 4 Feb 2005, 09:00",
+      "when": "Fri 4 Feb 2005, 08:00 to 12:00",
       "type": "Data limitation",
       "confidence": "medium",
-      "severity": 1.11,
-      "peak_value": 654.0,
-      "expected_value": 952.743,
-      "explanation": "Fri 4 Feb 2005, 09:00: NOx was 654.00 ppb at 09:00, but the model expected about 952.74 ppb, so it was 298.74 lower. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+      "severity": 1.27,
+      "peak_value": 887.0,
+      "expected_value": 567.203,
+      "explanation": "Fri 4 Feb 2005, 08:00 to 12:00: NOx was 887.00 ppb at 08:00, but the model expected about 567.20 ppb, so it was 319.80 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 14,
       "when": "Sat 5 Feb 2005, 10:00",
       "type": "Data limitation",
       "confidence": "high",
-      "severity": 1.43,
+      "severity": 1.65,
       "peak_value": 302.0,
-      "expected_value": 687.939,
-      "explanation": "Sat 5 Feb 2005, 10:00: NOx was 302.00 ppb at 10:00, but the model expected about 687.94 ppb, so it was 385.94 lower. But the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+      "expected_value": 717.652,
+      "explanation": "Sat 5 Feb 2005, 10:00: NOx was 302.00 ppb at 10:00, but the model expected about 717.65 ppb, so it was 415.65 lower. But the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 15,
       "when": "Thu 10 Feb 2005, 20:00",
       "type": "Data limitation",
       "confidence": "medium",
-      "severity": 1.6,
+      "severity": 1.65,
       "peak_value": 1028.0,
-      "expected_value": 597.066,
-      "explanation": "Thu 10 Feb 2005, 20:00: NOx was 1028.00 ppb at 20:00, but the model expected about 597.07 ppb, so it was 430.93 higher. But absolute humidity, relative humidity and temperature were missing. So this is more likely a problem with the data than real pollution."
+      "expected_value": 613.516,
+      "explanation": "Thu 10 Feb 2005, 20:00: NOx was 1028.00 ppb at 20:00, but the model expected about 613.52 ppb, so it was 414.48 higher. But absolute humidity, relative humidity and temperature were missing. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 16,
-      "when": "Sat 12 Feb 2005, 20:00",
-      "type": "Unusual pollution",
+      "when": "Fri 11 Feb 2005, 08:00",
+      "type": "Data limitation",
       "confidence": "high",
-      "severity": 1.02,
-      "peak_value": 952.0,
-      "expected_value": 677.601,
-      "explanation": "Sat 12 Feb 2005, 20:00: NOx was 952.00 ppb at 20:00, but the model expected about 677.60 ppb, so it was 274.40 higher. The inputs were complete, and CO, NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 1.22,
+      "peak_value": 589.0,
+      "expected_value": 281.719,
+      "explanation": "Fri 11 Feb 2005, 08:00: NOx was 589.00 ppb at 08:00, but the model expected about 281.72 ppb, so it was 307.28 higher. But absolute humidity, relative humidity and temperature were missing and the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 17,
-      "when": "Sun 13 Feb 2005, 12:00",
-      "type": "Unusual pollution",
+      "when": "Fri 11 Feb 2005, 20:00",
+      "type": "Data limitation",
       "confidence": "high",
-      "severity": 1.02,
-      "peak_value": 204.0,
-      "expected_value": 478.764,
-      "explanation": "Sun 13 Feb 2005, 12:00: NOx was 204.00 ppb at 12:00, but the model expected about 478.76 ppb, so it was 274.76 lower. The inputs were complete, and CO and C6H6 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.27,
+      "peak_value": 641.0,
+      "expected_value": 960.861,
+      "explanation": "Fri 11 Feb 2005, 20:00: NOx was 641.00 ppb at 20:00, but the model expected about 960.86 ppb, so it was 319.86 lower. But absolute humidity, relative humidity and temperature were missing and the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 18,
-      "when": "Fri 25 Feb 2005, 12:00",
-      "type": "Data limitation",
+      "when": "Sun 13 Feb 2005, 12:00",
+      "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.01,
-      "peak_value": 298.0,
-      "expected_value": 570.572,
-      "explanation": "Fri 25 Feb 2005, 12:00: NOx was 298.00 ppb at 12:00, but the model expected about 570.57 ppb, so it was 272.57 lower. But the reading 3 hours before was missing and the NOx data had a gap of 2 hours just before. So this is more likely a problem with the data than real pollution."
+      "severity": 1.08,
+      "peak_value": 204.0,
+      "expected_value": 476.97,
+      "explanation": "Sun 13 Feb 2005, 12:00: NOx was 204.00 ppb at 12:00, but the model expected about 476.97 ppb, so it was 272.97 lower. The inputs were complete, and CO and C6H6 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 19,
-      "when": "Sat 5 Mar 2005, 10:00",
-      "type": "Unusual pollution",
+      "when": "Wed 16 Feb 2005, 08:00 to 10:00",
+      "type": "Data limitation",
       "confidence": "medium",
-      "severity": 1.03,
-      "peak_value": 166.0,
-      "expected_value": 444.009,
-      "explanation": "Sat 5 Mar 2005, 10:00: NOx was 166.00 ppb at 10:00, but the model expected about 444.01 ppb, so it was 278.01 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.22,
+      "peak_value": 854.0,
+      "expected_value": 546.076,
+      "explanation": "Wed 16 Feb 2005, 08:00 to 10:00: NOx was 854.00 ppb at 08:00, but the model expected about 546.08 ppb, so it was 307.92 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 20,
-      "when": "Thu 10 Mar 2005, 08:00 to 09:00",
+      "when": "Tue 22 Feb 2005, 08:00 to 11:00",
       "type": "Data limitation",
-      "confidence": "high",
+      "confidence": "medium",
       "severity": 1.15,
-      "peak_value": 863.0,
-      "expected_value": 552.425,
-      "explanation": "Thu 10 Mar 2005, 08:00 to 09:00: NOx was 863.00 ppb at 08:00, but the model expected about 552.42 ppb, so it was 310.58 higher. But the NOx data had a gap of 1 hour just before and the value jumped about 10 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+      "peak_value": 687.0,
+      "expected_value": 396.569,
+      "explanation": "Tue 22 Feb 2005, 08:00 to 11:00: NOx was 687.00 ppb at 08:00, but the model expected about 396.57 ppb, so it was 290.43 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 21,
-      "when": "Fri 11 Mar 2005, 12:00",
+      "when": "Thu 3 Mar 2005, 08:00 to 10:00",
       "type": "Data limitation",
       "confidence": "high",
-      "severity": 1.44,
-      "peak_value": 339.0,
-      "expected_value": 728.246,
-      "explanation": "Fri 11 Mar 2005, 12:00: NOx was 339.00 ppb at 12:00, but the model expected about 728.25 ppb, so it was 389.25 lower. But absolute humidity, relative humidity and temperature were missing and the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+      "severity": 1.16,
+      "peak_value": 389.0,
+      "expected_value": 680.523,
+      "explanation": "Thu 3 Mar 2005, 08:00 to 10:00: NOx was 389.00 ppb at 10:00, but the model expected about 680.52 ppb, so it was 291.52 lower. But the NOx data had a gap of 1 hour just before and the value jumped about 6 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 22,
-      "when": "Thu 24 Mar 2005, 19:00",
+      "when": "Sat 5 Mar 2005, 10:00",
       "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.04,
-      "peak_value": 659.0,
-      "expected_value": 377.645,
-      "explanation": "Thu 24 Mar 2005, 19:00: NOx was 659.00 ppb at 19:00, but the model expected about 377.64 ppb, so it was 281.36 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "confidence": "medium",
+      "severity": 1.19,
+      "peak_value": 166.0,
+      "expected_value": 466.304,
+      "explanation": "Sat 5 Mar 2005, 10:00: NOx was 166.00 ppb at 10:00, but the model expected about 466.30 ppb, so it was 300.30 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 23,
-      "when": "Wed 30 Mar 2005, 08:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.22,
-      "peak_value": 371.0,
-      "expected_value": 699.371,
-      "explanation": "Wed 30 Mar 2005, 08:00: NOx was 371.00 ppb at 08:00, but the model expected about 699.37 ppb, so it was 328.37 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Tue 8 Mar 2005, 08:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.13,
+      "peak_value": 667.0,
+      "expected_value": 383.824,
+      "explanation": "Tue 8 Mar 2005, 08:00: NOx was 667.00 ppb at 08:00, but the model expected about 383.82 ppb, so it was 283.18 higher. But the NOx data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 24,
-      "when": "Thu 31 Mar 2005, 07:00",
-      "type": "Unusual pollution",
+      "when": "Wed 9 Mar 2005, 08:00",
+      "type": "Data limitation",
       "confidence": "high",
-      "severity": 1.27,
-      "peak_value": 673.0,
-      "expected_value": 330.472,
-      "explanation": "Thu 31 Mar 2005, 07:00: NOx was 673.00 ppb at 07:00, but the model expected about 330.47 ppb, so it was 342.53 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 1.4,
+      "peak_value": 877.0,
+      "expected_value": 523.73,
+      "explanation": "Wed 9 Mar 2005, 08:00: NOx was 877.00 ppb at 08:00, but the model expected about 523.73 ppb, so it was 353.27 higher. But the NOx data had a gap of 1 hour just before and the value jumped about 8 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 25,
+      "when": "Thu 10 Mar 2005, 08:00 to 09:00",
+      "type": "Data limitation",
+      "confidence": "high",
+      "severity": 1.67,
+      "peak_value": 863.0,
+      "expected_value": 442.052,
+      "explanation": "Thu 10 Mar 2005, 08:00 to 09:00: NOx was 863.00 ppb at 08:00, but the model expected about 442.05 ppb, so it was 420.95 higher. But the NOx data had a gap of 1 hour just before and the value jumped about 10 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 26,
+      "when": "Fri 11 Mar 2005, 12:00",
+      "type": "Data limitation",
+      "confidence": "high",
+      "severity": 1.58,
+      "peak_value": 339.0,
+      "expected_value": 735.513,
+      "explanation": "Fri 11 Mar 2005, 12:00: NOx was 339.00 ppb at 12:00, but the model expected about 735.51 ppb, so it was 396.51 lower. But absolute humidity, relative humidity and temperature were missing and the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 27,
+      "when": "Sun 13 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.1,
+      "peak_value": 583.0,
+      "expected_value": 306.955,
+      "explanation": "Sun 13 Mar 2005, 19:00: NOx was 583.00 ppb at 19:00, but the model expected about 306.95 ppb, so it was 276.05 higher. The inputs were complete, and CO, NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 28,
+      "when": "Mon 14 Mar 2005, 08:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.12,
+      "peak_value": 658.0,
+      "expected_value": 376.702,
+      "explanation": "Mon 14 Mar 2005, 08:00: NOx was 658.00 ppb at 08:00, but the model expected about 376.70 ppb, so it was 281.30 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 29,
+      "when": "Thu 17 Mar 2005, 08:00",
+      "type": "Data limitation",
+      "confidence": "high",
+      "severity": 1.21,
+      "peak_value": 723.0,
+      "expected_value": 418.991,
+      "explanation": "Thu 17 Mar 2005, 08:00: NOx was 723.00 ppb at 08:00, but the model expected about 418.99 ppb, so it was 304.01 higher. But the value jumped about 7 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 30,
+      "when": "Mon 21 Mar 2005, 09:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.05,
+      "peak_value": 723.0,
+      "expected_value": 459.224,
+      "explanation": "Mon 21 Mar 2005, 09:00: NOx was 723.00 ppb at 09:00, but the model expected about 459.22 ppb, so it was 263.78 higher. The inputs were complete, and CO, NO2 and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 31,
+      "when": "Wed 23 Mar 2005, 08:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.1,
+      "peak_value": 649.0,
+      "expected_value": 371.588,
+      "explanation": "Wed 23 Mar 2005, 08:00: NOx was 649.00 ppb at 08:00, but the model expected about 371.59 ppb, so it was 277.41 higher. The inputs were complete, and C6H6 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 32,
+      "when": "Thu 24 Mar 2005, 19:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.09,
+      "peak_value": 659.0,
+      "expected_value": 384.042,
+      "explanation": "Thu 24 Mar 2005, 19:00: NOx was 659.00 ppb at 19:00, but the model expected about 384.04 ppb, so it was 274.96 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 33,
+      "when": "Thu 31 Mar 2005, 07:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.45,
+      "peak_value": 673.0,
+      "expected_value": 307.103,
+      "explanation": "Thu 31 Mar 2005, 07:00: NOx was 673.00 ppb at 07:00, but the model expected about 307.10 ppb, so it was 365.90 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 34,
       "when": "Mon 4 Apr 2005, 07:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.06,
+      "severity": 1.26,
       "peak_value": 594.0,
-      "expected_value": 309.056,
-      "explanation": "Mon 4 Apr 2005, 07:00: NOx was 594.00 ppb at 07:00, but the model expected about 309.06 ppb, so it was 284.94 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 278.055,
+      "explanation": "Mon 4 Apr 2005, 07:00: NOx was 594.00 ppb at 07:00, but the model expected about 278.06 ppb, so it was 315.94 higher. The inputs were complete, and CO and C6H6 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     }
   ],
   "limitations": [
     "Results come from one place and period, so they may not hold elsewhere.",
     "Episode labels come from simple rules. Nobody checked them against real events."
-  ]
+  ],
+  "overfitting_check": {
+    "error_on_learned_data": 40.569,
+    "error_on_test": 57.993,
+    "gap_percent": 42.9,
+    "gap_allowing_for_period_percent": 9.5,
+    "verdict": "No sign of overfitting",
+    "explanation": "No sign of overfitting: the error on new data is close to the error on the data it learned from, once you allow for the test period being 31% harder to predict."
+  }
 }

@@ -6,7 +6,7 @@
   <title>Air Quality Prediction</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=7">
   <script src="vendor/echarts.min.js"></script>
 </head>
 <body>
@@ -40,6 +40,10 @@
           <ul id="city-results" class="city-results" hidden></ul>
         </form>
         <div class="quick" id="quick-cities" aria-label="Quick picks"></div>
+        <div class="city-actions">
+          <button type="button" id="my-location" class="btn ghost small-btn">Use my location</button>
+          <button type="button" id="share-link" class="btn ghost small-btn">Copy link to this city</button>
+        </div>
       </div>
 
       <div id="live-loading" class="card loading" hidden>
@@ -51,7 +55,8 @@
       <div id="live-content" hidden>
         <section class="now-grid">
           <div class="card now-card">
-            <span class="kpi-label">Air quality right now</span>
+            <span class="kpi-label">Air quality right now <button type="button" class="info" aria-label="What is AQI?"
+              data-tip="AQI is one number from 0 to 500 for how polluted the air is. Under 50 is good, over 150 is unhealthy for everyone.">?</button></span>
             <div class="now-main">
               <div class="aqi-ring" id="now-ring"><span id="now-aqi">–</span><small>AQI</small></div>
               <div>
@@ -61,6 +66,7 @@
               </div>
             </div>
             <div class="scale" id="aqi-scale" aria-label="Air quality scale"></div>
+            <p class="small scale-note">The number on each colour is the top of that level. Lower is cleaner air.</p>
           </div>
           <div class="card tips">
             <h2>Next 24 hours at a glance</h2>
@@ -69,12 +75,34 @@
               <div class="when good-time"><span class="kpi-label">Best time to be outside</span><b id="best-time">–</b><span id="best-note" class="small"></span></div>
               <div class="when bad-time"><span class="kpi-label">Worst time</span><b id="worst-time">–</b><span id="worst-note" class="small"></span></div>
             </div>
+            <h3 class="mini-head">Why is the air like this?</h3>
+            <ul id="reasons" class="reasons"></ul>
           </div>
         </section>
 
+        <div class="grid2">
+          <section class="card">
+            <div class="card-head"><h2>What should I do today?</h2></div>
+            <div id="advice" class="advice"></div>
+          </section>
+          <section class="card">
+            <div class="card-head"><h2 id="normal-title">Is today normal?</h2></div>
+            <p id="normal-text" class="lead-text"></p>
+            <div class="normal-stats">
+              <div><span class="kpi-label">Last 24 hours</span><b id="normal-now">–</b></div>
+              <div><span class="kpi-label">A typical day here</span><b id="normal-typical">–</b></div>
+              <div><span class="kpi-label">Like smoking <button type="button" class="info" aria-label="About the cigarette comparison"
+                data-tip="A rough rule from Berkeley Earth: breathing 22 µg/m³ of fine dust for a whole day harms the lungs about as much as smoking one cigarette.">?</button></span><b id="normal-cig">–</b></div>
+            </div>
+            <div id="history-chart" class="chart short"></div>
+            <p class="small">Each bar is one day of the last 3 months, coloured by its air quality level.</p>
+          </section>
+        </div>
+
         <section class="card">
           <div class="card-head">
-            <h2>Fine dust: the last 2 days and our forecast</h2>
+            <h2>Fine dust: the last 2 days and our forecast <button type="button" class="info" aria-label="How to read this chart"
+              data-tip="Solid line: what was measured. Dashed line: our forecast. Shaded band: where we expect the real value to land about 8 times out of 10.">?</button></h2>
             <span class="hint">Coloured stripes show the air quality level</span>
           </div>
           <div id="live-chart" class="chart tall" data-parallax="-0.03"></div>
@@ -102,7 +130,8 @@
 
         <section class="card">
           <div class="card-head">
-            <h2>Unusual hours in the last month</h2>
+            <h2>Unusual hours in the last month <button type="button" class="info" aria-label="What is an unusual hour?"
+              data-tip="An hour when the real level was further from our forecast than on 95% of normal hours. We then check whether it was a real event or a data problem.">?</button></h2>
             <span class="hint" id="live-episode-count"></span>
           </div>
           <p class="small">Times when the level was much higher or lower than our model expected, with our best guess at why.</p>
@@ -123,6 +152,7 @@
           <label>Dataset <select id="dataset"></select></label>
           <label>Pollutant <select id="pollutant"></select></label>
           <a id="download" class="btn ghost" href="#">Download report (JSON)</a>
+          <a id="download-csv" class="btn ghost" href="#">Download unusual periods (CSV)</a>
         </div>
       </div>
 
@@ -160,6 +190,21 @@
           <summary>Read the full summary</summary>
           <p id="summary"></p>
         </details>
+      </section>
+
+      <section class="card trust" id="trust" hidden>
+        <h2>Can we trust these numbers?</h2>
+        <div class="trust-grid">
+          <div class="trust-item">
+            <span class="trust-num" id="within20">–</span>
+            <div><b>of the test hours were predicted within 20% of the real value</b>
+              <p class="small">Measured only on hours the model never saw while learning.</p></div>
+          </div>
+          <div class="trust-item">
+            <span class="trust-badge" id="fit-badge"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="5 12 10 17 19 7"/></svg></span>
+            <div><b id="fit-verdict"></b><p class="small" id="fit-text"></p></div>
+          </div>
+        </div>
       </section>
 
       <section class="card">
@@ -206,8 +251,10 @@
 
       <section class="card fold">
         <details>
-          <summary>Use your own data</summary>
-          <p class="small">Upload an hourly CSV, Excel or ZIP file with a time column (<code>Date</code> + <code>Time</code>,
+          <summary>Check your own station's data: find real pollution events and sensor problems</summary>
+          <p class="small">Have readings from your own monitoring station? Upload them and the app trains a model on them,
+            then lists the hours that look wrong and says whether each looks like real pollution or a sensor/data problem.
+            Upload an hourly CSV, Excel or ZIP file with a time column (<code>Date</code> + <code>Time</code>,
             <code>year/month/day/hour</code> or <code>datetime</code>) and at least one pollutant column (CO, NO2, NOx,
             C6H6, PM2.5, PM10, SO2 or O3). Weather columns are used if present. The
             <a href="https://archive.ics.uci.edu/dataset/501/beijing+multi+site+air+quality+data" target="_blank" rel="noopener">UCI Beijing</a>
@@ -286,6 +333,6 @@
   </main>
 
   <footer class="wrap">Air data: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> / Copernicus CAMS · Research data: UCI Machine Learning Repository · scikit-learn, XGBoost, FastAPI</footer>
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=7"></script>
 </body>
 </html>

@@ -15,12 +15,12 @@ const KIND_COLOR = { "Unusual pollution": "#ea580c", "Data limitation": "#7c3aed
 
 // US EPA air quality index bands, with the PM2.5 range (µg/m³) each one covers
 const AQI_SCALE = [
-  { top: 50, pm: [0, 9], name: "Good", color: "#16a34a" },
-  { top: 100, pm: [9, 35.4], name: "Moderate", color: "#ca8a04" },
-  { top: 150, pm: [35.4, 55.4], name: "Unhealthy for sensitive groups", color: "#ea580c" },
-  { top: 200, pm: [55.4, 125.4], name: "Unhealthy", color: "#dc2626" },
-  { top: 300, pm: [125.4, 225.4], name: "Very unhealthy", color: "#9333ea" },
-  { top: 500, pm: [225.4, 500], name: "Hazardous", color: "#7f1d1d" },
+  { top: 50, pm: [0, 9], name: "Good", short: "Good", color: "#16a34a" },
+  { top: 100, pm: [9, 35.4], name: "Moderate", short: "Moderate", color: "#ca8a04" },
+  { top: 150, pm: [35.4, 55.4], name: "Unhealthy for sensitive groups", short: "Sensitive groups", color: "#ea580c" },
+  { top: 200, pm: [55.4, 125.4], name: "Unhealthy", short: "Unhealthy", color: "#dc2626" },
+  { top: 300, pm: [125.4, 225.4], name: "Very unhealthy", short: "Very unhealthy", color: "#9333ea" },
+  { top: 500, pm: [225.4, 500], name: "Hazardous", short: "Hazardous", color: "#7f1d1d" },
 ];
 // WHO 2021 daily guideline levels (µg/m³), used to say whether a pollutant is high
 const WHO_DAILY = { "PM2.5": 15, PM10: 45, NO2: 25, O3: 100, SO2: 40, CO: 4000 };
@@ -40,6 +40,7 @@ let showAll = false;
 let chart = null;
 let patternChart = null;
 let liveChart = null;
+let historyChart = null;
 let live = null;          // the latest live result
 let liveRequest = 0;      // so an older, slower answer can't replace a newer one
 let researchStarted = false;
@@ -172,12 +173,12 @@ function openView(name) {
   });
   if (name === "research" && !researchStarted) { researchStarted = true; startResearch(); }
   // charts drawn while their tab was hidden have no size yet
-  setTimeout(() => [chart, patternChart, liveChart].forEach((c) => c && c.resize()), 30);
+  setTimeout(() => [chart, patternChart, liveChart, historyChart].forEach((c) => c && c.resize()), 30);
 }
 
 async function start() {
   window.addEventListener("hashchange", () => openView(location.hash.slice(1)));
-  window.addEventListener("resize", () => [chart, patternChart, liveChart].forEach((c) => c && c.resize()));
+  window.addEventListener("resize", () => [chart, patternChart, liveChart, historyChart].forEach((c) => c && c.resize()));
   startLive();
   openView(location.hash.slice(1) || "live");
   revealOnScroll();
@@ -210,8 +211,12 @@ function startLive() {
     loadLive(Number(b.dataset.lat), Number(b.dataset.lon), b.dataset.name);
   });
   $("aqi-scale").innerHTML = AQI_SCALE.map((b) =>
-    `<span style="background:${b.color}" title="${esc(b.name)}">${b.top}</span>`).join("");
-  const last = recall("city") || { name: "Hyderabad", lat: 17.385, lon: 78.4867 };
+    `<span style="--c:${b.color}" title="${esc(b.name)}"><i>${b.top}</i><small>${esc(b.short)}</small></span>`).join("");
+  $("my-location").addEventListener("click", useMyLocation);
+  $("share-link").addEventListener("click", shareLink);
+  const q = new URLSearchParams(location.search);
+  const shared = q.has("lat") && q.has("lon") ? { name: q.get("place") || "Shared place", lat: Number(q.get("lat")), lon: Number(q.get("lon")) } : null;
+  const last = shared || recall("city") || { name: "Hyderabad", lat: 17.385, lon: 78.4867 };
   loadLive(last.lat, last.lon, last.name);
 }
 
@@ -244,6 +249,7 @@ async function loadLive(lat, lon, name) {
     if (request !== liveRequest) return;
     live = data;
     remember("city", { name, lat, lon });
+    history.replaceState(null, "", `?place=${encodeURIComponent(name)}&lat=${lat}&lon=${lon}${location.hash || "#live"}`);
     $("live-loading").hidden = true;
     $("live-content").hidden = false;
     showLive();
@@ -275,6 +281,9 @@ function showLive() {
   pick("best", live.best_time, true);
   pick("worst", live.worst_time, false);
 
+  $("reasons").innerHTML = (live.reasons || []).map((r) => `<li>${esc(r)}</li>`).join("");
+  showAdvice();
+  showNormal();
   showHourly();
   playWhenVisible($("live-chart"), drawLiveChart);
   showPollutants();
@@ -284,6 +293,107 @@ function showLive() {
     Copernicus CAMS air quality model. These are estimates for the area (about 11 km across), not a reading from one street.
     Forecast method: ${esc(live.model)}. Refreshed every hour.`;
   revealOnScroll($("live-content"));
+}
+
+// ---------- what should I do? ----------
+function verdictFor(aqi, limits) {
+  if (aqi <= limits[0]) return ["ok", "Fine to be active outside."];
+  if (aqi <= limits[1]) return ["care", "OK, but take it easier on long or hard exercise."];
+  if (aqi <= limits[2]) return ["reduce", "Cut down on long or hard outdoor activity and take breaks indoors."];
+  return ["avoid", "Avoid outdoor exercise. Stay indoors where you can."];
+}
+
+function showAdvice() {
+  const fc = live.forecast;
+  const now = live.now.aqi;
+  const groups = [
+    ["Everyone", [100, 150, 200]],
+    ["Children, older people, and anyone with asthma or heart problems", [50, 100, 150]],
+  ];
+  let html = groups.map(([who, limits]) => {
+    const [cls, text] = verdictFor(now, limits);
+    return `<div class="advice-row ${cls}"><span class="dot"></span><div><b>${esc(who)}</b><p>${esc(text)}</p></div></div>`;
+  }).join("");
+
+  // best 2-hour window in the daytime (6 am to 9 pm) for a walk or exercise
+  let best = null;
+  for (let i = 0; i < fc.length - 1; i++) {
+    const h = Number(fc[i].time.slice(11, 13));
+    if (h < 6 || h > 20) continue;
+    const avg = (fc[i].aqi + fc[i + 1].aqi) / 2;
+    if (!best || avg < best.avg) best = { avg, from: fc[i].time, to: fc[i + 1].time };
+  }
+  const tips = [];
+  if (best) tips.push(`<b>${best.avg > 150 ? "Least bad" : "Best"} time for a walk or exercise:</b> ${esc(dayHourText(best.from, live.updated))} to ${esc(hourText(best.to))}
+    (AQI about ${Math.round(best.avg)}).`);
+  const bad = fc.filter((f) => f.aqi > 150);
+  if (bad.length) {
+    tips.push(`<b>Keep windows closed</b> from ${esc(dayHourText(bad[0].time, live.updated))} to ${esc(dayHourText(bad[bad.length - 1].time, live.updated))},
+      when the air is unhealthy.`);
+    tips.push(`If you have to be outside for long, a well-fitting <b>N95 mask</b> helps. Cloth masks do little against fine dust.`);
+    tips.push(`Indoors, an air purifier with a <b>HEPA filter</b> makes a real difference.`);
+  } else if (Math.max(now, ...fc.map((f) => f.aqi)) <= 50) {
+    tips.push("The air stays clean all day. A good day to open the windows.");
+  }
+  html += tips.length ? `<ul class="tips-list">${tips.map((t) => `<li>${t}</li>`).join("")}</ul>` : "";
+  $("advice").innerHTML = html;
+}
+
+// ---------- is today normal? ----------
+function showNormal() {
+  const n = live.normal;
+  if (!n) return;
+  $("normal-title").textContent = `Is today normal for ${live.place || "this area"}?`;
+  $("normal-text").textContent = `The last 24 hours were ${n.verdict}: worse than ${n.worse_than_pct}% of the days in the last 3 months.`;
+  $("normal-now").textContent = `${fmt(n.last_24h_avg, 0)} µg/m³`;
+  $("normal-typical").textContent = `${fmt(n.typical_day, 0)} µg/m³`;
+  $("normal-cig").textContent = `≈ ${fmt(n.cigarettes, 1)} cigarette${n.cigarettes === 1 ? "" : "s"}`;
+  playWhenVisible($("history-chart"), drawHistory);
+}
+
+function drawHistory() {
+  const days = live.normal.daily;
+  historyChart = historyChart || echarts.init($("history-chart"));
+  historyChart.setOption({
+    animation: !CALM, animationDuration: 700, animationDelay: (i) => i * 6,
+    tooltip: { trigger: "axis", formatter: (items) => {
+      const d = days[items[0].dataIndex];
+      return `<b>${esc(d.date)}</b><br>Fine dust ${fmt(d.pm25, 0)} µg/m³<br>AQI about ${d.aqi}, ${esc(d.category)}`;
+    } },
+    grid: { left: 34, right: 6, top: 8, bottom: 22 },
+    xAxis: { type: "category", data: days.map((d) => d.date.slice(5)), axisLabel: { interval: 14 } },
+    yAxis: { type: "value", splitLine: { lineStyle: { color: "#eef2f7" } } },
+    series: [{ type: "bar", barWidth: "70%", data: days.map((d) => ({ value: d.pm25, itemStyle: { color: d.color, borderRadius: [2, 2, 0, 0] } })) }],
+  }, true);
+}
+
+// ---------- my location and sharing ----------
+function useMyLocation() {
+  if (!navigator.geolocation) { showLiveError("This browser can't share your location. Search for your city instead."); return; }
+  $("my-location").textContent = "Finding you…";
+  navigator.geolocation.getCurrentPosition((pos) => {
+    $("my-location").textContent = "Use my location";
+    loadLive(Number(pos.coords.latitude.toFixed(3)), Number(pos.coords.longitude.toFixed(3)), "Your location");
+  }, () => {
+    $("my-location").textContent = "Use my location";
+    showLiveError("We couldn't get your location (permission was denied or it timed out). Search for your city instead.");
+  }, { timeout: 10000 });
+}
+
+function showLiveError(text) {
+  $("live-error").hidden = false;
+  $("live-error").textContent = text;
+}
+
+async function shareLink() {
+  const button = $("share-link");
+  try {
+    await navigator.clipboard.writeText(location.href);
+    button.textContent = "Link copied!";
+  } catch (e) {
+    window.prompt("Copy this link:", location.href);
+  }
+  setTimeout(() => { button.textContent = "Copy link to this city"; }, 2000);
 }
 
 function showHourly() {
@@ -410,16 +520,23 @@ function pickDataset(id) {
   pickPollutant(dataset.pollutants[0].key);
 }
 
+let researchRequest = 0;   // same idea as liveRequest: only the newest choice gets drawn
 async function pickPollutant(key) {
-  [results, report] = await Promise.all([
+  const request = ++researchRequest;
+  const [newResults, newReport] = await Promise.all([
     getJSON(`/api/results/${dataset.id}/${key}`),
     getJSON(`/api/report/${dataset.id}/${key}`),
   ]);
+  if (request !== researchRequest) return;
+  results = newResults;
+  report = newReport;
   $("download").href = `/api/report/${dataset.id}/${key}?download=true`;
+  $("download-csv").href = `/api/episodes/${dataset.id}/${key}`;
   filter = "all";
   showAll = false;
   showKpis();
   showHeadline();
+  showTrust();
   playWhenVisible($("chart"), drawChart);
   showModels();
   playWhenVisible($("chart-patterns"), drawPatterns);
@@ -460,6 +577,21 @@ function showHeadline() {
     : `about as close as simply assuming it stays the same, because ${results.pollutant} changes slowly here`;
   $("headline").textContent = `Our model predicts next hour's ${results.pollutant} with a typical miss of ${fmt(best.test.MAE, 2)} ${unit}, ${compare}.`;
   $("summary").textContent = report.summary;
+}
+
+// Accuracy in plain terms, and whether the model memorised its training data
+function showTrust() {
+  const o = results.overfitting_check;
+  const within = results.accuracy_within_20pct;
+  $("trust").hidden = !o && within == null;
+  if (within != null) countUp($("within20"), within, 0, "", "%");
+  if (!o) return;
+  const kind = o.verdict === "No sign of overfitting" ? "good" : o.verdict.startsWith("Mild") ? "mild" : "bad";
+  $("fit-badge").className = `trust-badge ${kind}`;
+  $("fit-verdict").textContent = `Overfitting check: ${o.verdict.toLowerCase()}`;
+  const why = o.explanation.slice(o.explanation.indexOf(":") + 2);
+  $("fit-text").textContent = `Typical miss on the hours it learned from: ${fmt(o.mae_on_learned_data, 3)} ${results.unit}; ` +
+    `on new hours: ${fmt(o.mae_on_test, 3)} ${results.unit}. ${why.charAt(0).toUpperCase()}${why.slice(1)}`;
 }
 
 // ---------- charts ----------
@@ -572,7 +704,9 @@ function buildForm() {
 }
 
 async function loadSample() {
+  const asked = results;
   const sample = await getJSON(`/api/sample/${dataset.id}/${results.pollutant}`);
+  if (asked !== results) return;   // the pollutant changed while this was loading
   for (const input of $("predict-form").elements) input.value = sample.input[input.name] ?? "";
   $("load-sample").textContent = `Load a real hour (now ${sample.time.replace("T", " ").slice(0, 16)})`;
 }

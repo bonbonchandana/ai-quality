@@ -3,159 +3,193 @@
   "dataset": "Beijing, Aotizhongxin station (UCI)",
   "pollutant": "PM10",
   "unit": "µg/m³",
-  "summary": "We predicted PM10 one hour ahead using the Beijing, Aotizhongxin station (UCI) data. XGBoost did best on the validation period, so we used it. On the test period (12 May 2016 to 28 Feb 2017) its average error was 14.842 µg/m³. Just repeating the last hour's value gave 14.962 µg/m³, so the model was 0.8% better. 181 episodes were flagged: 126 look like unusual pollution, 5 look like data problems and 50 are unclear.",
+  "summary": "We predicted PM10 one hour ahead using the Beijing, Aotizhongxin station (UCI) data. XGBoost did best on the validation period, so we used it. On the test period (12 May 2016 to 28 Feb 2017) its average error was 14.365 µg/m³. Just repeating the last hour's value gave 14.962 µg/m³, so the model was 4.0% better. 186 episodes were flagged: 129 look like unusual pollution, 6 look like data problems and 51 are unclear. Its prediction was within 20% of the real value in 64% of the test hours. No sign of overfitting: the error on new data is close to the error on the data it learned from, once you allow for the test period being 23% easier to predict.",
   "how_it_was_made": [
     "Read the hourly data and treated empty cells and -200 as missing.",
     "Built the inputs: hour, weekday, the reading 1 hour before, the reading 2 hours before, the reading 3 hours before, the reading at the same time the day before, temperature, air pressure, dew point, rain, wind speed.",
     "Split the timeline in order: first 60% to train, next 20% to choose the model, last 20% to test.",
-    "Tried Linear Regression, Random Forest and XGBoost. Each predicts how much the level changes in the next hour.",
-    "Flagged test hours where the miss was more than 52.69 µg/m³ (bigger than 95% of the misses on the validation period).",
-    "By design this limit flags 5% of the validation hours; on the test period it flagged 4.3% of hours. So the number of episodes partly depends on where the limit is set.",
+    "Tried Linear Regression, Random Forest and XGBoost, each with a few settings that keep it from memorising the training hours. Each predicts how much the level changes in the next hour.",
+    "Checked for overfitting: compared the chosen model's average error on the hours it learned from with its error on the test hours, allowing for some periods being harder to predict than others.",
+    "Counted the test hours where the prediction was within 20% of the real value. Readings below the 10th percentile were measured against that percentile, so tiny misses on near-zero readings don't count as big ones.",
+    "Flagged test hours where the miss was more than 51.11 µg/m³ (bigger than 95% of the misses on the validation period).",
+    "By design this limit flags 5% of the validation hours; on the test period it flagged 4.5% of hours. So the number of episodes partly depends on where the limit is set.",
     "Grouped flagged hours that were less than 3 hours apart and checked each group: missing inputs or a gap, a stuck reading, or a sudden jump that nothing else shared mean a data problem; other pollutants moving the same way at the same time mean unusual pollution; anything else is unclear."
   ],
   "results": {
     "chosen_model": "XGBoost",
     "test_period": "12 May 2016 to 28 Feb 2017",
-    "average_error": 14.842,
+    "average_error": 14.365,
     "average_error_if_repeating_last_hour": 14.962,
-    "better_than_repeating_last_hour_percent": 0.8,
-    "r2": 0.915,
-    "test_hours": 6893
+    "better_than_repeating_last_hour_percent": 4.0,
+    "r2": 0.914,
+    "test_hours": 6893,
+    "accuracy_within_20pct": 64.3,
+    "model_settings": {
+      "n_estimators": 300,
+      "max_depth": 6,
+      "learning_rate": 0.05,
+      "subsample": 0.8,
+      "colsample_bytree": 0.8,
+      "min_child_weight": 10,
+      "reg_lambda": 5,
+      "objective": "reg:absoluteerror"
+    }
   },
   "models_compared": [
     {
       "model": "Linear Regression",
       "validation_error": 17.089,
-      "test_error": 15.401
+      "test_error": 15.401,
+      "test_within_20pct": 60.7,
+      "settings": {}
     },
     {
       "model": "Random Forest",
       "validation_error": 16.676,
-      "test_error": 14.865
+      "test_error": 14.865,
+      "test_within_20pct": 62.1,
+      "settings": {
+        "n_estimators": 150,
+        "max_depth": 10,
+        "min_samples_leaf": 5,
+        "max_features": 1.0
+      }
     },
     {
       "model": "XGBoost",
-      "validation_error": 16.506,
-      "test_error": 14.842
+      "validation_error": 15.595,
+      "test_error": 14.365,
+      "test_within_20pct": 64.3,
+      "settings": {
+        "n_estimators": 300,
+        "max_depth": 6,
+        "learning_rate": 0.05,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "min_child_weight": 10,
+        "reg_lambda": 5,
+        "objective": "reg:absoluteerror"
+      }
     },
     {
       "model": "Persistence (same as previous hour)",
       "validation_error": 16.297,
-      "test_error": 14.962
+      "test_error": 14.962,
+      "test_within_20pct": 65.1
     }
   ],
   "most_important_inputs": [
     "the reading 2 hours before",
-    "the reading 1 hour before",
-    "air pressure"
+    "hour",
+    "wind speed"
   ],
   "episode_counts": {
-    "total": 181,
-    "Unusual pollution": 126,
-    "Data limitation": 5,
-    "Unclear": 50
+    "total": 186,
+    "Unusual pollution": 129,
+    "Data limitation": 6,
+    "Unclear": 51
   },
-  "patterns": "Most episodes peaked around 00:00, 16:00 and 20:00, and 73% fell on weekdays, about what you'd expect, so they are spread across the week. The busiest month was Nov 2016 with 30 episodes.",
+  "patterns": "Most episodes peaked around 00:00, 20:00 and 21:00, and 72% fell on weekdays, about what you'd expect, so they are spread across the week. The busiest month was Nov 2016 with 31 episodes.",
   "most_severe": [
     {
-      "id": 163,
-      "when": "Fri 27 Jan 2017 21:00 to Sat 28 Jan 11:00",
+      "id": 166,
+      "when": "Fri 27 Jan 2017 21:00 to Sat 28 Jan 07:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 9.12,
+      "severity": 9.25,
       "peak_value": 815.0,
-      "expected_value": 334.584,
-      "explanation": "Fri 27 Jan 2017 21:00 to Sat 28 Jan 11:00: PM10 was 815.00 µg/m³ at 01:00, but the model expected about 334.58 µg/m³, so it was 480.42 higher. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 342.361,
+      "explanation": "Fri 27 Jan 2017 21:00 to Sat 28 Jan 07:00: PM10 was 815.00 µg/m³ at 01:00, but the model expected about 342.36 µg/m³, so it was 472.64 higher. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 51,
+      "id": 50,
       "when": "Mon 25 Jul 2016, 10:00 to 11:00",
       "type": "Data limitation",
       "confidence": "high",
-      "severity": 7.61,
+      "severity": 7.87,
       "peak_value": 450.0,
-      "expected_value": 49.185,
-      "explanation": "Mon 25 Jul 2016, 10:00 to 11:00: PM10 was 450.00 µg/m³ at 10:00, but the model expected about 49.18 µg/m³, so it was 400.82 higher. But the value jumped about 11 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+      "expected_value": 47.676,
+      "explanation": "Mon 25 Jul 2016, 10:00 to 11:00: PM10 was 450.00 µg/m³ at 10:00, but the model expected about 47.68 µg/m³, so it was 402.32 higher. But the value jumped about 11 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
-      "id": 14,
+      "id": 15,
       "when": "Mon 6 Jun 2016, 22:00 to 23:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 5.85,
-      "peak_value": 473.0,
-      "expected_value": 164.875,
-      "explanation": "Mon 6 Jun 2016, 22:00 to 23:00: PM10 was 473.00 µg/m³ at 22:00, but the model expected about 164.88 µg/m³, so it was 308.12 higher. The inputs were complete, and CO, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 6.82,
+      "peak_value": 36.0,
+      "expected_value": 384.379,
+      "explanation": "Mon 6 Jun 2016, 22:00 to 23:00: PM10 was 36.00 µg/m³ at 23:00, but the model expected about 384.38 µg/m³, so it was 348.38 lower. The inputs were complete, and CO, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 64,
-      "when": "Wed 7 Sep 2016, 20:00",
-      "type": "Data limitation",
+      "id": 30,
+      "when": "Wed 22 Jun 2016 22:00 to Thu 23 Jun 04:00",
+      "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 5.09,
-      "peak_value": 27.0,
-      "expected_value": 295.057,
-      "explanation": "Wed 7 Sep 2016, 20:00: PM10 was 27.00 µg/m³ at 20:00, but the model expected about 295.06 µg/m³, so it was 268.06 lower. But the reading 2 hours before, the reading at the same time the day before and the reading 3 hours before were missing and the PM10 data had a gap of 2 hours just before. So this is more likely a problem with the data than real pollution."
+      "severity": 4.83,
+      "peak_value": 296.0,
+      "expected_value": 49.236,
+      "explanation": "Wed 22 Jun 2016 22:00 to Thu 23 Jun 04:00: PM10 was 296.00 µg/m³ at 22:00, but the model expected about 49.24 µg/m³, so it was 246.76 higher. The inputs were complete, and CO, NO2, PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 141,
-      "when": "Thu 22 Dec 2016, 03:00 to 04:00",
+      "when": "Thu 22 Dec 2016, 01:00 to 04:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 4.68,
+      "severity": 4.74,
       "peak_value": 149.0,
-      "expected_value": 395.537,
-      "explanation": "Thu 22 Dec 2016, 03:00 to 04:00: PM10 was 149.00 µg/m³ at 03:00, but the model expected about 395.54 µg/m³, so it was 246.54 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
-    },
-    {
-      "id": 28,
-      "when": "Wed 22 Jun 2016, 22:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 4.64,
-      "peak_value": 296.0,
-      "expected_value": 51.465,
-      "explanation": "Wed 22 Jun 2016, 22:00: PM10 was 296.00 µg/m³ at 22:00, but the model expected about 51.47 µg/m³, so it was 244.53 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 391.316,
+      "explanation": "Thu 22 Dec 2016, 01:00 to 04:00: PM10 was 149.00 µg/m³ at 03:00, but the model expected about 391.32 µg/m³, so it was 242.32 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 151,
       "when": "Mon 2 Jan 2017, 12:00 to 15:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 4.37,
+      "severity": 4.51,
       "peak_value": 247.0,
-      "expected_value": 16.876,
-      "explanation": "Mon 2 Jan 2017, 12:00 to 15:00: PM10 was 247.00 µg/m³ at 12:00, but the model expected about 16.88 µg/m³, so it was 230.12 higher. The inputs were complete, and SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 16.393,
+      "explanation": "Mon 2 Jan 2017, 12:00 to 15:00: PM10 was 247.00 µg/m³ at 12:00, but the model expected about 16.39 µg/m³, so it was 230.61 higher. The inputs were complete, and SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 176,
+      "id": 180,
       "when": "Wed 15 Feb 2017, 14:00 to 17:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 4.31,
+      "severity": 4.35,
       "peak_value": 5.0,
-      "expected_value": 231.897,
-      "explanation": "Wed 15 Feb 2017, 14:00 to 17:00: PM10 was 5.00 µg/m³ at 14:00, but the model expected about 231.90 µg/m³, so it was 226.90 lower. The inputs were complete, and PM2.5 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 227.434,
+      "explanation": "Wed 15 Feb 2017, 14:00 to 17:00: PM10 was 5.00 µg/m³ at 14:00, but the model expected about 227.43 µg/m³, so it was 222.43 lower. The inputs were complete, and PM2.5 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 99,
       "when": "Thu 10 Nov 2016, 16:00 to 21:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 4.1,
+      "severity": 4.32,
       "peak_value": 258.0,
-      "expected_value": 41.821,
-      "explanation": "Thu 10 Nov 2016, 16:00 to 21:00: PM10 was 258.00 µg/m³ at 18:00, but the model expected about 41.82 µg/m³, so it was 216.18 higher. The inputs were complete, and CO, NO2, PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 37.023,
+      "explanation": "Thu 10 Nov 2016, 16:00 to 21:00: PM10 was 258.00 µg/m³ at 18:00, but the model expected about 37.02 µg/m³, so it was 220.98 higher. The inputs were complete, and CO, NO2, PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 115,
-      "when": "Sun 27 Nov 2016, 01:00 to 03:00",
+      "id": 27,
+      "when": "Sun 19 Jun 2016, 22:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 4.13,
+      "peak_value": 295.0,
+      "expected_value": 83.899,
+      "explanation": "Sun 19 Jun 2016, 22:00: PM10 was 295.00 µg/m³ at 22:00, but the model expected about 83.90 µg/m³, so it was 211.10 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 117,
+      "when": "Sun 27 Nov 2016, 02:00 to 03:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 4.07,
+      "severity": 4.0,
       "peak_value": 186.0,
-      "expected_value": 400.323,
-      "explanation": "Sun 27 Nov 2016, 01:00 to 03:00: PM10 was 186.00 µg/m³ at 02:00, but the model expected about 400.32 µg/m³, so it was 214.32 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 390.243,
+      "explanation": "Sun 27 Nov 2016, 02:00 to 03:00: PM10 was 186.00 µg/m³ at 02:00, but the model expected about 390.24 µg/m³, so it was 204.24 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     }
   ],
   "episodes": [
@@ -166,18 +200,18 @@
       "confidence": "medium",
       "severity": 1.46,
       "peak_value": 46.0,
-      "expected_value": 123.068,
-      "explanation": "Fri 13 May 2016, 00:00 to 02:00: PM10 was 46.00 µg/m³ at 00:00, but the model expected about 123.07 µg/m³, so it was 77.07 lower. The inputs were complete, and O3 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 120.792,
+      "explanation": "Fri 13 May 2016, 00:00 to 02:00: PM10 was 46.00 µg/m³ at 00:00, but the model expected about 120.79 µg/m³, so it was 74.79 lower. The inputs were complete, and O3 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 2,
       "when": "Sun 15 May 2016, 20:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.16,
+      "severity": 1.23,
       "peak_value": 86.0,
-      "expected_value": 25.025,
-      "explanation": "Sun 15 May 2016, 20:00: PM10 was 86.00 µg/m³ at 20:00, but the model expected about 25.02 µg/m³, so it was 60.98 higher. The inputs were complete, and NO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 23.264,
+      "explanation": "Sun 15 May 2016, 20:00: PM10 was 86.00 µg/m³ at 20:00, but the model expected about 23.26 µg/m³, so it was 62.74 higher. The inputs were complete, and NO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 3,
@@ -186,1792 +220,1850 @@
       "confidence": "low",
       "severity": 1.21,
       "peak_value": 53.0,
-      "expected_value": 116.998,
-      "explanation": "Mon 16 May 2016, 00:00: PM10 was 53.00 µg/m³ at 00:00, but the model expected about 117.00 µg/m³, so it was 64.00 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 114.672,
+      "explanation": "Mon 16 May 2016, 00:00: PM10 was 53.00 µg/m³ at 00:00, but the model expected about 114.67 µg/m³, so it was 61.67 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 4,
       "when": "Tue 17 May 2016, 19:00 to 20:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.38,
-      "peak_value": 76.0,
-      "expected_value": 148.524,
-      "explanation": "Tue 17 May 2016, 19:00 to 20:00: PM10 was 76.00 µg/m³ at 20:00, but the model expected about 148.52 µg/m³, so it was 72.52 lower. The inputs were complete, and CO, SO2 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.41,
+      "peak_value": 153.0,
+      "expected_value": 80.697,
+      "explanation": "Tue 17 May 2016, 19:00 to 20:00: PM10 was 153.00 µg/m³ at 19:00, but the model expected about 80.70 µg/m³, so it was 72.30 higher. The inputs were complete, and CO, SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 5,
-      "when": "Wed 18 May 2016, 12:00",
-      "type": "Unclear",
-      "confidence": "low",
+      "when": "Fri 20 May 2016, 03:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
       "severity": 1.02,
-      "peak_value": 62.0,
-      "expected_value": 115.866,
-      "explanation": "Wed 18 May 2016, 12:00: PM10 was 62.00 µg/m³ at 12:00, but the model expected about 115.87 µg/m³, so it was 53.87 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "peak_value": 130.0,
+      "expected_value": 77.847,
+      "explanation": "Fri 20 May 2016, 03:00: PM10 was 130.00 µg/m³ at 03:00, but the model expected about 77.85 µg/m³, so it was 52.15 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 6,
       "when": "Mon 23 May 2016, 16:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.21,
+      "severity": 1.23,
       "peak_value": 62.0,
-      "expected_value": 125.653,
-      "explanation": "Mon 23 May 2016, 16:00: PM10 was 62.00 µg/m³ at 16:00, but the model expected about 125.65 µg/m³, so it was 63.65 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 124.746,
+      "explanation": "Mon 23 May 2016, 16:00: PM10 was 62.00 µg/m³ at 16:00, but the model expected about 124.75 µg/m³, so it was 62.75 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 7,
       "when": "Thu 26 May 2016, 04:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.8,
+      "severity": 1.9,
       "peak_value": 148.0,
-      "expected_value": 53.304,
-      "explanation": "Thu 26 May 2016, 04:00: PM10 was 148.00 µg/m³ at 04:00, but the model expected about 53.30 µg/m³, so it was 94.70 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 51.066,
+      "explanation": "Thu 26 May 2016, 04:00: PM10 was 148.00 µg/m³ at 04:00, but the model expected about 51.07 µg/m³, so it was 96.93 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 8,
-      "when": "Sun 29 May 2016, 20:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 2.03,
-      "peak_value": 180.0,
-      "expected_value": 73.226,
-      "explanation": "Sun 29 May 2016, 20:00: PM10 was 180.00 µg/m³ at 20:00, but the model expected about 73.23 µg/m³, so it was 106.77 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Sat 28 May 2016, 05:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.05,
+      "peak_value": 113.0,
+      "expected_value": 59.467,
+      "explanation": "Sat 28 May 2016, 05:00: PM10 was 113.00 µg/m³ at 05:00, but the model expected about 59.47 µg/m³, so it was 53.53 higher. The inputs were complete, and NO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 9,
-      "when": "Tue 31 May 2016, 07:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.37,
-      "peak_value": 55.0,
-      "expected_value": 127.339,
-      "explanation": "Tue 31 May 2016, 07:00: PM10 was 55.00 µg/m³ at 07:00, but the model expected about 127.34 µg/m³, so it was 72.34 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "when": "Sun 29 May 2016, 20:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 2.14,
+      "peak_value": 180.0,
+      "expected_value": 70.652,
+      "explanation": "Sun 29 May 2016, 20:00: PM10 was 180.00 µg/m³ at 20:00, but the model expected about 70.65 µg/m³, so it was 109.35 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 10,
-      "when": "Wed 1 Jun 2016, 00:00",
+      "when": "Tue 31 May 2016, 07:00 to 08:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.42,
-      "peak_value": 18.0,
-      "expected_value": 92.603,
-      "explanation": "Wed 1 Jun 2016, 00:00: PM10 was 18.00 µg/m³ at 00:00, but the model expected about 92.60 µg/m³, so it was 74.60 lower. The inputs were complete, and CO and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.56,
+      "peak_value": 55.0,
+      "expected_value": 134.669,
+      "explanation": "Tue 31 May 2016, 07:00 to 08:00: PM10 was 55.00 µg/m³ at 07:00, but the model expected about 134.67 µg/m³, so it was 79.67 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 11,
-      "when": "Thu 2 Jun 2016, 12:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.11,
-      "peak_value": 52.0,
-      "expected_value": 110.341,
-      "explanation": "Thu 2 Jun 2016, 12:00: PM10 was 52.00 µg/m³ at 12:00, but the model expected about 110.34 µg/m³, so it was 58.34 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Wed 1 Jun 2016, 00:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.43,
+      "peak_value": 18.0,
+      "expected_value": 91.21,
+      "explanation": "Wed 1 Jun 2016, 00:00: PM10 was 18.00 µg/m³ at 00:00, but the model expected about 91.21 µg/m³, so it was 73.21 lower. The inputs were complete, and CO and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 12,
-      "when": "Fri 3 Jun 2016, 19:00",
+      "when": "Thu 2 Jun 2016, 12:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.25,
-      "peak_value": 174.0,
-      "expected_value": 108.204,
-      "explanation": "Fri 3 Jun 2016, 19:00: PM10 was 174.00 µg/m³ at 19:00, but the model expected about 108.20 µg/m³, so it was 65.80 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "severity": 1.09,
+      "peak_value": 52.0,
+      "expected_value": 107.669,
+      "explanation": "Thu 2 Jun 2016, 12:00: PM10 was 52.00 µg/m³ at 12:00, but the model expected about 107.67 µg/m³, so it was 55.67 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 13,
-      "when": "Sun 5 Jun 2016, 19:00 to 20:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.83,
-      "peak_value": 52.0,
-      "expected_value": 148.349,
-      "explanation": "Sun 5 Jun 2016, 19:00 to 20:00: PM10 was 52.00 µg/m³ at 20:00, but the model expected about 148.35 µg/m³, so it was 96.35 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
-    },
-    {
-      "id": 14,
-      "when": "Mon 6 Jun 2016, 22:00 to 23:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 5.85,
-      "peak_value": 473.0,
-      "expected_value": 164.875,
-      "explanation": "Mon 6 Jun 2016, 22:00 to 23:00: PM10 was 473.00 µg/m³ at 22:00, but the model expected about 164.88 µg/m³, so it was 308.12 higher. The inputs were complete, and CO, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 15,
-      "when": "Wed 8 Jun 2016, 20:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.16,
-      "peak_value": 207.0,
-      "expected_value": 145.994,
-      "explanation": "Wed 8 Jun 2016, 20:00: PM10 was 207.00 µg/m³ at 20:00, but the model expected about 145.99 µg/m³, so it was 61.01 higher. The inputs were complete, and CO, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 16,
-      "when": "Thu 9 Jun 2016, 21:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 2.23,
-      "peak_value": 200.0,
-      "expected_value": 82.49,
-      "explanation": "Thu 9 Jun 2016, 21:00: PM10 was 200.00 µg/m³ at 21:00, but the model expected about 82.49 µg/m³, so it was 117.51 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 17,
-      "when": "Fri 10 Jun 2016, 16:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.09,
-      "peak_value": 47.0,
-      "expected_value": 104.545,
-      "explanation": "Fri 10 Jun 2016, 16:00: PM10 was 47.00 µg/m³ at 16:00, but the model expected about 104.54 µg/m³, so it was 57.54 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
-    },
-    {
-      "id": 18,
-      "when": "Sun 12 Jun 2016, 02:00 to 05:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.19,
-      "peak_value": 148.0,
-      "expected_value": 85.402,
-      "explanation": "Sun 12 Jun 2016, 02:00 to 05:00: PM10 was 148.00 µg/m³ at 05:00, but the model expected about 85.40 µg/m³, so it was 62.60 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 19,
-      "when": "Sun 12 Jun 2016, 21:00 to 23:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.47,
-      "peak_value": 124.0,
-      "expected_value": 46.475,
-      "explanation": "Sun 12 Jun 2016, 21:00 to 23:00: PM10 was 124.00 µg/m³ at 21:00, but the model expected about 46.47 µg/m³, so it was 77.53 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 20,
-      "when": "Wed 15 Jun 2016, 20:00 to 21:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.14,
-      "peak_value": 103.0,
-      "expected_value": 42.889,
-      "explanation": "Wed 15 Jun 2016, 20:00 to 21:00: PM10 was 103.00 µg/m³ at 20:00, but the model expected about 42.89 µg/m³, so it was 60.11 higher. The inputs were complete, and CO and NO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 21,
-      "when": "Thu 16 Jun 2016, 05:00 to 06:00",
-      "type": "Data limitation",
-      "confidence": "high",
-      "severity": 1.26,
-      "peak_value": 113.0,
-      "expected_value": 46.493,
-      "explanation": "Thu 16 Jun 2016, 05:00 to 06:00: PM10 was 113.00 µg/m³ at 05:00, but the model expected about 46.49 µg/m³, so it was 66.51 higher. But the reading 2 hours before and the reading 3 hours before were missing and the PM10 data had a gap of 2 hours just before. So this is more likely a problem with the data than real pollution."
-    },
-    {
-      "id": 22,
-      "when": "Fri 17 Jun 2016, 10:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.05,
-      "peak_value": 5.0,
-      "expected_value": 60.444,
-      "explanation": "Fri 17 Jun 2016, 10:00: PM10 was 5.00 µg/m³ at 10:00, but the model expected about 60.44 µg/m³, so it was 55.44 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 23,
-      "when": "Sat 18 Jun 2016, 02:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.07,
-      "peak_value": 56.0,
-      "expected_value": 112.556,
-      "explanation": "Sat 18 Jun 2016, 02:00: PM10 was 56.00 µg/m³ at 02:00, but the model expected about 112.56 µg/m³, so it was 56.56 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 24,
-      "when": "Sun 19 Jun 2016, 00:00",
+      "when": "Fri 3 Jun 2016, 19:00",
       "type": "Unclear",
       "confidence": "low",
       "severity": 1.35,
-      "peak_value": 72.0,
-      "expected_value": 143.3,
-      "explanation": "Sun 19 Jun 2016, 00:00: PM10 was 72.00 µg/m³ at 00:00, but the model expected about 143.30 µg/m³, so it was 71.30 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "peak_value": 174.0,
+      "expected_value": 105.084,
+      "explanation": "Fri 3 Jun 2016, 19:00: PM10 was 174.00 µg/m³ at 19:00, but the model expected about 105.08 µg/m³, so it was 68.92 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
-      "id": 25,
-      "when": "Sun 19 Jun 2016, 22:00",
+      "id": 14,
+      "when": "Sun 5 Jun 2016, 19:00 to 20:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 3.97,
-      "peak_value": 295.0,
-      "expected_value": 85.991,
-      "explanation": "Sun 19 Jun 2016, 22:00: PM10 was 295.00 µg/m³ at 22:00, but the model expected about 85.99 µg/m³, so it was 209.01 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 26,
-      "when": "Mon 20 Jun 2016, 19:00 to 20:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.92,
+      "severity": 1.81,
       "peak_value": 52.0,
-      "expected_value": 153.157,
-      "explanation": "Mon 20 Jun 2016, 19:00 to 20:00: PM10 was 52.00 µg/m³ at 20:00, but the model expected about 153.16 µg/m³, so it was 101.16 lower. The inputs were complete, and SO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 144.354,
+      "explanation": "Sun 5 Jun 2016, 19:00 to 20:00: PM10 was 52.00 µg/m³ at 20:00, but the model expected about 144.35 µg/m³, so it was 92.35 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 27,
-      "when": "Tue 21 Jun 2016, 17:00 to 22:00",
+      "id": 15,
+      "when": "Mon 6 Jun 2016, 22:00 to 23:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.57,
-      "peak_value": 119.0,
-      "expected_value": 36.457,
-      "explanation": "Tue 21 Jun 2016, 17:00 to 22:00: PM10 was 119.00 µg/m³ at 22:00, but the model expected about 36.46 µg/m³, so it was 82.54 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 6.82,
+      "peak_value": 36.0,
+      "expected_value": 384.379,
+      "explanation": "Mon 6 Jun 2016, 22:00 to 23:00: PM10 was 36.00 µg/m³ at 23:00, but the model expected about 384.38 µg/m³, so it was 348.38 lower. The inputs were complete, and CO, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 28,
-      "when": "Wed 22 Jun 2016, 22:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 4.64,
-      "peak_value": 296.0,
-      "expected_value": 51.465,
-      "explanation": "Wed 22 Jun 2016, 22:00: PM10 was 296.00 µg/m³ at 22:00, but the model expected about 51.47 µg/m³, so it was 244.53 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 29,
-      "when": "Thu 23 Jun 2016, 02:00 to 04:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 2.12,
-      "peak_value": 177.0,
-      "expected_value": 65.535,
-      "explanation": "Thu 23 Jun 2016, 02:00 to 04:00: PM10 was 177.00 µg/m³ at 02:00, but the model expected about 65.53 µg/m³, so it was 111.47 higher. The inputs were complete, and CO, NO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 30,
-      "when": "Thu 23 Jun 2016, 12:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 2.2,
-      "peak_value": 199.0,
-      "expected_value": 83.173,
-      "explanation": "Thu 23 Jun 2016, 12:00: PM10 was 199.00 µg/m³ at 12:00, but the model expected about 83.17 µg/m³, so it was 115.83 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 31,
-      "when": "Thu 23 Jun 2016, 19:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.17,
-      "peak_value": 139.0,
-      "expected_value": 77.59,
-      "explanation": "Thu 23 Jun 2016, 19:00: PM10 was 139.00 µg/m³ at 19:00, but the model expected about 77.59 µg/m³, so it was 61.41 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 32,
-      "when": "Sat 25 Jun 2016, 20:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.04,
-      "peak_value": 24.0,
-      "expected_value": 79.05,
-      "explanation": "Sat 25 Jun 2016, 20:00: PM10 was 24.00 µg/m³ at 20:00, but the model expected about 79.05 µg/m³, so it was 55.05 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 33,
-      "when": "Mon 27 Jun 2016, 15:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.15,
-      "peak_value": 157.0,
-      "expected_value": 96.316,
-      "explanation": "Mon 27 Jun 2016, 15:00: PM10 was 157.00 µg/m³ at 15:00, but the model expected about 96.32 µg/m³, so it was 60.68 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 34,
-      "when": "Wed 29 Jun 2016, 23:00",
+      "id": 16,
+      "when": "Wed 8 Jun 2016, 20:00",
       "type": "Unusual pollution",
       "confidence": "high",
       "severity": 1.23,
-      "peak_value": 63.0,
-      "expected_value": 127.747,
-      "explanation": "Wed 29 Jun 2016, 23:00: PM10 was 63.00 µg/m³ at 23:00, but the model expected about 127.75 µg/m³, so it was 64.75 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "peak_value": 207.0,
+      "expected_value": 144.02,
+      "explanation": "Wed 8 Jun 2016, 20:00: PM10 was 207.00 µg/m³ at 20:00, but the model expected about 144.02 µg/m³, so it was 62.98 higher. The inputs were complete, and CO, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 35,
-      "when": "Thu 30 Jun 2016, 18:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.13,
-      "peak_value": 96.0,
-      "expected_value": 36.587,
-      "explanation": "Thu 30 Jun 2016, 18:00: PM10 was 96.00 µg/m³ at 18:00, but the model expected about 36.59 µg/m³, so it was 59.41 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 36,
-      "when": "Fri 1 Jul 2016, 00:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.2,
-      "peak_value": 13.0,
-      "expected_value": 76.425,
-      "explanation": "Fri 1 Jul 2016, 00:00: PM10 was 13.00 µg/m³ at 00:00, but the model expected about 76.43 µg/m³, so it was 63.43 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
-    },
-    {
-      "id": 37,
-      "when": "Fri 1 Jul 2016, 19:00 to 20:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 2.56,
-      "peak_value": 156.0,
-      "expected_value": 21.084,
-      "explanation": "Fri 1 Jul 2016, 19:00 to 20:00: PM10 was 156.00 µg/m³ at 19:00, but the model expected about 21.08 µg/m³, so it was 134.92 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 38,
-      "when": "Sun 3 Jul 2016, 01:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.02,
-      "peak_value": 113.0,
-      "expected_value": 59.426,
-      "explanation": "Sun 3 Jul 2016, 01:00: PM10 was 113.00 µg/m³ at 01:00, but the model expected about 59.43 µg/m³, so it was 53.57 higher. The inputs were complete, and CO and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 39,
-      "when": "Mon 4 Jul 2016, 04:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.52,
-      "peak_value": 248.0,
-      "expected_value": 167.832,
-      "explanation": "Mon 4 Jul 2016, 04:00: PM10 was 248.00 µg/m³ at 04:00, but the model expected about 167.83 µg/m³, so it was 80.17 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 40,
-      "when": "Thu 7 Jul 2016, 06:00 to 07:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.79,
-      "peak_value": 200.0,
-      "expected_value": 105.521,
-      "explanation": "Thu 7 Jul 2016, 06:00 to 07:00: PM10 was 200.00 µg/m³ at 06:00, but the model expected about 105.52 µg/m³, so it was 94.48 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 41,
-      "when": "Thu 7 Jul 2016, 20:00 to 21:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.48,
-      "peak_value": 103.0,
-      "expected_value": 181.207,
-      "explanation": "Thu 7 Jul 2016, 20:00 to 21:00: PM10 was 103.00 µg/m³ at 21:00, but the model expected about 181.21 µg/m³, so it was 78.21 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 42,
-      "when": "Fri 8 Jul 2016, 02:00 to 03:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.13,
-      "peak_value": 65.0,
-      "expected_value": 124.34,
-      "explanation": "Fri 8 Jul 2016, 02:00 to 03:00: PM10 was 65.00 µg/m³ at 03:00, but the model expected about 124.34 µg/m³, so it was 59.34 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
-    },
-    {
-      "id": 43,
-      "when": "Fri 8 Jul 2016, 21:00 to 22:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.41,
-      "peak_value": 101.0,
-      "expected_value": 175.232,
-      "explanation": "Fri 8 Jul 2016, 21:00 to 22:00: PM10 was 101.00 µg/m³ at 22:00, but the model expected about 175.23 µg/m³, so it was 74.23 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 44,
-      "when": "Tue 12 Jul 2016, 10:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.18,
-      "peak_value": 27.0,
-      "expected_value": 89.022,
-      "explanation": "Tue 12 Jul 2016, 10:00: PM10 was 27.00 µg/m³ at 10:00, but the model expected about 89.02 µg/m³, so it was 62.02 lower. The inputs were complete, and PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
-    },
-    {
-      "id": 45,
-      "when": "Thu 14 Jul 2016, 09:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.11,
-      "peak_value": 58.0,
-      "expected_value": 116.341,
-      "explanation": "Thu 14 Jul 2016, 09:00: PM10 was 58.00 µg/m³ at 09:00, but the model expected about 116.34 µg/m³, so it was 58.34 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 46,
-      "when": "Thu 14 Jul 2016, 21:00",
+      "id": 17,
+      "when": "Thu 9 Jun 2016, 21:00 to 23:00",
       "type": "Unclear",
       "confidence": "low",
       "severity": 2.39,
-      "peak_value": 193.0,
-      "expected_value": 66.971,
-      "explanation": "Thu 14 Jul 2016, 21:00: PM10 was 193.00 µg/m³ at 21:00, but the model expected about 66.97 µg/m³, so it was 126.03 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "peak_value": 200.0,
+      "expected_value": 78.03,
+      "explanation": "Thu 9 Jun 2016, 21:00 to 23:00: PM10 was 200.00 µg/m³ at 21:00, but the model expected about 78.03 µg/m³, so it was 121.97 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 18,
+      "when": "Fri 10 Jun 2016, 16:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.02,
+      "peak_value": 47.0,
+      "expected_value": 99.162,
+      "explanation": "Fri 10 Jun 2016, 16:00: PM10 was 47.00 µg/m³ at 16:00, but the model expected about 99.16 µg/m³, so it was 52.16 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 19,
+      "when": "Sat 11 Jun 2016, 22:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.01,
+      "peak_value": 100.0,
+      "expected_value": 48.246,
+      "explanation": "Sat 11 Jun 2016, 22:00: PM10 was 100.00 µg/m³ at 22:00, but the model expected about 48.25 µg/m³, so it was 51.75 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 20,
+      "when": "Sun 12 Jun 2016, 02:00 to 05:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.23,
+      "peak_value": 148.0,
+      "expected_value": 85.254,
+      "explanation": "Sun 12 Jun 2016, 02:00 to 05:00: PM10 was 148.00 µg/m³ at 05:00, but the model expected about 85.25 µg/m³, so it was 62.75 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 21,
+      "when": "Sun 12 Jun 2016, 21:00 to 23:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.6,
+      "peak_value": 124.0,
+      "expected_value": 42.222,
+      "explanation": "Sun 12 Jun 2016, 21:00 to 23:00: PM10 was 124.00 µg/m³ at 21:00, but the model expected about 42.22 µg/m³, so it was 81.78 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 22,
+      "when": "Wed 15 Jun 2016, 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.23,
+      "peak_value": 103.0,
+      "expected_value": 40.298,
+      "explanation": "Wed 15 Jun 2016, 20:00: PM10 was 103.00 µg/m³ at 20:00, but the model expected about 40.30 µg/m³, so it was 62.70 higher. The inputs were complete, and CO and NO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 23,
+      "when": "Thu 16 Jun 2016, 05:00 to 06:00",
+      "type": "Data limitation",
+      "confidence": "high",
+      "severity": 1.32,
+      "peak_value": 41.0,
+      "expected_value": 108.571,
+      "explanation": "Thu 16 Jun 2016, 05:00 to 06:00: PM10 was 41.00 µg/m³ at 06:00, but the model expected about 108.57 µg/m³, so it was 67.57 lower. But the reading 2 hours before and the reading 3 hours before were missing and the PM10 data had a gap of 2 hours just before. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 24,
+      "when": "Fri 17 Jun 2016, 10:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.02,
+      "peak_value": 5.0,
+      "expected_value": 56.938,
+      "explanation": "Fri 17 Jun 2016, 10:00: PM10 was 5.00 µg/m³ at 10:00, but the model expected about 56.94 µg/m³, so it was 51.94 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 25,
+      "when": "Sat 18 Jun 2016, 02:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.08,
+      "peak_value": 56.0,
+      "expected_value": 111.383,
+      "explanation": "Sat 18 Jun 2016, 02:00: PM10 was 56.00 µg/m³ at 02:00, but the model expected about 111.38 µg/m³, so it was 55.38 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 26,
+      "when": "Sun 19 Jun 2016, 00:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.45,
+      "peak_value": 72.0,
+      "expected_value": 146.306,
+      "explanation": "Sun 19 Jun 2016, 00:00: PM10 was 72.00 µg/m³ at 00:00, but the model expected about 146.31 µg/m³, so it was 74.31 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 27,
+      "when": "Sun 19 Jun 2016, 22:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 4.13,
+      "peak_value": 295.0,
+      "expected_value": 83.899,
+      "explanation": "Sun 19 Jun 2016, 22:00: PM10 was 295.00 µg/m³ at 22:00, but the model expected about 83.90 µg/m³, so it was 211.10 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 28,
+      "when": "Mon 20 Jun 2016, 19:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 2.0,
+      "peak_value": 52.0,
+      "expected_value": 154.087,
+      "explanation": "Mon 20 Jun 2016, 19:00 to 20:00: PM10 was 52.00 µg/m³ at 20:00, but the model expected about 154.09 µg/m³, so it was 102.09 lower. The inputs were complete, and SO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 29,
+      "when": "Tue 21 Jun 2016, 17:00 to 22:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.71,
+      "peak_value": 119.0,
+      "expected_value": 31.488,
+      "explanation": "Tue 21 Jun 2016, 17:00 to 22:00: PM10 was 119.00 µg/m³ at 22:00, but the model expected about 31.49 µg/m³, so it was 87.51 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 30,
+      "when": "Wed 22 Jun 2016 22:00 to Thu 23 Jun 04:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 4.83,
+      "peak_value": 296.0,
+      "expected_value": 49.236,
+      "explanation": "Wed 22 Jun 2016 22:00 to Thu 23 Jun 04:00: PM10 was 296.00 µg/m³ at 22:00, but the model expected about 49.24 µg/m³, so it was 246.76 higher. The inputs were complete, and CO, NO2, PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 31,
+      "when": "Thu 23 Jun 2016, 12:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 2.24,
+      "peak_value": 199.0,
+      "expected_value": 84.632,
+      "explanation": "Thu 23 Jun 2016, 12:00: PM10 was 199.00 µg/m³ at 12:00, but the model expected about 84.63 µg/m³, so it was 114.37 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 32,
+      "when": "Thu 23 Jun 2016, 19:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.24,
+      "peak_value": 139.0,
+      "expected_value": 75.512,
+      "explanation": "Thu 23 Jun 2016, 19:00: PM10 was 139.00 µg/m³ at 19:00, but the model expected about 75.51 µg/m³, so it was 63.49 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 33,
+      "when": "Sat 25 Jun 2016, 20:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.02,
+      "peak_value": 24.0,
+      "expected_value": 76.335,
+      "explanation": "Sat 25 Jun 2016, 20:00: PM10 was 24.00 µg/m³ at 20:00, but the model expected about 76.34 µg/m³, so it was 52.34 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 34,
+      "when": "Mon 27 Jun 2016, 15:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.22,
+      "peak_value": 157.0,
+      "expected_value": 94.605,
+      "explanation": "Mon 27 Jun 2016, 15:00: PM10 was 157.00 µg/m³ at 15:00, but the model expected about 94.61 µg/m³, so it was 62.39 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 35,
+      "when": "Wed 29 Jun 2016, 23:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.24,
+      "peak_value": 63.0,
+      "expected_value": 126.558,
+      "explanation": "Wed 29 Jun 2016, 23:00: PM10 was 63.00 µg/m³ at 23:00, but the model expected about 126.56 µg/m³, so it was 63.56 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 36,
+      "when": "Thu 30 Jun 2016, 18:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.24,
+      "peak_value": 96.0,
+      "expected_value": 32.516,
+      "explanation": "Thu 30 Jun 2016, 18:00: PM10 was 96.00 µg/m³ at 18:00, but the model expected about 32.52 µg/m³, so it was 63.48 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 37,
+      "when": "Fri 1 Jul 2016, 00:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.25,
+      "peak_value": 13.0,
+      "expected_value": 76.698,
+      "explanation": "Fri 1 Jul 2016, 00:00: PM10 was 13.00 µg/m³ at 00:00, but the model expected about 76.70 µg/m³, so it was 63.70 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 38,
+      "when": "Fri 1 Jul 2016, 19:00 to 20:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 2.72,
+      "peak_value": 156.0,
+      "expected_value": 17.112,
+      "explanation": "Fri 1 Jul 2016, 19:00 to 20:00: PM10 was 156.00 µg/m³ at 19:00, but the model expected about 17.11 µg/m³, so it was 138.89 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 39,
+      "when": "Sun 3 Jul 2016, 01:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.08,
+      "peak_value": 113.0,
+      "expected_value": 57.794,
+      "explanation": "Sun 3 Jul 2016, 01:00: PM10 was 113.00 µg/m³ at 01:00, but the model expected about 57.79 µg/m³, so it was 55.21 higher. The inputs were complete, and CO and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 40,
+      "when": "Mon 4 Jul 2016, 04:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.56,
+      "peak_value": 248.0,
+      "expected_value": 168.39,
+      "explanation": "Mon 4 Jul 2016, 04:00: PM10 was 248.00 µg/m³ at 04:00, but the model expected about 168.39 µg/m³, so it was 79.61 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 41,
+      "when": "Thu 7 Jul 2016, 06:00 to 07:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.83,
+      "peak_value": 200.0,
+      "expected_value": 106.272,
+      "explanation": "Thu 7 Jul 2016, 06:00 to 07:00: PM10 was 200.00 µg/m³ at 06:00, but the model expected about 106.27 µg/m³, so it was 93.73 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 42,
+      "when": "Thu 7 Jul 2016, 20:00 to 21:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.45,
+      "peak_value": 103.0,
+      "expected_value": 177.163,
+      "explanation": "Thu 7 Jul 2016, 20:00 to 21:00: PM10 was 103.00 µg/m³ at 21:00, but the model expected about 177.16 µg/m³, so it was 74.16 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 43,
+      "when": "Fri 8 Jul 2016, 02:00 to 03:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.19,
+      "peak_value": 65.0,
+      "expected_value": 125.84,
+      "explanation": "Fri 8 Jul 2016, 02:00 to 03:00: PM10 was 65.00 µg/m³ at 03:00, but the model expected about 125.84 µg/m³, so it was 60.84 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 44,
+      "when": "Fri 8 Jul 2016, 21:00 to 22:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.4,
+      "peak_value": 101.0,
+      "expected_value": 172.761,
+      "explanation": "Fri 8 Jul 2016, 21:00 to 22:00: PM10 was 101.00 µg/m³ at 22:00, but the model expected about 172.76 µg/m³, so it was 71.76 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 45,
+      "when": "Tue 12 Jul 2016, 10:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.19,
+      "peak_value": 27.0,
+      "expected_value": 87.942,
+      "explanation": "Tue 12 Jul 2016, 10:00: PM10 was 27.00 µg/m³ at 10:00, but the model expected about 87.94 µg/m³, so it was 60.94 lower. The inputs were complete, and PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 46,
+      "when": "Thu 14 Jul 2016, 09:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.12,
+      "peak_value": 58.0,
+      "expected_value": 115.033,
+      "explanation": "Thu 14 Jul 2016, 09:00: PM10 was 58.00 µg/m³ at 09:00, but the model expected about 115.03 µg/m³, so it was 57.03 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 47,
-      "when": "Wed 20 Jul 2016, 16:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.31,
-      "peak_value": 5.0,
-      "expected_value": 74.142,
-      "explanation": "Wed 20 Jul 2016, 16:00: PM10 was 5.00 µg/m³ at 16:00, but the model expected about 74.14 µg/m³, so it was 69.14 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "when": "Thu 14 Jul 2016, 21:00 to 22:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 2.49,
+      "peak_value": 193.0,
+      "expected_value": 65.836,
+      "explanation": "Thu 14 Jul 2016, 21:00 to 22:00: PM10 was 193.00 µg/m³ at 21:00, but the model expected about 65.84 µg/m³, so it was 127.16 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 48,
-      "when": "Wed 20 Jul 2016, 20:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.77,
-      "peak_value": 8.0,
-      "expected_value": 101.053,
-      "explanation": "Wed 20 Jul 2016, 20:00: PM10 was 8.00 µg/m³ at 20:00, but the model expected about 101.05 µg/m³, so it was 93.05 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 49,
       "when": "Sat 23 Jul 2016, 21:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 2.07,
+      "severity": 2.06,
       "peak_value": 93.0,
-      "expected_value": 201.917,
-      "explanation": "Sat 23 Jul 2016, 21:00: PM10 was 93.00 µg/m³ at 21:00, but the model expected about 201.92 µg/m³, so it was 108.92 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 198.273,
+      "explanation": "Sat 23 Jul 2016, 21:00: PM10 was 93.00 µg/m³ at 21:00, but the model expected about 198.27 µg/m³, so it was 105.27 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 50,
+      "id": 49,
       "when": "Sun 24 Jul 2016, 20:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.21,
+      "severity": 1.29,
       "peak_value": 66.0,
-      "expected_value": 129.92,
-      "explanation": "Sun 24 Jul 2016, 20:00: PM10 was 66.00 µg/m³ at 20:00, but the model expected about 129.92 µg/m³, so it was 63.92 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 132.138,
+      "explanation": "Sun 24 Jul 2016, 20:00: PM10 was 66.00 µg/m³ at 20:00, but the model expected about 132.14 µg/m³, so it was 66.14 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
-      "id": 51,
+      "id": 50,
       "when": "Mon 25 Jul 2016, 10:00 to 11:00",
       "type": "Data limitation",
       "confidence": "high",
-      "severity": 7.61,
+      "severity": 7.87,
       "peak_value": 450.0,
-      "expected_value": 49.185,
-      "explanation": "Mon 25 Jul 2016, 10:00 to 11:00: PM10 was 450.00 µg/m³ at 10:00, but the model expected about 49.18 µg/m³, so it was 400.82 higher. But the value jumped about 11 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
+      "expected_value": 47.676,
+      "explanation": "Mon 25 Jul 2016, 10:00 to 11:00: PM10 was 450.00 µg/m³ at 10:00, but the model expected about 47.68 µg/m³, so it was 402.32 higher. But the value jumped about 11 times more than a normal hourly change while no other pollutant moved, which looks like a glitch. So this is more likely a problem with the data than real pollution."
     },
     {
-      "id": 52,
-      "when": "Mon 25 Jul 2016, 16:00",
-      "type": "Data limitation",
-      "confidence": "high",
-      "severity": 1.05,
-      "peak_value": 58.0,
-      "expected_value": 113.309,
-      "explanation": "Mon 25 Jul 2016, 16:00: PM10 was 58.00 µg/m³ at 16:00, but the model expected about 113.31 µg/m³, so it was 55.31 lower. But the reading 2 hours before was missing and the PM10 data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
-    },
-    {
-      "id": 53,
-      "when": "Wed 27 Jul 2016, 21:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 2.69,
-      "peak_value": 23.0,
-      "expected_value": 164.554,
-      "explanation": "Wed 27 Jul 2016, 21:00: PM10 was 23.00 µg/m³ at 21:00, but the model expected about 164.55 µg/m³, so it was 141.55 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 54,
+      "id": 51,
       "when": "Sat 30 Jul 2016, 18:00 to 19:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.91,
+      "severity": 2.09,
       "peak_value": 116.0,
-      "expected_value": 216.795,
-      "explanation": "Sat 30 Jul 2016, 18:00 to 19:00: PM10 was 116.00 µg/m³ at 18:00, but the model expected about 216.80 µg/m³, so it was 100.80 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 222.695,
+      "explanation": "Sat 30 Jul 2016, 18:00 to 19:00: PM10 was 116.00 µg/m³ at 18:00, but the model expected about 222.69 µg/m³, so it was 106.69 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 55,
+      "id": 52,
       "when": "Sat 6 Aug 2016, 23:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.7,
+      "severity": 1.65,
       "peak_value": 25.0,
-      "expected_value": 114.714,
-      "explanation": "Sat 6 Aug 2016, 23:00: PM10 was 25.00 µg/m³ at 23:00, but the model expected about 114.71 µg/m³, so it was 89.71 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 109.141,
+      "explanation": "Sat 6 Aug 2016, 23:00: PM10 was 25.00 µg/m³ at 23:00, but the model expected about 109.14 µg/m³, so it was 84.14 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 56,
+      "id": 53,
       "when": "Fri 12 Aug 2016, 13:00",
       "type": "Unusual pollution",
       "confidence": "medium",
       "severity": 1.1,
       "peak_value": 17.0,
-      "expected_value": 74.952,
-      "explanation": "Fri 12 Aug 2016, 13:00: PM10 was 17.00 µg/m³ at 13:00, but the model expected about 74.95 µg/m³, so it was 57.95 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 73.028,
+      "explanation": "Fri 12 Aug 2016, 13:00: PM10 was 17.00 µg/m³ at 13:00, but the model expected about 73.03 µg/m³, so it was 56.03 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 57,
+      "id": 54,
       "when": "Mon 15 Aug 2016, 05:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.11,
+      "severity": 1.26,
       "peak_value": 8.0,
-      "expected_value": 66.753,
-      "explanation": "Mon 15 Aug 2016, 05:00: PM10 was 8.00 µg/m³ at 05:00, but the model expected about 66.75 µg/m³, so it was 58.75 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 72.414,
+      "explanation": "Mon 15 Aug 2016, 05:00: PM10 was 8.00 µg/m³ at 05:00, but the model expected about 72.41 µg/m³, so it was 64.41 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 58,
+      "id": 55,
       "when": "Tue 23 Aug 2016, 10:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.04,
+      "severity": 1.02,
       "peak_value": 22.0,
-      "expected_value": 76.638,
-      "explanation": "Tue 23 Aug 2016, 10:00: PM10 was 22.00 µg/m³ at 10:00, but the model expected about 76.64 µg/m³, so it was 54.64 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 74.288,
+      "explanation": "Tue 23 Aug 2016, 10:00: PM10 was 22.00 µg/m³ at 10:00, but the model expected about 74.29 µg/m³, so it was 52.29 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
-      "id": 59,
+      "id": 56,
       "when": "Thu 25 Aug 2016, 02:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.14,
+      "severity": 1.24,
       "peak_value": 49.0,
-      "expected_value": 109.31,
-      "explanation": "Thu 25 Aug 2016, 02:00: PM10 was 49.00 µg/m³ at 02:00, but the model expected about 109.31 µg/m³, so it was 60.31 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 112.331,
+      "explanation": "Thu 25 Aug 2016, 02:00: PM10 was 49.00 µg/m³ at 02:00, but the model expected about 112.33 µg/m³, so it was 63.33 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 60,
+      "id": 57,
       "when": "Sat 27 Aug 2016, 17:00 to 18:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.44,
+      "severity": 1.53,
       "peak_value": 89.0,
-      "expected_value": 13.146,
-      "explanation": "Sat 27 Aug 2016, 17:00 to 18:00: PM10 was 89.00 µg/m³ at 17:00, but the model expected about 13.15 µg/m³, so it was 75.85 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 10.732,
+      "explanation": "Sat 27 Aug 2016, 17:00 to 18:00: PM10 was 89.00 µg/m³ at 17:00, but the model expected about 10.73 µg/m³, so it was 78.27 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 61,
+      "id": 58,
+      "when": "Tue 30 Aug 2016, 19:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.09,
+      "peak_value": 92.0,
+      "expected_value": 36.137,
+      "explanation": "Tue 30 Aug 2016, 19:00: PM10 was 92.00 µg/m³ at 19:00, but the model expected about 36.14 µg/m³, so it was 55.86 higher. The inputs were complete, and CO was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 59,
       "when": "Sun 4 Sep 2016, 22:00 to 23:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.74,
+      "severity": 1.87,
       "peak_value": 48.0,
-      "expected_value": 139.608,
-      "explanation": "Sun 4 Sep 2016, 22:00 to 23:00: PM10 was 48.00 µg/m³ at 23:00, but the model expected about 139.61 µg/m³, so it was 91.61 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 143.496,
+      "explanation": "Sun 4 Sep 2016, 22:00 to 23:00: PM10 was 48.00 µg/m³ at 23:00, but the model expected about 143.50 µg/m³, so it was 95.50 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
-      "id": 62,
+      "id": 60,
       "when": "Mon 5 Sep 2016, 20:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.44,
+      "severity": 1.55,
       "peak_value": 106.0,
-      "expected_value": 30.071,
-      "explanation": "Mon 5 Sep 2016, 20:00: PM10 was 106.00 µg/m³ at 20:00, but the model expected about 30.07 µg/m³, so it was 75.93 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 26.843,
+      "explanation": "Mon 5 Sep 2016, 20:00: PM10 was 106.00 µg/m³ at 20:00, but the model expected about 26.84 µg/m³, so it was 79.16 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
-      "id": 63,
+      "id": 61,
       "when": "Tue 6 Sep 2016, 02:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.11,
+      "severity": 1.09,
       "peak_value": 28.0,
-      "expected_value": 86.336,
-      "explanation": "Tue 6 Sep 2016, 02:00: PM10 was 28.00 µg/m³ at 02:00, but the model expected about 86.34 µg/m³, so it was 58.34 lower. The inputs were complete, and O3 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 83.681,
+      "explanation": "Tue 6 Sep 2016, 02:00: PM10 was 28.00 µg/m³ at 02:00, but the model expected about 83.68 µg/m³, so it was 55.68 lower. The inputs were complete, and O3 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 64,
+      "id": 62,
       "when": "Wed 7 Sep 2016, 20:00",
       "type": "Data limitation",
       "confidence": "high",
-      "severity": 5.09,
+      "severity": 2.38,
       "peak_value": 27.0,
-      "expected_value": 295.057,
-      "explanation": "Wed 7 Sep 2016, 20:00: PM10 was 27.00 µg/m³ at 20:00, but the model expected about 295.06 µg/m³, so it was 268.06 lower. But the reading 2 hours before, the reading at the same time the day before and the reading 3 hours before were missing and the PM10 data had a gap of 2 hours just before. So this is more likely a problem with the data than real pollution."
+      "expected_value": 148.407,
+      "explanation": "Wed 7 Sep 2016, 20:00: PM10 was 27.00 µg/m³ at 20:00, but the model expected about 148.41 µg/m³, so it was 121.41 lower. But the reading 2 hours before, the reading at the same time the day before and the reading 3 hours before were missing and the PM10 data had a gap of 2 hours just before. So this is more likely a problem with the data than real pollution."
     },
     {
-      "id": 65,
+      "id": 63,
       "when": "Fri 9 Sep 2016, 08:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.02,
+      "severity": 1.03,
       "peak_value": 28.0,
-      "expected_value": 81.787,
-      "explanation": "Fri 9 Sep 2016, 08:00: PM10 was 28.00 µg/m³ at 08:00, but the model expected about 81.79 µg/m³, so it was 53.79 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 80.869,
+      "explanation": "Fri 9 Sep 2016, 08:00: PM10 was 28.00 µg/m³ at 08:00, but the model expected about 80.87 µg/m³, so it was 52.87 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
-      "id": 66,
+      "id": 64,
       "when": "Sun 11 Sep 2016, 00:00 to 03:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.13,
+      "severity": 2.32,
       "peak_value": 75.0,
-      "expected_value": 187.031,
-      "explanation": "Sun 11 Sep 2016, 00:00 to 03:00: PM10 was 75.00 µg/m³ at 03:00, but the model expected about 187.03 µg/m³, so it was 112.03 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 193.809,
+      "explanation": "Sun 11 Sep 2016, 00:00 to 03:00: PM10 was 75.00 µg/m³ at 03:00, but the model expected about 193.81 µg/m³, so it was 118.81 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 67,
+      "id": 65,
       "when": "Tue 13 Sep 2016, 16:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.01,
+      "severity": 1.07,
       "peak_value": 96.0,
-      "expected_value": 149.187,
-      "explanation": "Tue 13 Sep 2016, 16:00: PM10 was 96.00 µg/m³ at 16:00, but the model expected about 149.19 µg/m³, so it was 53.19 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 150.506,
+      "explanation": "Tue 13 Sep 2016, 16:00: PM10 was 96.00 µg/m³ at 16:00, but the model expected about 150.51 µg/m³, so it was 54.51 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 68,
-      "when": "Wed 14 Sep 2016, 13:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.01,
-      "peak_value": 90.0,
-      "expected_value": 143.115,
-      "explanation": "Wed 14 Sep 2016, 13:00: PM10 was 90.00 µg/m³ at 13:00, but the model expected about 143.12 µg/m³, so it was 53.12 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
-    },
-    {
-      "id": 69,
+      "id": 66,
       "when": "Wed 14 Sep 2016, 21:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.49,
+      "severity": 1.51,
       "peak_value": 55.0,
-      "expected_value": 133.347,
-      "explanation": "Wed 14 Sep 2016, 21:00: PM10 was 55.00 µg/m³ at 21:00, but the model expected about 133.35 µg/m³, so it was 78.35 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 132.219,
+      "explanation": "Wed 14 Sep 2016, 21:00: PM10 was 55.00 µg/m³ at 21:00, but the model expected about 132.22 µg/m³, so it was 77.22 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 70,
+      "id": 67,
       "when": "Thu 15 Sep 2016, 17:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 2.19,
+      "severity": 2.33,
       "peak_value": 160.0,
-      "expected_value": 44.502,
-      "explanation": "Thu 15 Sep 2016, 17:00: PM10 was 160.00 µg/m³ at 17:00, but the model expected about 44.50 µg/m³, so it was 115.50 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 40.998,
+      "explanation": "Thu 15 Sep 2016, 17:00: PM10 was 160.00 µg/m³ at 17:00, but the model expected about 41.00 µg/m³, so it was 119.00 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 71,
+      "id": 68,
       "when": "Fri 16 Sep 2016, 20:00 to 23:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.75,
+      "severity": 1.99,
       "peak_value": 37.0,
-      "expected_value": 129.045,
-      "explanation": "Fri 16 Sep 2016, 20:00 to 23:00: PM10 was 37.00 µg/m³ at 20:00, but the model expected about 129.04 µg/m³, so it was 92.04 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 138.492,
+      "explanation": "Fri 16 Sep 2016, 20:00 to 23:00: PM10 was 37.00 µg/m³ at 20:00, but the model expected about 138.49 µg/m³, so it was 101.49 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 72,
+      "id": 69,
       "when": "Wed 21 Sep 2016, 13:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.08,
+      "severity": 1.17,
       "peak_value": 70.0,
-      "expected_value": 126.931,
-      "explanation": "Wed 21 Sep 2016, 13:00: PM10 was 70.00 µg/m³ at 13:00, but the model expected about 126.93 µg/m³, so it was 56.93 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 129.622,
+      "explanation": "Wed 21 Sep 2016, 13:00: PM10 was 70.00 µg/m³ at 13:00, but the model expected about 129.62 µg/m³, so it was 59.62 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
-      "id": 73,
+      "id": 70,
       "when": "Thu 22 Sep 2016 23:00 to Fri 23 Sep 00:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.28,
+      "severity": 1.25,
       "peak_value": 120.0,
-      "expected_value": 187.658,
-      "explanation": "Thu 22 Sep 2016 23:00 to Fri 23 Sep 00:00: PM10 was 120.00 µg/m³ at 00:00, but the model expected about 187.66 µg/m³, so it was 67.66 lower. The inputs were complete, and NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 183.812,
+      "explanation": "Thu 22 Sep 2016 23:00 to Fri 23 Sep 00:00: PM10 was 120.00 µg/m³ at 00:00, but the model expected about 183.81 µg/m³, so it was 63.81 lower. The inputs were complete, and NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 74,
+      "id": 71,
       "when": "Sat 24 Sep 2016, 02:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.16,
+      "severity": 2.24,
       "peak_value": 61.0,
-      "expected_value": 174.79,
-      "explanation": "Sat 24 Sep 2016, 02:00: PM10 was 61.00 µg/m³ at 02:00, but the model expected about 174.79 µg/m³, so it was 113.79 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 175.714,
+      "explanation": "Sat 24 Sep 2016, 02:00: PM10 was 61.00 µg/m³ at 02:00, but the model expected about 175.71 µg/m³, so it was 114.71 lower. The inputs were complete, and CO and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 75,
+      "id": 72,
       "when": "Mon 26 Sep 2016, 03:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.1,
+      "severity": 1.15,
       "peak_value": 29.0,
-      "expected_value": 87.17,
-      "explanation": "Mon 26 Sep 2016, 03:00: PM10 was 29.00 µg/m³ at 03:00, but the model expected about 87.17 µg/m³, so it was 58.17 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 87.902,
+      "explanation": "Mon 26 Sep 2016, 03:00: PM10 was 29.00 µg/m³ at 03:00, but the model expected about 87.90 µg/m³, so it was 58.90 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 76,
+      "id": 73,
       "when": "Thu 29 Sep 2016 23:00 to Fri 30 Sep 01:00",
       "type": "Unusual pollution",
       "confidence": "high",
       "severity": 1.6,
-      "peak_value": 110.0,
-      "expected_value": 194.545,
-      "explanation": "Thu 29 Sep 2016 23:00 to Fri 30 Sep 01:00: PM10 was 110.00 µg/m³ at 01:00, but the model expected about 194.55 µg/m³, so it was 84.55 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "peak_value": 201.0,
+      "expected_value": 119.455,
+      "explanation": "Thu 29 Sep 2016 23:00 to Fri 30 Sep 01:00: PM10 was 201.00 µg/m³ at 23:00, but the model expected about 119.46 µg/m³, so it was 81.54 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 77,
+      "id": 74,
       "when": "Sat 1 Oct 2016, 02:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.49,
+      "severity": 1.55,
       "peak_value": 237.0,
-      "expected_value": 158.664,
-      "explanation": "Sat 1 Oct 2016, 02:00: PM10 was 237.00 µg/m³ at 02:00, but the model expected about 158.66 µg/m³, so it was 78.34 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 157.661,
+      "explanation": "Sat 1 Oct 2016, 02:00: PM10 was 237.00 µg/m³ at 02:00, but the model expected about 157.66 µg/m³, so it was 79.34 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 78,
+      "id": 75,
       "when": "Sun 2 Oct 2016 23:00 to Mon 3 Oct 00:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.44,
+      "severity": 1.66,
       "peak_value": 172.0,
-      "expected_value": 248.04,
-      "explanation": "Sun 2 Oct 2016 23:00 to Mon 3 Oct 00:00: PM10 was 172.00 µg/m³ at 23:00, but the model expected about 248.04 µg/m³, so it was 76.04 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 256.656,
+      "explanation": "Sun 2 Oct 2016 23:00 to Mon 3 Oct 00:00: PM10 was 172.00 µg/m³ at 23:00, but the model expected about 256.66 µg/m³, so it was 84.66 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 79,
+      "id": 76,
       "when": "Mon 3 Oct 2016, 05:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.63,
+      "severity": 1.72,
       "peak_value": 180.0,
-      "expected_value": 94.245,
-      "explanation": "Mon 3 Oct 2016, 05:00: PM10 was 180.00 µg/m³ at 05:00, but the model expected about 94.24 µg/m³, so it was 85.76 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 92.054,
+      "explanation": "Mon 3 Oct 2016, 05:00: PM10 was 180.00 µg/m³ at 05:00, but the model expected about 92.05 µg/m³, so it was 87.95 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
-      "id": 80,
+      "id": 77,
+      "when": "Mon 3 Oct 2016, 19:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.01,
+      "peak_value": 167.0,
+      "expected_value": 115.59,
+      "explanation": "Mon 3 Oct 2016, 19:00: PM10 was 167.00 µg/m³ at 19:00, but the model expected about 115.59 µg/m³, so it was 51.41 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 78,
       "when": "Mon 3 Oct 2016 23:00 to Tue 4 Oct 01:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.16,
+      "severity": 1.89,
       "peak_value": 132.0,
-      "expected_value": 245.813,
-      "explanation": "Mon 3 Oct 2016 23:00 to Tue 4 Oct 01:00: PM10 was 132.00 µg/m³ at 00:00, but the model expected about 245.81 µg/m³, so it was 113.81 lower. The inputs were complete, and PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 228.381,
+      "explanation": "Mon 3 Oct 2016 23:00 to Tue 4 Oct 01:00: PM10 was 132.00 µg/m³ at 00:00, but the model expected about 228.38 µg/m³, so it was 96.38 lower. The inputs were complete, and PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
-      "id": 81,
+      "id": 79,
       "when": "Mon 10 Oct 2016, 08:00 to 09:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.39,
+      "severity": 1.44,
       "peak_value": 6.0,
-      "expected_value": 79.1,
-      "explanation": "Mon 10 Oct 2016, 08:00 to 09:00: PM10 was 6.00 µg/m³ at 08:00, but the model expected about 79.10 µg/m³, so it was 73.10 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 79.668,
+      "explanation": "Mon 10 Oct 2016, 08:00 to 09:00: PM10 was 6.00 µg/m³ at 08:00, but the model expected about 79.67 µg/m³, so it was 73.67 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
-      "id": 82,
+      "id": 80,
       "when": "Mon 10 Oct 2016, 22:00 to 23:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.62,
+      "severity": 1.66,
       "peak_value": 238.0,
-      "expected_value": 152.56,
-      "explanation": "Mon 10 Oct 2016, 22:00 to 23:00: PM10 was 238.00 µg/m³ at 22:00, but the model expected about 152.56 µg/m³, so it was 85.44 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 153.14,
+      "explanation": "Mon 10 Oct 2016, 22:00 to 23:00: PM10 was 238.00 µg/m³ at 22:00, but the model expected about 153.14 µg/m³, so it was 84.86 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 83,
+      "id": 81,
       "when": "Tue 11 Oct 2016, 12:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.97,
+      "severity": 2.15,
       "peak_value": 171.0,
-      "expected_value": 67.187,
-      "explanation": "Tue 11 Oct 2016, 12:00: PM10 was 171.00 µg/m³ at 12:00, but the model expected about 67.19 µg/m³, so it was 103.81 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 60.916,
+      "explanation": "Tue 11 Oct 2016, 12:00: PM10 was 171.00 µg/m³ at 12:00, but the model expected about 60.92 µg/m³, so it was 110.08 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 84,
+      "id": 82,
       "when": "Wed 12 Oct 2016, 22:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.15,
+      "severity": 1.2,
       "peak_value": 188.0,
-      "expected_value": 127.14,
-      "explanation": "Wed 12 Oct 2016, 22:00: PM10 was 188.00 µg/m³ at 22:00, but the model expected about 127.14 µg/m³, so it was 60.86 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 126.504,
+      "explanation": "Wed 12 Oct 2016, 22:00: PM10 was 188.00 µg/m³ at 22:00, but the model expected about 126.50 µg/m³, so it was 61.50 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
-      "id": 85,
+      "id": 83,
       "when": "Fri 14 Oct 2016, 16:00 to 18:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.08,
-      "peak_value": 270.0,
-      "expected_value": 212.831,
-      "explanation": "Fri 14 Oct 2016, 16:00 to 18:00: PM10 was 270.00 µg/m³ at 18:00, but the model expected about 212.83 µg/m³, so it was 57.17 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "severity": 1.24,
+      "peak_value": 214.0,
+      "expected_value": 277.197,
+      "explanation": "Fri 14 Oct 2016, 16:00 to 18:00: PM10 was 214.00 µg/m³ at 17:00, but the model expected about 277.20 µg/m³, so it was 63.20 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 84,
+      "when": "Mon 17 Oct 2016, 16:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.04,
+      "peak_value": 91.0,
+      "expected_value": 38.056,
+      "explanation": "Mon 17 Oct 2016, 16:00: PM10 was 91.00 µg/m³ at 16:00, but the model expected about 38.06 µg/m³, so it was 52.94 higher. But the PM10 data had a gap of 1 hour just before. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 85,
+      "when": "Mon 17 Oct 2016, 21:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.02,
+      "peak_value": 141.0,
+      "expected_value": 88.668,
+      "explanation": "Mon 17 Oct 2016, 21:00: PM10 was 141.00 µg/m³ at 21:00, but the model expected about 88.67 µg/m³, so it was 52.33 higher. The inputs were complete, and NO2 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 86,
       "when": "Thu 20 Oct 2016, 06:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.63,
+      "severity": 1.71,
       "peak_value": 124.0,
-      "expected_value": 209.864,
-      "explanation": "Thu 20 Oct 2016, 06:00: PM10 was 124.00 µg/m³ at 06:00, but the model expected about 209.86 µg/m³, so it was 85.86 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 211.51,
+      "explanation": "Thu 20 Oct 2016, 06:00: PM10 was 124.00 µg/m³ at 06:00, but the model expected about 211.51 µg/m³, so it was 87.51 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 87,
       "when": "Mon 24 Oct 2016, 13:00 to 14:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.22,
+      "severity": 1.3,
       "peak_value": 213.0,
-      "expected_value": 148.856,
-      "explanation": "Mon 24 Oct 2016, 13:00 to 14:00: PM10 was 213.00 µg/m³ at 14:00, but the model expected about 148.86 µg/m³, so it was 64.14 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 146.43,
+      "explanation": "Mon 24 Oct 2016, 13:00 to 14:00: PM10 was 213.00 µg/m³ at 14:00, but the model expected about 146.43 µg/m³, so it was 66.57 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 88,
       "when": "Tue 25 Oct 2016, 10:00 to 11:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.67,
+      "severity": 1.73,
       "peak_value": 88.0,
-      "expected_value": 175.8,
-      "explanation": "Tue 25 Oct 2016, 10:00 to 11:00: PM10 was 88.00 µg/m³ at 10:00, but the model expected about 175.80 µg/m³, so it was 87.80 lower. The inputs were complete, and O3 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 176.317,
+      "explanation": "Tue 25 Oct 2016, 10:00 to 11:00: PM10 was 88.00 µg/m³ at 10:00, but the model expected about 176.32 µg/m³, so it was 88.32 lower. The inputs were complete, and O3 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 89,
       "when": "Tue 25 Oct 2016, 16:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.34,
+      "severity": 1.39,
       "peak_value": 132.0,
-      "expected_value": 202.401,
-      "explanation": "Tue 25 Oct 2016, 16:00: PM10 was 132.00 µg/m³ at 16:00, but the model expected about 202.40 µg/m³, so it was 70.40 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 202.975,
+      "explanation": "Tue 25 Oct 2016, 16:00: PM10 was 132.00 µg/m³ at 16:00, but the model expected about 202.98 µg/m³, so it was 70.98 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 90,
       "when": "Wed 26 Oct 2016, 16:00 to 18:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.51,
+      "severity": 1.59,
       "peak_value": 155.0,
-      "expected_value": 75.293,
-      "explanation": "Wed 26 Oct 2016, 16:00 to 18:00: PM10 was 155.00 µg/m³ at 16:00, but the model expected about 75.29 µg/m³, so it was 79.71 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 73.94,
+      "explanation": "Wed 26 Oct 2016, 16:00 to 18:00: PM10 was 155.00 µg/m³ at 16:00, but the model expected about 73.94 µg/m³, so it was 81.06 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 91,
       "when": "Sun 30 Oct 2016, 15:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.59,
+      "severity": 1.66,
       "peak_value": 37.0,
-      "expected_value": 120.854,
-      "explanation": "Sun 30 Oct 2016, 15:00: PM10 was 37.00 µg/m³ at 15:00, but the model expected about 120.85 µg/m³, so it was 83.85 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 121.94,
+      "explanation": "Sun 30 Oct 2016, 15:00: PM10 was 37.00 µg/m³ at 15:00, but the model expected about 121.94 µg/m³, so it was 84.94 lower. The inputs were complete, and NO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 92,
       "when": "Thu 3 Nov 2016, 10:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.09,
+      "severity": 1.16,
       "peak_value": 182.0,
-      "expected_value": 124.635,
-      "explanation": "Thu 3 Nov 2016, 10:00: PM10 was 182.00 µg/m³ at 10:00, but the model expected about 124.63 µg/m³, so it was 57.37 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 122.896,
+      "explanation": "Thu 3 Nov 2016, 10:00: PM10 was 182.00 µg/m³ at 10:00, but the model expected about 122.90 µg/m³, so it was 59.10 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 93,
       "when": "Thu 3 Nov 2016, 14:00 to 15:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.05,
+      "severity": 2.12,
       "peak_value": 351.0,
-      "expected_value": 242.796,
-      "explanation": "Thu 3 Nov 2016, 14:00 to 15:00: PM10 was 351.00 µg/m³ at 15:00, but the model expected about 242.80 µg/m³, so it was 108.20 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 242.599,
+      "explanation": "Thu 3 Nov 2016, 14:00 to 15:00: PM10 was 351.00 µg/m³ at 15:00, but the model expected about 242.60 µg/m³, so it was 108.40 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 94,
       "when": "Sat 5 Nov 2016, 21:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.13,
+      "severity": 1.2,
       "peak_value": 117.0,
-      "expected_value": 176.576,
-      "explanation": "Sat 5 Nov 2016, 21:00: PM10 was 117.00 µg/m³ at 21:00, but the model expected about 176.58 µg/m³, so it was 59.58 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 178.482,
+      "explanation": "Sat 5 Nov 2016, 21:00: PM10 was 117.00 µg/m³ at 21:00, but the model expected about 178.48 µg/m³, so it was 61.48 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 95,
       "when": "Tue 8 Nov 2016, 22:00 to 23:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.22,
-      "peak_value": 106.0,
-      "expected_value": 170.51,
-      "explanation": "Tue 8 Nov 2016, 22:00 to 23:00: PM10 was 106.00 µg/m³ at 23:00, but the model expected about 170.51 µg/m³, so it was 64.51 lower. The inputs were complete, and NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.25,
+      "peak_value": 173.0,
+      "expected_value": 108.969,
+      "explanation": "Tue 8 Nov 2016, 22:00 to 23:00: PM10 was 173.00 µg/m³ at 22:00, but the model expected about 108.97 µg/m³, so it was 64.03 higher. The inputs were complete, and NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 96,
-      "when": "Wed 9 Nov 2016, 17:00 to 20:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 3.94,
+      "when": "Wed 9 Nov 2016, 17:00 to 19:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 3.92,
       "peak_value": 6.0,
-      "expected_value": 213.73,
-      "explanation": "Wed 9 Nov 2016, 17:00 to 20:00: PM10 was 6.00 µg/m³ at 17:00, but the model expected about 213.73 µg/m³, so it was 207.73 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 206.619,
+      "explanation": "Wed 9 Nov 2016, 17:00 to 19:00: PM10 was 6.00 µg/m³ at 17:00, but the model expected about 206.62 µg/m³, so it was 200.62 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 97,
       "when": "Thu 10 Nov 2016, 05:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.02,
+      "severity": 1.12,
       "peak_value": 144.0,
-      "expected_value": 197.74,
-      "explanation": "Thu 10 Nov 2016, 05:00: PM10 was 144.00 µg/m³ at 05:00, but the model expected about 197.74 µg/m³, so it was 53.74 lower. The inputs were complete, and CO, NO2 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 201.049,
+      "explanation": "Thu 10 Nov 2016, 05:00: PM10 was 144.00 µg/m³ at 05:00, but the model expected about 201.05 µg/m³, so it was 57.05 lower. The inputs were complete, and CO, NO2 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 98,
       "when": "Thu 10 Nov 2016, 09:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.4,
+      "severity": 1.41,
       "peak_value": 206.0,
-      "expected_value": 132.416,
-      "explanation": "Thu 10 Nov 2016, 09:00: PM10 was 206.00 µg/m³ at 09:00, but the model expected about 132.42 µg/m³, so it was 73.58 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 134.023,
+      "explanation": "Thu 10 Nov 2016, 09:00: PM10 was 206.00 µg/m³ at 09:00, but the model expected about 134.02 µg/m³, so it was 71.98 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 99,
       "when": "Thu 10 Nov 2016, 16:00 to 21:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 4.1,
+      "severity": 4.32,
       "peak_value": 258.0,
-      "expected_value": 41.821,
-      "explanation": "Thu 10 Nov 2016, 16:00 to 21:00: PM10 was 258.00 µg/m³ at 18:00, but the model expected about 41.82 µg/m³, so it was 216.18 higher. The inputs were complete, and CO, NO2, PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 37.023,
+      "explanation": "Thu 10 Nov 2016, 16:00 to 21:00: PM10 was 258.00 µg/m³ at 18:00, but the model expected about 37.02 µg/m³, so it was 220.98 higher. The inputs were complete, and CO, NO2, PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 100,
       "when": "Fri 11 Nov 2016, 07:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.08,
+      "severity": 1.11,
       "peak_value": 210.0,
-      "expected_value": 152.904,
-      "explanation": "Fri 11 Nov 2016, 07:00: PM10 was 210.00 µg/m³ at 07:00, but the model expected about 152.90 µg/m³, so it was 57.10 higher. The inputs were complete, and CO and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 153.052,
+      "explanation": "Fri 11 Nov 2016, 07:00: PM10 was 210.00 µg/m³ at 07:00, but the model expected about 153.05 µg/m³, so it was 56.95 higher. The inputs were complete, and CO and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 101,
-      "when": "Mon 14 Nov 2016, 05:00",
+      "when": "Sat 12 Nov 2016, 04:00",
       "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.87,
-      "peak_value": 74.0,
-      "expected_value": 172.318,
-      "explanation": "Mon 14 Nov 2016, 05:00: PM10 was 74.00 µg/m³ at 05:00, but the model expected about 172.32 µg/m³, so it was 98.32 lower. The inputs were complete, and CO and NO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "confidence": "medium",
+      "severity": 1.0,
+      "peak_value": 94.0,
+      "expected_value": 145.209,
+      "explanation": "Sat 12 Nov 2016, 04:00: PM10 was 94.00 µg/m³ at 04:00, but the model expected about 145.21 µg/m³, so it was 51.21 lower. The inputs were complete, and SO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 102,
-      "when": "Wed 16 Nov 2016 20:00 to Thu 17 Nov 00:00",
+      "when": "Mon 14 Nov 2016, 05:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.21,
-      "peak_value": 279.0,
-      "expected_value": 215.357,
-      "explanation": "Wed 16 Nov 2016 20:00 to Thu 17 Nov 00:00: PM10 was 279.00 µg/m³ at 23:00, but the model expected about 215.36 µg/m³, so it was 63.64 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 2.0,
+      "peak_value": 74.0,
+      "expected_value": 176.004,
+      "explanation": "Mon 14 Nov 2016, 05:00: PM10 was 74.00 µg/m³ at 05:00, but the model expected about 176.00 µg/m³, so it was 102.00 lower. The inputs were complete, and CO and NO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 103,
-      "when": "Fri 18 Nov 2016, 01:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.24,
-      "peak_value": 289.0,
-      "expected_value": 223.912,
-      "explanation": "Fri 18 Nov 2016, 01:00: PM10 was 289.00 µg/m³ at 01:00, but the model expected about 223.91 µg/m³, so it was 65.09 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "when": "Tue 15 Nov 2016, 04:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.01,
+      "peak_value": 10.0,
+      "expected_value": 61.384,
+      "explanation": "Tue 15 Nov 2016, 04:00: PM10 was 10.00 µg/m³ at 04:00, but the model expected about 61.38 µg/m³, so it was 51.38 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 104,
-      "when": "Fri 18 Nov 2016, 13:00",
+      "when": "Wed 16 Nov 2016 20:00 to Thu 17 Nov 00:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.11,
-      "peak_value": 360.0,
-      "expected_value": 301.592,
-      "explanation": "Fri 18 Nov 2016, 13:00: PM10 was 360.00 µg/m³ at 13:00, but the model expected about 301.59 µg/m³, so it was 58.41 higher. The inputs were complete, and NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 1.22,
+      "peak_value": 196.0,
+      "expected_value": 133.448,
+      "explanation": "Wed 16 Nov 2016 20:00 to Thu 17 Nov 00:00: PM10 was 196.00 µg/m³ at 20:00, but the model expected about 133.45 µg/m³, so it was 62.55 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 105,
-      "when": "Fri 18 Nov 2016, 17:00",
+      "when": "Fri 18 Nov 2016, 01:00",
       "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 2.32,
-      "peak_value": 198.0,
-      "expected_value": 320.387,
-      "explanation": "Fri 18 Nov 2016, 17:00: PM10 was 198.00 µg/m³ at 17:00, but the model expected about 320.39 µg/m³, so it was 122.39 lower. The inputs were complete, and SO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "confidence": "high",
+      "severity": 1.3,
+      "peak_value": 289.0,
+      "expected_value": 222.43,
+      "explanation": "Fri 18 Nov 2016, 01:00: PM10 was 289.00 µg/m³ at 01:00, but the model expected about 222.43 µg/m³, so it was 66.57 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 106,
-      "when": "Sat 19 Nov 2016, 00:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.08,
-      "peak_value": 249.0,
-      "expected_value": 192.123,
-      "explanation": "Sat 19 Nov 2016, 00:00: PM10 was 249.00 µg/m³ at 00:00, but the model expected about 192.12 µg/m³, so it was 56.88 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Fri 18 Nov 2016, 13:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.0,
+      "peak_value": 360.0,
+      "expected_value": 308.739,
+      "explanation": "Fri 18 Nov 2016, 13:00: PM10 was 360.00 µg/m³ at 13:00, but the model expected about 308.74 µg/m³, so it was 51.26 higher. The inputs were complete, and NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 107,
-      "when": "Sat 19 Nov 2016, 08:00",
+      "when": "Fri 18 Nov 2016, 17:00",
       "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.01,
-      "peak_value": 75.0,
-      "expected_value": 128.062,
-      "explanation": "Sat 19 Nov 2016, 08:00: PM10 was 75.00 µg/m³ at 08:00, but the model expected about 128.06 µg/m³, so it was 53.06 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "confidence": "medium",
+      "severity": 2.28,
+      "peak_value": 198.0,
+      "expected_value": 314.284,
+      "explanation": "Fri 18 Nov 2016, 17:00: PM10 was 198.00 µg/m³ at 17:00, but the model expected about 314.28 µg/m³, so it was 116.28 lower. The inputs were complete, and SO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 108,
-      "when": "Sat 19 Nov 2016, 16:00 to 17:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 2.69,
-      "peak_value": 206.0,
-      "expected_value": 64.182,
-      "explanation": "Sat 19 Nov 2016, 16:00 to 17:00: PM10 was 206.00 µg/m³ at 16:00, but the model expected about 64.18 µg/m³, so it was 141.82 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "when": "Sat 19 Nov 2016, 00:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.04,
+      "peak_value": 249.0,
+      "expected_value": 195.906,
+      "explanation": "Sat 19 Nov 2016, 00:00: PM10 was 249.00 µg/m³ at 00:00, but the model expected about 195.91 µg/m³, so it was 53.09 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 109,
-      "when": "Sun 20 Nov 2016, 17:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.52,
-      "peak_value": 38.0,
-      "expected_value": 118.242,
-      "explanation": "Sun 20 Nov 2016, 17:00: PM10 was 38.00 µg/m³ at 17:00, but the model expected about 118.24 µg/m³, so it was 80.24 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Sat 19 Nov 2016, 07:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.11,
+      "peak_value": 134.0,
+      "expected_value": 190.684,
+      "explanation": "Sat 19 Nov 2016, 07:00: PM10 was 134.00 µg/m³ at 07:00, but the model expected about 190.68 µg/m³, so it was 56.68 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 110,
-      "when": "Thu 24 Nov 2016, 14:00 to 15:00",
+      "when": "Sat 19 Nov 2016, 16:00 to 17:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.68,
-      "peak_value": 6.0,
-      "expected_value": 94.435,
-      "explanation": "Thu 24 Nov 2016, 14:00 to 15:00: PM10 was 6.00 µg/m³ at 14:00, but the model expected about 94.43 µg/m³, so it was 88.43 lower. The inputs were complete, and SO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 2.86,
+      "peak_value": 206.0,
+      "expected_value": 59.573,
+      "explanation": "Sat 19 Nov 2016, 16:00 to 17:00: PM10 was 206.00 µg/m³ at 16:00, but the model expected about 59.57 µg/m³, so it was 146.43 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 111,
+      "when": "Sat 19 Nov 2016, 21:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.0,
+      "peak_value": 172.0,
+      "expected_value": 223.156,
+      "explanation": "Sat 19 Nov 2016, 21:00: PM10 was 172.00 µg/m³ at 21:00, but the model expected about 223.16 µg/m³, so it was 51.16 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 112,
+      "when": "Sun 20 Nov 2016, 17:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.49,
+      "peak_value": 38.0,
+      "expected_value": 114.137,
+      "explanation": "Sun 20 Nov 2016, 17:00: PM10 was 38.00 µg/m³ at 17:00, but the model expected about 114.14 µg/m³, so it was 76.14 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+    },
+    {
+      "id": 113,
+      "when": "Thu 24 Nov 2016, 14:00 to 15:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.63,
+      "peak_value": 6.0,
+      "expected_value": 89.424,
+      "explanation": "Thu 24 Nov 2016, 14:00 to 15:00: PM10 was 6.00 µg/m³ at 14:00, but the model expected about 89.42 µg/m³, so it was 83.42 lower. The inputs were complete, and SO2 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 114,
       "when": "Fri 25 Nov 2016, 00:00",
       "type": "Unusual pollution",
       "confidence": "high",
       "severity": 1.17,
       "peak_value": 279.0,
-      "expected_value": 217.507,
-      "explanation": "Fri 25 Nov 2016, 00:00: PM10 was 279.00 µg/m³ at 00:00, but the model expected about 217.51 µg/m³, so it was 61.49 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 112,
-      "when": "Fri 25 Nov 2016, 06:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.13,
-      "peak_value": 107.0,
-      "expected_value": 166.622,
-      "explanation": "Fri 25 Nov 2016, 06:00: PM10 was 107.00 µg/m³ at 06:00, but the model expected about 166.62 µg/m³, so it was 59.62 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
-    },
-    {
-      "id": 113,
-      "when": "Sat 26 Nov 2016, 13:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.02,
-      "peak_value": 372.0,
-      "expected_value": 318.344,
-      "explanation": "Sat 26 Nov 2016, 13:00: PM10 was 372.00 µg/m³ at 13:00, but the model expected about 318.34 µg/m³, so it was 53.66 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 114,
-      "when": "Sat 26 Nov 2016, 17:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.58,
-      "peak_value": 390.0,
-      "expected_value": 306.78,
-      "explanation": "Sat 26 Nov 2016, 17:00: PM10 was 390.00 µg/m³ at 17:00, but the model expected about 306.78 µg/m³, so it was 83.22 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 219.127,
+      "explanation": "Fri 25 Nov 2016, 00:00: PM10 was 279.00 µg/m³ at 00:00, but the model expected about 219.13 µg/m³, so it was 59.87 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 115,
-      "when": "Sun 27 Nov 2016, 01:00 to 03:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 4.07,
-      "peak_value": 186.0,
-      "expected_value": 400.323,
-      "explanation": "Sun 27 Nov 2016, 01:00 to 03:00: PM10 was 186.00 µg/m³ at 02:00, but the model expected about 400.32 µg/m³, so it was 214.32 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "when": "Fri 25 Nov 2016, 06:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.14,
+      "peak_value": 107.0,
+      "expected_value": 165.322,
+      "explanation": "Fri 25 Nov 2016, 06:00: PM10 was 107.00 µg/m³ at 06:00, but the model expected about 165.32 µg/m³, so it was 58.32 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 116,
-      "when": "Sun 27 Nov 2016, 08:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.04,
-      "peak_value": 35.0,
-      "expected_value": 89.646,
-      "explanation": "Sun 27 Nov 2016, 08:00: PM10 was 35.00 µg/m³ at 08:00, but the model expected about 89.65 µg/m³, so it was 54.65 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "when": "Sat 26 Nov 2016, 17:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.68,
+      "peak_value": 390.0,
+      "expected_value": 303.98,
+      "explanation": "Sat 26 Nov 2016, 17:00: PM10 was 390.00 µg/m³ at 17:00, but the model expected about 303.98 µg/m³, so it was 86.02 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 117,
-      "when": "Mon 28 Nov 2016, 08:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.34,
-      "peak_value": 29.0,
-      "expected_value": 99.721,
-      "explanation": "Mon 28 Nov 2016, 08:00: PM10 was 29.00 µg/m³ at 08:00, but the model expected about 99.72 µg/m³, so it was 70.72 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Sun 27 Nov 2016, 02:00 to 03:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 4.0,
+      "peak_value": 186.0,
+      "expected_value": 390.243,
+      "explanation": "Sun 27 Nov 2016, 02:00 to 03:00: PM10 was 186.00 µg/m³ at 02:00, but the model expected about 390.24 µg/m³, so it was 204.24 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 118,
-      "when": "Tue 29 Nov 2016, 11:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.75,
-      "peak_value": 196.0,
-      "expected_value": 103.858,
-      "explanation": "Tue 29 Nov 2016, 11:00: PM10 was 196.00 µg/m³ at 11:00, but the model expected about 103.86 µg/m³, so it was 92.14 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "when": "Mon 28 Nov 2016, 08:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.38,
+      "peak_value": 29.0,
+      "expected_value": 99.732,
+      "explanation": "Mon 28 Nov 2016, 08:00: PM10 was 29.00 µg/m³ at 08:00, but the model expected about 99.73 µg/m³, so it was 70.73 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 119,
-      "when": "Tue 29 Nov 2016, 19:00 to 21:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.44,
-      "peak_value": 219.0,
-      "expected_value": 143.367,
-      "explanation": "Tue 29 Nov 2016, 19:00 to 21:00: PM10 was 219.00 µg/m³ at 19:00, but the model expected about 143.37 µg/m³, so it was 75.63 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Tue 29 Nov 2016, 11:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.74,
+      "peak_value": 196.0,
+      "expected_value": 107.186,
+      "explanation": "Tue 29 Nov 2016, 11:00: PM10 was 196.00 µg/m³ at 11:00, but the model expected about 107.19 µg/m³, so it was 88.81 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 120,
-      "when": "Wed 30 Nov 2016, 12:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.12,
-      "peak_value": 237.0,
-      "expected_value": 177.779,
-      "explanation": "Wed 30 Nov 2016, 12:00: PM10 was 237.00 µg/m³ at 12:00, but the model expected about 177.78 µg/m³, so it was 59.22 higher. The inputs were complete, and NO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "when": "Tue 29 Nov 2016, 19:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.5,
+      "peak_value": 219.0,
+      "expected_value": 142.258,
+      "explanation": "Tue 29 Nov 2016, 19:00: PM10 was 219.00 µg/m³ at 19:00, but the model expected about 142.26 µg/m³, so it was 76.74 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 121,
-      "when": "Wed 30 Nov 2016, 16:00",
+      "when": "Wed 30 Nov 2016, 12:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.11,
-      "peak_value": 104.0,
-      "expected_value": 162.255,
-      "explanation": "Wed 30 Nov 2016, 16:00: PM10 was 104.00 µg/m³ at 16:00, but the model expected about 162.26 µg/m³, so it was 58.26 lower. The inputs were complete, and CO and NO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.16,
+      "peak_value": 237.0,
+      "expected_value": 177.659,
+      "explanation": "Wed 30 Nov 2016, 12:00: PM10 was 237.00 µg/m³ at 12:00, but the model expected about 177.66 µg/m³, so it was 59.34 higher. The inputs were complete, and NO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 122,
-      "when": "Thu 1 Dec 2016, 18:00",
+      "when": "Wed 30 Nov 2016, 16:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.18,
-      "peak_value": 109.0,
-      "expected_value": 46.933,
-      "explanation": "Thu 1 Dec 2016, 18:00: PM10 was 109.00 µg/m³ at 18:00, but the model expected about 46.93 µg/m³, so it was 62.07 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 1.15,
+      "peak_value": 104.0,
+      "expected_value": 163.013,
+      "explanation": "Wed 30 Nov 2016, 16:00: PM10 was 104.00 µg/m³ at 16:00, but the model expected about 163.01 µg/m³, so it was 59.01 lower. The inputs were complete, and CO and NO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 123,
+      "when": "Thu 1 Dec 2016, 18:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.26,
+      "peak_value": 109.0,
+      "expected_value": 44.724,
+      "explanation": "Thu 1 Dec 2016, 18:00: PM10 was 109.00 µg/m³ at 18:00, but the model expected about 44.72 µg/m³, so it was 64.28 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 124,
       "when": "Sat 3 Dec 2016, 15:00 to 18:00",
       "type": "Unusual pollution",
       "confidence": "high",
       "severity": 1.2,
       "peak_value": 264.0,
-      "expected_value": 200.769,
-      "explanation": "Sat 3 Dec 2016, 15:00 to 18:00: PM10 was 264.00 µg/m³ at 15:00, but the model expected about 200.77 µg/m³, so it was 63.23 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
-    },
-    {
-      "id": 124,
-      "when": "Sat 3 Dec 2016, 22:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.33,
-      "peak_value": 516.0,
-      "expected_value": 445.758,
-      "explanation": "Sat 3 Dec 2016, 22:00: PM10 was 516.00 µg/m³ at 22:00, but the model expected about 445.76 µg/m³, so it was 70.24 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 202.548,
+      "explanation": "Sat 3 Dec 2016, 15:00 to 18:00: PM10 was 264.00 µg/m³ at 15:00, but the model expected about 202.55 µg/m³, so it was 61.45 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 125,
-      "when": "Sun 4 Dec 2016, 11:00 to 15:00",
+      "when": "Sat 3 Dec 2016, 22:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.45,
-      "peak_value": 87.0,
-      "expected_value": 163.288,
-      "explanation": "Sun 4 Dec 2016, 11:00 to 15:00: PM10 was 87.00 µg/m³ at 15:00, but the model expected about 163.29 µg/m³, so it was 76.29 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.39,
+      "peak_value": 516.0,
+      "expected_value": 444.91,
+      "explanation": "Sat 3 Dec 2016, 22:00: PM10 was 516.00 µg/m³ at 22:00, but the model expected about 444.91 µg/m³, so it was 71.09 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 126,
-      "when": "Mon 5 Dec 2016, 00:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.59,
-      "peak_value": 160.0,
-      "expected_value": 243.689,
-      "explanation": "Mon 5 Dec 2016, 00:00: PM10 was 160.00 µg/m³ at 00:00, but the model expected about 243.69 µg/m³, so it was 83.69 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Sun 4 Dec 2016, 11:00 to 19:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.38,
+      "peak_value": 87.0,
+      "expected_value": 157.602,
+      "explanation": "Sun 4 Dec 2016, 11:00 to 19:00: PM10 was 87.00 µg/m³ at 15:00, but the model expected about 157.60 µg/m³, so it was 70.60 lower. The inputs were complete, and CO, NO2, PM2.5 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 127,
-      "when": "Wed 7 Dec 2016, 11:00",
+      "when": "Mon 5 Dec 2016, 00:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.1,
-      "peak_value": 190.0,
-      "expected_value": 131.906,
-      "explanation": "Wed 7 Dec 2016, 11:00: PM10 was 190.00 µg/m³ at 11:00, but the model expected about 131.91 µg/m³, so it was 58.09 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "severity": 1.77,
+      "peak_value": 160.0,
+      "expected_value": 250.698,
+      "explanation": "Mon 5 Dec 2016, 00:00: PM10 was 160.00 µg/m³ at 00:00, but the model expected about 250.70 µg/m³, so it was 90.70 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 128,
-      "when": "Wed 7 Dec 2016, 15:00 to 16:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.57,
-      "peak_value": 259.0,
-      "expected_value": 176.23,
-      "explanation": "Wed 7 Dec 2016, 15:00 to 16:00: PM10 was 259.00 µg/m³ at 16:00, but the model expected about 176.23 µg/m³, so it was 82.77 higher. The inputs were complete, and PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "when": "Wed 7 Dec 2016, 11:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.11,
+      "peak_value": 190.0,
+      "expected_value": 133.337,
+      "explanation": "Wed 7 Dec 2016, 11:00: PM10 was 190.00 µg/m³ at 11:00, but the model expected about 133.34 µg/m³, so it was 56.66 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 129,
-      "when": "Thu 8 Dec 2016, 10:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.73,
-      "peak_value": 136.0,
-      "expected_value": 227.383,
-      "explanation": "Thu 8 Dec 2016, 10:00: PM10 was 136.00 µg/m³ at 10:00, but the model expected about 227.38 µg/m³, so it was 91.38 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Wed 7 Dec 2016, 15:00 to 16:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.62,
+      "peak_value": 259.0,
+      "expected_value": 176.166,
+      "explanation": "Wed 7 Dec 2016, 15:00 to 16:00: PM10 was 259.00 µg/m³ at 16:00, but the model expected about 176.17 µg/m³, so it was 82.83 higher. The inputs were complete, and PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 130,
-      "when": "Tue 13 Dec 2016, 03:00 to 05:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 2.15,
-      "peak_value": 33.0,
-      "expected_value": 146.046,
-      "explanation": "Tue 13 Dec 2016, 03:00 to 05:00: PM10 was 33.00 µg/m³ at 05:00, but the model expected about 146.05 µg/m³, so it was 113.05 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "when": "Thu 8 Dec 2016, 10:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.85,
+      "peak_value": 136.0,
+      "expected_value": 230.551,
+      "explanation": "Thu 8 Dec 2016, 10:00: PM10 was 136.00 µg/m³ at 10:00, but the model expected about 230.55 µg/m³, so it was 94.55 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 131,
-      "when": "Tue 13 Dec 2016, 17:00 to 18:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 3.28,
-      "peak_value": 193.0,
-      "expected_value": 20.214,
-      "explanation": "Tue 13 Dec 2016, 17:00 to 18:00: PM10 was 193.00 µg/m³ at 17:00, but the model expected about 20.21 µg/m³, so it was 172.79 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Sun 11 Dec 2016, 03:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.02,
+      "peak_value": 178.0,
+      "expected_value": 125.854,
+      "explanation": "Sun 11 Dec 2016, 03:00: PM10 was 178.00 µg/m³ at 03:00, but the model expected about 125.85 µg/m³, so it was 52.15 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 132,
-      "when": "Thu 15 Dec 2016, 02:00 to 03:00",
+      "when": "Tue 13 Dec 2016, 03:00 to 05:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.58,
-      "peak_value": 67.0,
-      "expected_value": 150.232,
-      "explanation": "Thu 15 Dec 2016, 02:00 to 03:00: PM10 was 67.00 µg/m³ at 03:00, but the model expected about 150.23 µg/m³, so it was 83.23 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 2.25,
+      "peak_value": 33.0,
+      "expected_value": 148.172,
+      "explanation": "Tue 13 Dec 2016, 03:00 to 05:00: PM10 was 33.00 µg/m³ at 05:00, but the model expected about 148.17 µg/m³, so it was 115.17 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 133,
-      "when": "Fri 16 Dec 2016, 15:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.9,
-      "peak_value": 196.0,
-      "expected_value": 95.78,
-      "explanation": "Fri 16 Dec 2016, 15:00: PM10 was 196.00 µg/m³ at 15:00, but the model expected about 95.78 µg/m³, so it was 100.22 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "when": "Tue 13 Dec 2016, 17:00 to 18:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 3.47,
+      "peak_value": 193.0,
+      "expected_value": 15.7,
+      "explanation": "Tue 13 Dec 2016, 17:00 to 18:00: PM10 was 193.00 µg/m³ at 17:00, but the model expected about 15.70 µg/m³, so it was 177.30 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 134,
-      "when": "Fri 16 Dec 2016, 21:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.21,
-      "peak_value": 165.0,
-      "expected_value": 228.884,
-      "explanation": "Fri 16 Dec 2016, 21:00: PM10 was 165.00 µg/m³ at 21:00, but the model expected about 228.88 µg/m³, so it was 63.88 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Thu 15 Dec 2016, 02:00 to 03:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.68,
+      "peak_value": 67.0,
+      "expected_value": 152.636,
+      "explanation": "Thu 15 Dec 2016, 02:00 to 03:00: PM10 was 67.00 µg/m³ at 03:00, but the model expected about 152.64 µg/m³, so it was 85.64 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 135,
-      "when": "Sun 18 Dec 2016, 04:00",
+      "when": "Fri 16 Dec 2016, 15:00",
       "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.21,
-      "peak_value": 223.0,
-      "expected_value": 159.275,
-      "explanation": "Sun 18 Dec 2016, 04:00: PM10 was 223.00 µg/m³ at 04:00, but the model expected about 159.28 µg/m³, so it was 63.72 higher. The inputs were complete, and O3 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "confidence": "high",
+      "severity": 1.97,
+      "peak_value": 196.0,
+      "expected_value": 95.286,
+      "explanation": "Fri 16 Dec 2016, 15:00: PM10 was 196.00 µg/m³ at 15:00, but the model expected about 95.29 µg/m³, so it was 100.71 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 136,
-      "when": "Sun 18 Dec 2016 22:00 to Mon 19 Dec 00:00",
-      "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.09,
-      "peak_value": 296.0,
-      "expected_value": 238.628,
-      "explanation": "Sun 18 Dec 2016 22:00 to Mon 19 Dec 00:00: PM10 was 296.00 µg/m³ at 22:00, but the model expected about 238.63 µg/m³, so it was 57.37 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "when": "Fri 16 Dec 2016, 21:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.2,
+      "peak_value": 165.0,
+      "expected_value": 226.489,
+      "explanation": "Fri 16 Dec 2016, 21:00: PM10 was 165.00 µg/m³ at 21:00, but the model expected about 226.49 µg/m³, so it was 61.49 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 137,
-      "when": "Tue 20 Dec 2016, 01:00 to 02:00",
+      "when": "Sun 18 Dec 2016, 02:00 to 04:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.29,
-      "peak_value": 365.0,
-      "expected_value": 244.218,
-      "explanation": "Tue 20 Dec 2016, 01:00 to 02:00: PM10 was 365.00 µg/m³ at 01:00, but the model expected about 244.22 µg/m³, so it was 120.78 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 1.25,
+      "peak_value": 223.0,
+      "expected_value": 158.96,
+      "explanation": "Sun 18 Dec 2016, 02:00 to 04:00: PM10 was 223.00 µg/m³ at 04:00, but the model expected about 158.96 µg/m³, so it was 64.04 higher. The inputs were complete, and NO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 138,
-      "when": "Tue 20 Dec 2016, 12:00 to 13:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.19,
-      "peak_value": 321.0,
-      "expected_value": 258.52,
-      "explanation": "Tue 20 Dec 2016, 12:00 to 13:00: PM10 was 321.00 µg/m³ at 13:00, but the model expected about 258.52 µg/m³, so it was 62.48 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Sun 18 Dec 2016, 22:00",
+      "type": "Unusual pollution",
+      "confidence": "medium",
+      "severity": 1.28,
+      "peak_value": 296.0,
+      "expected_value": 230.642,
+      "explanation": "Sun 18 Dec 2016, 22:00: PM10 was 296.00 µg/m³ at 22:00, but the model expected about 230.64 µg/m³, so it was 65.36 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 139,
-      "when": "Tue 20 Dec 2016, 17:00",
+      "when": "Tue 20 Dec 2016, 01:00 to 02:00",
       "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.3,
-      "peak_value": 403.0,
-      "expected_value": 334.556,
-      "explanation": "Tue 20 Dec 2016, 17:00: PM10 was 403.00 µg/m³ at 17:00, but the model expected about 334.56 µg/m³, so it was 68.44 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "confidence": "high",
+      "severity": 2.33,
+      "peak_value": 365.0,
+      "expected_value": 245.664,
+      "explanation": "Tue 20 Dec 2016, 01:00 to 02:00: PM10 was 365.00 µg/m³ at 01:00, but the model expected about 245.66 µg/m³, so it was 119.34 higher. The inputs were complete, and CO and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 140,
-      "when": "Wed 21 Dec 2016, 02:00 to 03:00",
+      "when": "Tue 20 Dec 2016, 12:00 to 13:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.44,
-      "peak_value": 337.0,
-      "expected_value": 412.813,
-      "explanation": "Wed 21 Dec 2016, 02:00 to 03:00: PM10 was 337.00 µg/m³ at 03:00, but the model expected about 412.81 µg/m³, so it was 75.81 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "severity": 1.24,
+      "peak_value": 321.0,
+      "expected_value": 257.445,
+      "explanation": "Tue 20 Dec 2016, 12:00 to 13:00: PM10 was 321.00 µg/m³ at 13:00, but the model expected about 257.44 µg/m³, so it was 63.56 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 141,
-      "when": "Thu 22 Dec 2016, 03:00 to 04:00",
+      "when": "Thu 22 Dec 2016, 01:00 to 04:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 4.68,
+      "severity": 4.74,
       "peak_value": 149.0,
-      "expected_value": 395.537,
-      "explanation": "Thu 22 Dec 2016, 03:00 to 04:00: PM10 was 149.00 µg/m³ at 03:00, but the model expected about 395.54 µg/m³, so it was 246.54 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 391.316,
+      "explanation": "Thu 22 Dec 2016, 01:00 to 04:00: PM10 was 149.00 µg/m³ at 03:00, but the model expected about 391.32 µg/m³, so it was 242.32 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 142,
       "when": "Sat 24 Dec 2016, 04:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.6,
+      "severity": 1.61,
       "peak_value": 182.0,
-      "expected_value": 97.782,
-      "explanation": "Sat 24 Dec 2016, 04:00: PM10 was 182.00 µg/m³ at 04:00, but the model expected about 97.78 µg/m³, so it was 84.22 higher. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 99.945,
+      "explanation": "Sat 24 Dec 2016, 04:00: PM10 was 182.00 µg/m³ at 04:00, but the model expected about 99.95 µg/m³, so it was 82.05 higher. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 143,
       "when": "Sat 24 Dec 2016, 12:00",
       "type": "Unusual pollution",
       "confidence": "medium",
-      "severity": 1.17,
+      "severity": 1.16,
       "peak_value": 165.0,
-      "expected_value": 103.479,
-      "explanation": "Sat 24 Dec 2016, 12:00: PM10 was 165.00 µg/m³ at 12:00, but the model expected about 103.48 µg/m³, so it was 61.52 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 105.686,
+      "explanation": "Sat 24 Dec 2016, 12:00: PM10 was 165.00 µg/m³ at 12:00, but the model expected about 105.69 µg/m³, so it was 59.31 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 144,
       "when": "Mon 26 Dec 2016, 06:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.08,
+      "severity": 1.07,
       "peak_value": 25.0,
-      "expected_value": 81.92,
-      "explanation": "Mon 26 Dec 2016, 06:00: PM10 was 25.00 µg/m³ at 06:00, but the model expected about 81.92 µg/m³, so it was 56.92 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 79.751,
+      "explanation": "Mon 26 Dec 2016, 06:00: PM10 was 25.00 µg/m³ at 06:00, but the model expected about 79.75 µg/m³, so it was 54.75 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 145,
-      "when": "Fri 30 Dec 2016, 00:00 to 02:00",
+      "when": "Thu 29 Dec 2016 22:00 to Fri 30 Dec 04:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.92,
+      "severity": 2.96,
       "peak_value": 404.0,
-      "expected_value": 250.107,
-      "explanation": "Fri 30 Dec 2016, 00:00 to 02:00: PM10 was 404.00 µg/m³ at 00:00, but the model expected about 250.11 µg/m³, so it was 153.89 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 252.877,
+      "explanation": "Thu 29 Dec 2016 22:00 to Fri 30 Dec 04:00: PM10 was 404.00 µg/m³ at 00:00, but the model expected about 252.88 µg/m³, so it was 151.12 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 146,
-      "when": "Fri 30 Dec 2016, 16:00 to 20:00",
+      "when": "Fri 30 Dec 2016, 16:00 to 19:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.17,
+      "severity": 2.36,
       "peak_value": 314.0,
-      "expected_value": 199.656,
-      "explanation": "Fri 30 Dec 2016, 16:00 to 20:00: PM10 was 314.00 µg/m³ at 18:00, but the model expected about 199.66 µg/m³, so it was 114.34 higher. The inputs were complete, and NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 193.233,
+      "explanation": "Fri 30 Dec 2016, 16:00 to 19:00: PM10 was 314.00 µg/m³ at 18:00, but the model expected about 193.23 µg/m³, so it was 120.77 higher. The inputs were complete, and NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 147,
       "when": "Sat 31 Dec 2016, 06:00 to 18:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 3.23,
+      "severity": 3.39,
       "peak_value": 440.0,
-      "expected_value": 269.743,
-      "explanation": "Sat 31 Dec 2016, 06:00 to 18:00: PM10 was 440.00 µg/m³ at 15:00, but the model expected about 269.74 µg/m³, so it was 170.26 higher. The inputs were complete, and CO, NO2, PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 266.687,
+      "explanation": "Sat 31 Dec 2016, 06:00 to 18:00: PM10 was 440.00 µg/m³ at 15:00, but the model expected about 266.69 µg/m³, so it was 173.31 higher. The inputs were complete, and CO, NO2, PM2.5 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 148,
       "when": "Sun 1 Jan 2017, 04:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.67,
+      "severity": 1.37,
       "peak_value": 468.0,
-      "expected_value": 380.235,
-      "explanation": "Sun 1 Jan 2017, 04:00: PM10 was 468.00 µg/m³ at 04:00, but the model expected about 380.24 µg/m³, so it was 87.76 higher. The inputs were complete, and CO and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 397.736,
+      "explanation": "Sun 1 Jan 2017, 04:00: PM10 was 468.00 µg/m³ at 04:00, but the model expected about 397.74 µg/m³, so it was 70.26 higher. The inputs were complete, and CO and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 149,
       "when": "Sun 1 Jan 2017, 12:00 to 15:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.82,
+      "severity": 2.04,
       "peak_value": 471.0,
-      "expected_value": 374.968,
-      "explanation": "Sun 1 Jan 2017, 12:00 to 15:00: PM10 was 471.00 µg/m³ at 13:00, but the model expected about 374.97 µg/m³, so it was 96.03 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 366.546,
+      "explanation": "Sun 1 Jan 2017, 12:00 to 15:00: PM10 was 471.00 µg/m³ at 13:00, but the model expected about 366.55 µg/m³, so it was 104.45 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 150,
       "when": "Mon 2 Jan 2017, 02:00 to 05:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 3.3,
+      "severity": 3.78,
       "peak_value": 211.0,
-      "expected_value": 384.692,
-      "explanation": "Mon 2 Jan 2017, 02:00 to 05:00: PM10 was 211.00 µg/m³ at 04:00, but the model expected about 384.69 µg/m³, so it was 173.69 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 404.246,
+      "explanation": "Mon 2 Jan 2017, 02:00 to 05:00: PM10 was 211.00 µg/m³ at 04:00, but the model expected about 404.25 µg/m³, so it was 193.25 lower. The inputs were complete, and CO, NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 151,
       "when": "Mon 2 Jan 2017, 12:00 to 15:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 4.37,
+      "severity": 4.51,
       "peak_value": 247.0,
-      "expected_value": 16.876,
-      "explanation": "Mon 2 Jan 2017, 12:00 to 15:00: PM10 was 247.00 µg/m³ at 12:00, but the model expected about 16.88 µg/m³, so it was 230.12 higher. The inputs were complete, and SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 16.393,
+      "explanation": "Mon 2 Jan 2017, 12:00 to 15:00: PM10 was 247.00 µg/m³ at 12:00, but the model expected about 16.39 µg/m³, so it was 230.61 higher. The inputs were complete, and SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 152,
       "when": "Tue 3 Jan 2017, 00:00 to 01:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.09,
+      "severity": 1.1,
       "peak_value": 225.0,
-      "expected_value": 167.629,
-      "explanation": "Tue 3 Jan 2017, 00:00 to 01:00: PM10 was 225.00 µg/m³ at 00:00, but the model expected about 167.63 µg/m³, so it was 57.37 higher. The inputs were complete, and CO, NO2 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 168.73,
+      "explanation": "Tue 3 Jan 2017, 00:00 to 01:00: PM10 was 225.00 µg/m³ at 00:00, but the model expected about 168.73 µg/m³, so it was 56.27 higher. The inputs were complete, and CO, NO2 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 153,
       "when": "Tue 3 Jan 2017, 11:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 1.33,
+      "severity": 1.4,
       "peak_value": 155.0,
-      "expected_value": 225.319,
-      "explanation": "Tue 3 Jan 2017, 11:00: PM10 was 155.00 µg/m³ at 11:00, but the model expected about 225.32 µg/m³, so it was 70.32 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 226.639,
+      "explanation": "Tue 3 Jan 2017, 11:00: PM10 was 155.00 µg/m³ at 11:00, but the model expected about 226.64 µg/m³, so it was 71.64 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 154,
-      "when": "Tue 3 Jan 2017, 15:00 to 18:00",
+      "when": "Tue 3 Jan 2017, 15:00 to 19:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.53,
+      "severity": 1.69,
       "peak_value": 334.0,
-      "expected_value": 253.403,
-      "explanation": "Tue 3 Jan 2017, 15:00 to 18:00: PM10 was 334.00 µg/m³ at 16:00, but the model expected about 253.40 µg/m³, so it was 80.60 higher. The inputs were complete, and NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 247.397,
+      "explanation": "Tue 3 Jan 2017, 15:00 to 19:00: PM10 was 334.00 µg/m³ at 16:00, but the model expected about 247.40 µg/m³, so it was 86.60 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 155,
-      "when": "Wed 4 Jan 2017, 03:00 to 14:00",
+      "when": "Wed 4 Jan 2017, 03:00 to 17:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.76,
+      "severity": 2.83,
       "peak_value": 333.0,
-      "expected_value": 478.383,
-      "explanation": "Wed 4 Jan 2017, 03:00 to 14:00: PM10 was 333.00 µg/m³ at 11:00, but the model expected about 478.38 µg/m³, so it was 145.38 lower. The inputs were complete, and CO, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 477.685,
+      "explanation": "Wed 4 Jan 2017, 03:00 to 17:00: PM10 was 333.00 µg/m³ at 11:00, but the model expected about 477.68 µg/m³, so it was 144.68 lower. The inputs were complete, and CO, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 156,
       "when": "Thu 5 Jan 2017, 00:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.37,
+      "severity": 2.3,
       "peak_value": 203.0,
-      "expected_value": 328.001,
-      "explanation": "Thu 5 Jan 2017, 00:00: PM10 was 203.00 µg/m³ at 00:00, but the model expected about 328.00 µg/m³, so it was 125.00 lower. The inputs were complete, and NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "expected_value": 320.545,
+      "explanation": "Thu 5 Jan 2017, 00:00: PM10 was 203.00 µg/m³ at 00:00, but the model expected about 320.54 µg/m³, so it was 117.54 lower. The inputs were complete, and NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 157,
       "when": "Thu 5 Jan 2017, 05:00 to 07:00",
       "type": "Unclear",
       "confidence": "low",
-      "severity": 3.75,
+      "severity": 3.9,
       "peak_value": 360.0,
-      "expected_value": 162.423,
-      "explanation": "Thu 5 Jan 2017, 05:00 to 07:00: PM10 was 360.00 µg/m³ at 05:00, but the model expected about 162.42 µg/m³, so it was 197.58 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "expected_value": 160.732,
+      "explanation": "Thu 5 Jan 2017, 05:00 to 07:00: PM10 was 360.00 µg/m³ at 05:00, but the model expected about 160.73 µg/m³, so it was 199.27 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 158,
-      "when": "Thu 12 Jan 2017, 21:00",
+      "when": "Tue 10 Jan 2017, 20:00",
       "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.26,
-      "peak_value": 67.0,
-      "expected_value": 133.403,
-      "explanation": "Thu 12 Jan 2017, 21:00: PM10 was 67.00 µg/m³ at 21:00, but the model expected about 133.40 µg/m³, so it was 66.40 lower. The inputs were complete, and NO2 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "confidence": "medium",
+      "severity": 1.0,
+      "peak_value": 108.0,
+      "expected_value": 56.765,
+      "explanation": "Tue 10 Jan 2017, 20:00: PM10 was 108.00 µg/m³ at 20:00, but the model expected about 56.76 µg/m³, so it was 51.24 higher. The inputs were complete, and SO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 159,
-      "when": "Wed 18 Jan 2017, 00:00",
+      "when": "Wed 11 Jan 2017, 03:00",
       "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.95,
-      "peak_value": 73.0,
-      "expected_value": 175.746,
-      "explanation": "Wed 18 Jan 2017, 00:00: PM10 was 73.00 µg/m³ at 00:00, but the model expected about 175.75 µg/m³, so it was 102.75 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "confidence": "high",
+      "severity": 1.01,
+      "peak_value": 150.0,
+      "expected_value": 98.424,
+      "explanation": "Wed 11 Jan 2017, 03:00: PM10 was 150.00 µg/m³ at 03:00, but the model expected about 98.42 µg/m³, so it was 51.58 higher. The inputs were complete, and CO, NO2 and PM2.5 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 160,
-      "when": "Thu 19 Jan 2017, 14:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.37,
-      "peak_value": 65.0,
-      "expected_value": 137.286,
-      "explanation": "Thu 19 Jan 2017, 14:00: PM10 was 65.00 µg/m³ at 14:00, but the model expected about 137.29 µg/m³, so it was 72.29 lower. The inputs were complete, and NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "when": "Wed 11 Jan 2017, 11:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.01,
+      "peak_value": 6.0,
+      "expected_value": 57.707,
+      "explanation": "Wed 11 Jan 2017, 11:00: PM10 was 6.00 µg/m³ at 11:00, but the model expected about 57.71 µg/m³, so it was 51.71 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 161,
-      "when": "Sun 22 Jan 2017, 20:00",
+      "when": "Thu 12 Jan 2017, 21:00",
       "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 1.06,
-      "peak_value": 46.0,
-      "expected_value": 101.927,
-      "explanation": "Sun 22 Jan 2017, 20:00: PM10 was 46.00 µg/m³ at 20:00, but the model expected about 101.93 µg/m³, so it was 55.93 lower. The inputs were complete, and O3 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "confidence": "high",
+      "severity": 1.31,
+      "peak_value": 67.0,
+      "expected_value": 133.776,
+      "explanation": "Thu 12 Jan 2017, 21:00: PM10 was 67.00 µg/m³ at 21:00, but the model expected about 133.78 µg/m³, so it was 66.78 lower. The inputs were complete, and NO2 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 162,
-      "when": "Thu 26 Jan 2017, 15:00",
+      "when": "Wed 18 Jan 2017, 00:00",
       "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.08,
-      "peak_value": 75.0,
-      "expected_value": 131.884,
-      "explanation": "Thu 26 Jan 2017, 15:00: PM10 was 75.00 µg/m³ at 15:00, but the model expected about 131.88 µg/m³, so it was 56.88 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "confidence": "medium",
+      "severity": 2.01,
+      "peak_value": 73.0,
+      "expected_value": 175.704,
+      "explanation": "Wed 18 Jan 2017, 00:00: PM10 was 73.00 µg/m³ at 00:00, but the model expected about 175.70 µg/m³, so it was 102.70 lower. The inputs were complete, and PM2.5 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 163,
-      "when": "Fri 27 Jan 2017 21:00 to Sat 28 Jan 11:00",
+      "when": "Thu 19 Jan 2017, 14:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 9.12,
-      "peak_value": 815.0,
-      "expected_value": 334.584,
-      "explanation": "Fri 27 Jan 2017 21:00 to Sat 28 Jan 11:00: PM10 was 815.00 µg/m³ at 01:00, but the model expected about 334.58 µg/m³, so it was 480.42 higher. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 1.08,
+      "peak_value": 65.0,
+      "expected_value": 120.188,
+      "explanation": "Thu 19 Jan 2017, 14:00: PM10 was 65.00 µg/m³ at 14:00, but the model expected about 120.19 µg/m³, so it was 55.19 lower. The inputs were complete, and NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 164,
-      "when": "Sun 29 Jan 2017, 02:00 to 04:00",
+      "when": "Sun 22 Jan 2017, 20:00",
       "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 2.44,
-      "peak_value": 17.0,
-      "expected_value": 145.574,
-      "explanation": "Sun 29 Jan 2017, 02:00 to 04:00: PM10 was 17.00 µg/m³ at 03:00, but the model expected about 145.57 µg/m³, so it was 128.57 lower. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "confidence": "medium",
+      "severity": 1.05,
+      "peak_value": 46.0,
+      "expected_value": 99.92,
+      "explanation": "Sun 22 Jan 2017, 20:00: PM10 was 46.00 µg/m³ at 20:00, but the model expected about 99.92 µg/m³, so it was 53.92 lower. The inputs were complete, and O3 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 165,
-      "when": "Sun 29 Jan 2017, 10:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.13,
-      "peak_value": 64.0,
-      "expected_value": 123.634,
-      "explanation": "Sun 29 Jan 2017, 10:00: PM10 was 64.00 µg/m³ at 10:00, but the model expected about 123.63 µg/m³, so it was 59.63 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Thu 26 Jan 2017, 13:00 to 15:00",
+      "type": "Data limitation",
+      "confidence": "medium",
+      "severity": 1.08,
+      "peak_value": 75.0,
+      "expected_value": 130.205,
+      "explanation": "Thu 26 Jan 2017, 13:00 to 15:00: PM10 was 75.00 µg/m³ at 15:00, but the model expected about 130.20 µg/m³, so it was 55.20 lower. But the reading at the same time the day before was missing. So this is more likely a problem with the data than real pollution."
     },
     {
       "id": 166,
-      "when": "Mon 30 Jan 2017, 18:00 to 19:00",
+      "when": "Fri 27 Jan 2017 21:00 to Sat 28 Jan 07:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.1,
-      "peak_value": 130.0,
-      "expected_value": 71.904,
-      "explanation": "Mon 30 Jan 2017, 18:00 to 19:00: PM10 was 130.00 µg/m³ at 18:00, but the model expected about 71.90 µg/m³, so it was 58.10 higher. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "severity": 9.25,
+      "peak_value": 815.0,
+      "expected_value": 342.361,
+      "explanation": "Fri 27 Jan 2017 21:00 to Sat 28 Jan 07:00: PM10 was 815.00 µg/m³ at 01:00, but the model expected about 342.36 µg/m³, so it was 472.64 higher. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 167,
-      "when": "Tue 31 Jan 2017, 21:00",
+      "when": "Sat 28 Jan 2017, 11:00",
       "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.06,
-      "peak_value": 24.0,
-      "expected_value": 79.637,
-      "explanation": "Tue 31 Jan 2017, 21:00: PM10 was 24.00 µg/m³ at 21:00, but the model expected about 79.64 µg/m³, so it was 55.64 lower. The inputs were complete, and NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "confidence": "medium",
+      "severity": 1.46,
+      "peak_value": 271.0,
+      "expected_value": 345.45,
+      "explanation": "Sat 28 Jan 2017, 11:00: PM10 was 271.00 µg/m³ at 11:00, but the model expected about 345.45 µg/m³, so it was 74.45 lower. The inputs were complete, and O3 was also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 168,
-      "when": "Thu 2 Feb 2017, 04:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.16,
-      "peak_value": 37.0,
-      "expected_value": 98.328,
-      "explanation": "Thu 2 Feb 2017, 04:00: PM10 was 37.00 µg/m³ at 04:00, but the model expected about 98.33 µg/m³, so it was 61.33 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Sun 29 Jan 2017, 02:00 to 04:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 2.6,
+      "peak_value": 17.0,
+      "expected_value": 150.138,
+      "explanation": "Sun 29 Jan 2017, 02:00 to 04:00: PM10 was 17.00 µg/m³ at 03:00, but the model expected about 150.14 µg/m³, so it was 133.14 lower. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 169,
-      "when": "Fri 3 Feb 2017, 16:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.09,
-      "peak_value": 190.0,
-      "expected_value": 132.568,
-      "explanation": "Fri 3 Feb 2017, 16:00: PM10 was 190.00 µg/m³ at 16:00, but the model expected about 132.57 µg/m³, so it was 57.43 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Mon 30 Jan 2017, 17:00 to 19:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.33,
+      "peak_value": 71.0,
+      "expected_value": 138.938,
+      "explanation": "Mon 30 Jan 2017, 17:00 to 19:00: PM10 was 71.00 µg/m³ at 19:00, but the model expected about 138.94 µg/m³, so it was 67.94 lower. The inputs were complete, and CO, NO2, PM2.5, SO2 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 170,
-      "when": "Sat 4 Feb 2017, 16:00",
+      "when": "Tue 31 Jan 2017, 21:00",
       "type": "Unusual pollution",
-      "confidence": "medium",
-      "severity": 2.03,
-      "peak_value": 322.0,
-      "expected_value": 214.79,
-      "explanation": "Sat 4 Feb 2017, 16:00: PM10 was 322.00 µg/m³ at 16:00, but the model expected about 214.79 µg/m³, so it was 107.21 higher. The inputs were complete, and NO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "confidence": "high",
+      "severity": 1.05,
+      "peak_value": 24.0,
+      "expected_value": 77.641,
+      "explanation": "Tue 31 Jan 2017, 21:00: PM10 was 24.00 µg/m³ at 21:00, but the model expected about 77.64 µg/m³, so it was 53.64 lower. The inputs were complete, and NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 171,
-      "when": "Sat 4 Feb 2017, 20:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 3.35,
-      "peak_value": 82.0,
-      "expected_value": 258.601,
-      "explanation": "Sat 4 Feb 2017, 20:00: PM10 was 82.00 µg/m³ at 20:00, but the model expected about 258.60 µg/m³, so it was 176.60 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "when": "Thu 2 Feb 2017, 04:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.22,
+      "peak_value": 37.0,
+      "expected_value": 99.598,
+      "explanation": "Thu 2 Feb 2017, 04:00: PM10 was 37.00 µg/m³ at 04:00, but the model expected about 99.60 µg/m³, so it was 62.60 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 172,
-      "when": "Wed 8 Feb 2017, 09:00",
-      "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.16,
-      "peak_value": 13.0,
-      "expected_value": 73.98,
-      "explanation": "Wed 8 Feb 2017, 09:00: PM10 was 13.00 µg/m³ at 09:00, but the model expected about 73.98 µg/m³, so it was 60.98 lower. The inputs were complete, and NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "when": "Fri 3 Feb 2017, 16:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.12,
+      "peak_value": 190.0,
+      "expected_value": 132.938,
+      "explanation": "Fri 3 Feb 2017, 16:00: PM10 was 190.00 µg/m³ at 16:00, but the model expected about 132.94 µg/m³, so it was 57.06 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 173,
-      "when": "Sat 11 Feb 2017 21:00 to Sun 12 Feb 02:00",
+      "when": "Fri 3 Feb 2017, 21:00",
       "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.47,
-      "peak_value": 282.0,
-      "expected_value": 204.302,
-      "explanation": "Sat 11 Feb 2017 21:00 to Sun 12 Feb 02:00: PM10 was 282.00 µg/m³ at 22:00, but the model expected about 204.30 µg/m³, so it was 77.70 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "confidence": "medium",
+      "severity": 1.04,
+      "peak_value": 323.0,
+      "expected_value": 269.72,
+      "explanation": "Fri 3 Feb 2017, 21:00: PM10 was 323.00 µg/m³ at 21:00, but the model expected about 269.72 µg/m³, so it was 53.28 higher. The inputs were complete, and PM2.5 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 174,
-      "when": "Sun 12 Feb 2017, 10:00",
+      "when": "Sat 4 Feb 2017, 16:00",
       "type": "Unusual pollution",
-      "confidence": "high",
-      "severity": 1.06,
-      "peak_value": 174.0,
-      "expected_value": 118.115,
-      "explanation": "Sun 12 Feb 2017, 10:00: PM10 was 174.00 µg/m³ at 10:00, but the model expected about 118.12 µg/m³, so it was 55.88 higher. The inputs were complete, and CO and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "confidence": "medium",
+      "severity": 2.18,
+      "peak_value": 322.0,
+      "expected_value": 210.467,
+      "explanation": "Sat 4 Feb 2017, 16:00: PM10 was 322.00 µg/m³ at 16:00, but the model expected about 210.47 µg/m³, so it was 111.53 higher. The inputs were complete, and NO2 was also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 175,
-      "when": "Mon 13 Feb 2017, 20:00 to 22:00",
-      "type": "Unclear",
-      "confidence": "low",
-      "severity": 1.46,
-      "peak_value": 216.0,
-      "expected_value": 139.186,
-      "explanation": "Mon 13 Feb 2017, 20:00 to 22:00: PM10 was 216.00 µg/m³ at 22:00, but the model expected about 139.19 µg/m³, so it was 76.81 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
+      "when": "Sat 4 Feb 2017, 20:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 3.49,
+      "peak_value": 82.0,
+      "expected_value": 260.395,
+      "explanation": "Sat 4 Feb 2017, 20:00: PM10 was 82.00 µg/m³ at 20:00, but the model expected about 260.39 µg/m³, so it was 178.39 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 176,
-      "when": "Wed 15 Feb 2017, 14:00 to 17:00",
+      "when": "Wed 8 Feb 2017, 09:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 4.31,
-      "peak_value": 5.0,
-      "expected_value": 231.897,
-      "explanation": "Wed 15 Feb 2017, 14:00 to 17:00: PM10 was 5.00 µg/m³ at 14:00, but the model expected about 231.90 µg/m³, so it was 226.90 lower. The inputs were complete, and PM2.5 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.18,
+      "peak_value": 13.0,
+      "expected_value": 73.311,
+      "explanation": "Wed 8 Feb 2017, 09:00: PM10 was 13.00 µg/m³ at 09:00, but the model expected about 73.31 µg/m³, so it was 60.31 lower. The inputs were complete, and NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 177,
-      "when": "Thu 16 Feb 2017, 10:00",
+      "when": "Sat 11 Feb 2017 21:00 to Sun 12 Feb 02:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.71,
-      "peak_value": 82.0,
-      "expected_value": 172.306,
-      "explanation": "Thu 16 Feb 2017, 10:00: PM10 was 82.00 µg/m³ at 10:00, but the model expected about 172.31 µg/m³, so it was 90.31 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.7,
+      "peak_value": 282.0,
+      "expected_value": 195.269,
+      "explanation": "Sat 11 Feb 2017 21:00 to Sun 12 Feb 02:00: PM10 was 282.00 µg/m³ at 22:00, but the model expected about 195.27 µg/m³, so it was 86.73 higher. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 178,
-      "when": "Sun 19 Feb 2017, 15:00 to 16:00",
+      "when": "Sun 12 Feb 2017, 10:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.5,
-      "peak_value": 91.0,
-      "expected_value": 169.977,
-      "explanation": "Sun 19 Feb 2017, 15:00 to 16:00: PM10 was 91.00 µg/m³ at 15:00, but the model expected about 169.98 µg/m³, so it was 78.98 lower. The inputs were complete, and NO2 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 1.07,
+      "peak_value": 174.0,
+      "expected_value": 119.169,
+      "explanation": "Sun 12 Feb 2017, 10:00: PM10 was 174.00 µg/m³ at 10:00, but the model expected about 119.17 µg/m³, so it was 54.83 higher. The inputs were complete, and CO and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
     },
     {
       "id": 179,
-      "when": "Tue 21 Feb 2017, 10:00",
-      "type": "Data limitation",
-      "confidence": "high",
-      "severity": 1.15,
-      "peak_value": 155.0,
-      "expected_value": 94.362,
-      "explanation": "Tue 21 Feb 2017, 10:00: PM10 was 155.00 µg/m³ at 10:00, but the model expected about 94.36 µg/m³, so it was 60.64 higher. But the reading 2 hours before and the reading 3 hours before were missing and the PM10 data had a gap of 4 hours just before. So this is more likely a problem with the data than real pollution."
+      "when": "Mon 13 Feb 2017, 20:00 to 22:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.52,
+      "peak_value": 216.0,
+      "expected_value": 138.085,
+      "explanation": "Mon 13 Feb 2017, 20:00 to 22:00: PM10 was 216.00 µg/m³ at 22:00, but the model expected about 138.08 µg/m³, so it was 77.92 higher. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     },
     {
       "id": 180,
-      "when": "Wed 22 Feb 2017, 17:00",
+      "when": "Wed 15 Feb 2017, 14:00 to 17:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 2.02,
-      "peak_value": 28.0,
-      "expected_value": 134.398,
-      "explanation": "Wed 22 Feb 2017, 17:00: PM10 was 28.00 µg/m³ at 17:00, but the model expected about 134.40 µg/m³, so it was 106.40 lower. The inputs were complete, and NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+      "severity": 4.35,
+      "peak_value": 5.0,
+      "expected_value": 227.434,
+      "explanation": "Wed 15 Feb 2017, 14:00 to 17:00: PM10 was 5.00 µg/m³ at 14:00, but the model expected about 227.43 µg/m³, so it was 222.43 lower. The inputs were complete, and PM2.5 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
     },
     {
       "id": 181,
+      "when": "Thu 16 Feb 2017, 10:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.79,
+      "peak_value": 82.0,
+      "expected_value": 173.628,
+      "explanation": "Thu 16 Feb 2017, 10:00: PM10 was 82.00 µg/m³ at 10:00, but the model expected about 173.63 µg/m³, so it was 91.63 lower. The inputs were complete, and CO, NO2, PM2.5 and SO2 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 182,
+      "when": "Sun 19 Feb 2017, 15:00 to 16:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 1.59,
+      "peak_value": 91.0,
+      "expected_value": 172.229,
+      "explanation": "Sun 19 Feb 2017, 15:00 to 16:00: PM10 was 91.00 µg/m³ at 15:00, but the model expected about 172.23 µg/m³, so it was 81.23 lower. The inputs were complete, and NO2 and O3 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 183,
+      "when": "Tue 21 Feb 2017, 10:00",
+      "type": "Data limitation",
+      "confidence": "high",
+      "severity": 1.2,
+      "peak_value": 155.0,
+      "expected_value": 93.719,
+      "explanation": "Tue 21 Feb 2017, 10:00: PM10 was 155.00 µg/m³ at 10:00, but the model expected about 93.72 µg/m³, so it was 61.28 higher. But the reading 2 hours before and the reading 3 hours before were missing and the PM10 data had a gap of 4 hours just before. So this is more likely a problem with the data than real pollution."
+    },
+    {
+      "id": 184,
+      "when": "Wed 22 Feb 2017, 17:00",
+      "type": "Unusual pollution",
+      "confidence": "high",
+      "severity": 2.12,
+      "peak_value": 28.0,
+      "expected_value": 136.135,
+      "explanation": "Wed 22 Feb 2017, 17:00: PM10 was 28.00 µg/m³ at 17:00, but the model expected about 136.13 µg/m³, so it was 108.13 lower. The inputs were complete, and NO2 and PM2.5 were also unusually low at the same time. These come from separate instruments, so this looks like a real drop in pollution."
+    },
+    {
+      "id": 185,
       "when": "Mon 27 Feb 2017, 10:00",
       "type": "Unusual pollution",
       "confidence": "high",
-      "severity": 1.6,
+      "severity": 1.63,
       "peak_value": 150.0,
-      "expected_value": 65.863,
-      "explanation": "Mon 27 Feb 2017, 10:00: PM10 was 150.00 µg/m³ at 10:00, but the model expected about 65.86 µg/m³, so it was 84.14 higher. The inputs were complete, and PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+      "expected_value": 66.575,
+      "explanation": "Mon 27 Feb 2017, 10:00: PM10 was 150.00 µg/m³ at 10:00, but the model expected about 66.57 µg/m³, so it was 83.43 higher. The inputs were complete, and PM2.5 and SO2 were also unusually high at the same time. These come from separate instruments, so this looks like a real rise in pollution."
+    },
+    {
+      "id": 186,
+      "when": "Tue 28 Feb 2017, 00:00",
+      "type": "Unclear",
+      "confidence": "low",
+      "severity": 1.02,
+      "peak_value": 56.0,
+      "expected_value": 108.324,
+      "explanation": "Tue 28 Feb 2017, 00:00: PM10 was 56.00 µg/m³ at 00:00, but the model expected about 108.32 µg/m³, so it was 52.32 lower. The inputs were complete, but none of the other pollutants moved with it. It could be a short local event, or the model simply missed a normal change."
     }
   ],
   "limitations": [
     "Results come from one place and period, so they may not hold elsewhere.",
     "Episode labels come from simple rules. Nobody checked them against real events."
-  ]
+  ],
+  "overfitting_check": {
+    "error_on_learned_data": 17.399,
+    "error_on_test": 14.365,
+    "gap_percent": -17.4,
+    "gap_allowing_for_period_percent": 6.7,
+    "verdict": "No sign of overfitting",
+    "explanation": "No sign of overfitting: the error on new data is close to the error on the data it learned from, once you allow for the test period being 23% easier to predict."
+  }
 }

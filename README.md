@@ -21,8 +21,12 @@ The app opens on **Live air**. Pick a city (or search for any place) and it:
 3. forecasts fine dust (PM2.5) for the next 24 hours with a likely range, and turns it into the US EPA air quality index,
 4. replays the forecast on the last 10 days to show how far off it usually is, and runs the same episode checks on the last month.
 
+It also tells people what to do (for everyone and for sensitive groups, the best time to go out, when to keep windows closed), whether today is normal compared with the last 3 months, and why (wind, rain, humidity). There is a "Use my location" button, and every city has a shareable link.
+
 Results are cached for an hour per place. The code is in `live.py`; the endpoints are `GET /api/live/search?q=` and
 `GET /api/live?lat=&lon=&name=`. Open-Meteo data is free for non-commercial use with attribution.
+
+On the research tab, the unusual periods can be downloaded as a spreadsheet from `GET /api/episodes/{dataset}/{pollutant}` (CSV).
 
 The page has three tabs: **Live air**, **Research datasets** (the Italy and Beijing results) and **How it works**
 (four steps and a glossary in plain language).
@@ -60,28 +64,35 @@ or `datetime`) and at least one pollutant column. The other 11 Beijing stations 
 
 ## Results on the test period
 
-Italy (test period 16 Jan – 4 Apr 2005):
+All numbers are on the test period, the last 20% of each dataset, which the model never saw while learning. The model
+and its settings were picked on the validation period only. "Within 20%" is the share of test hours where the
+prediction was within 20% of the real value. The overfitting check compares the error on the hours the model learned
+from with the error on the test hours, allowing for the test period being harder or easier to predict.
 
-| Pollutant | Model | Test MAE | Persistence MAE | Better by | R² | Episodes (unusual / data / unclear) |
-|---|---|---|---|---|---|---|
-| CO | Random Forest | 0.393 mg/m³ | 0.519 | 24.2% | 0.82 | 25 (15 / 5 / 5) |
-| NO2 | Random Forest | 15.9 µg/m³ | 19.8 | 19.5% | 0.83 | 85 (28 / 27 / 30) |
-| NOx | Random Forest | 57.6 ppb | 72.7 | 20.9% | 0.83 | 25 (10 / 12 / 3) |
-| C6H6 | Random Forest | 1.72 µg/m³ | 2.29 | 25.1% | 0.83 | 33 (18 / 1 / 14) |
+Italy (UCI, test period 16 Jan – 4 Apr 2005; CO in mg/m³, NOx in ppb, others in µg/m³):
 
-Beijing, Aotizhongxin (test period 12 May 2016 – 28 Feb 2017):
+| Pollutant | Model | Test MAE | Persistence MAE | Better by | R² | Within 20% | Overfitting check (learned → test MAE) | Episodes (real / data / not sure) |
+|---|---|---|---|---|---|---|---|---|
+| CO | XGBoost | 0.391 | 0.519 | +24.7% | 0.81 | 61% | No sign of overfitting (0.371 → 0.391) | 27 (17 / 5 / 5) |
+| NO2 | XGBoost | 16.0 | 19.8 | +19.1% | 0.83 | 86% | No sign of overfitting (10.4 → 16.0) | 85 (29 / 29 / 27) |
+| NOx | XGBoost | 58.0 | 72.7 | +20.3% | 0.82 | 63% | No sign of overfitting (40.6 → 58.0) | 34 (12 / 19 / 3) |
+| C6H6 | Random Forest | 1.710 | 2.291 | +25.4% | 0.83 | 55% | Mild overfitting (1.566 → 1.710) | 33 (19 / 1 / 13) |
 
-| Pollutant | Model | Test MAE (µg/m³) | Persistence MAE | Better by | R² |
-|---|---|---|---|---|---|
-| O3 | XGBoost | 8.47 | 11.19 | 24.3% | 0.96 |
-| NO2 | Random Forest | 6.95 | 7.53 | 7.7% | 0.90 |
-| PM2.5 | XGBoost | 9.69 | 10.34 | 6.2% | 0.96 |
-| PM10 | XGBoost | 14.8 | 15.0 | 0.8% | 0.92 |
-| CO | XGBoost | 192 | 191 | −0.3% | 0.90 |
-| SO2 | XGBoost | 1.78 | 1.70 | −4.6% | 0.92 |
+Beijing, Aotizhongxin (test period 12 May 2016 – 28 Feb 2017, µg/m³):
 
+| Pollutant | Model | Test MAE | Persistence MAE | Better by | R² | Within 20% | Overfitting check (learned → test MAE) | Episodes (real / data / not sure) |
+|---|---|---|---|---|---|---|---|---|
+| O3 | XGBoost | 8.161 | 11.2 | +27.1% | 0.96 | 63% | No sign of overfitting (6.263 → 8.161) | 294 (107 / 43 / 144) |
+| NO2 | XGBoost | 6.730 | 7.528 | +10.6% | 0.90 | 77% | No sign of overfitting (6.605 → 6.730) | 220 (103 / 36 / 81) |
+| PM2.5 | XGBoost | 9.518 | 10.3 | +7.9% | 0.96 | 71% | No sign of overfitting (9.487 → 9.518) | 178 (123 / 14 / 41) |
+| PM10 | XGBoost | 14.4 | 15.0 | +4.0% | 0.91 | 64% | No sign of overfitting (17.4 → 14.4) | 186 (129 / 6 / 51) |
+| CO | XGBoost | 187 | 191 | +2.4% | 0.90 | 78% | No sign of overfitting (154 → 187) | 155 (101 / 16 / 38) |
+| SO2 | XGBoost | 1.673 | 1.702 | +1.7% | 0.93 | 70% | No sign of overfitting (3.018 → 1.673) | 110 (70 / 4 / 36) |
+
+To keep the models from memorising the training data, the forest stops at depth 10 with at least 5 hours per leaf, and
+XGBoost sees 80% of the rows and inputs per tree, has a penalty on large leaf values and learns on absolute error.
 In Beijing, CO, SO2 and PM10 change slowly and are recorded in coarse steps (CO in steps of 100), so last hour's
-value is already a very good guess and no model really beats it. The high R² there mostly comes from that.
+value is already a very good guess and the gain over it is small. The high R² there mostly comes from that.
 
 ## Files
 

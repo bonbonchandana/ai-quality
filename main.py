@@ -149,6 +149,25 @@ def get_report(dataset_id: str, pollutant: str, download: bool = False):
                     headers={"Content-Disposition": f'attachment; filename="{dataset_id}-{key}-report.json"'})
 
 
+PLAIN_KIND = {"Unusual pollution": "Real pollution event", "Data limitation": "Probably a data problem", "Unclear": "Not sure"}
+
+
+@app.get("/api/episodes/{dataset_id}/{pollutant}")
+def episodes_csv(dataset_id: str, pollutant: str):
+    """The unusual periods as a spreadsheet (CSV), for anyone who wants to check them in Excel."""
+    key = find_pollutant(dataset_id, pollutant)
+    info = load_results(dataset_id, key)
+    rows = pd.DataFrame([{
+        "start": e["start"], "end": e["end"], "hours_flagged": e.get("flagged_hours"),
+        "what_we_think": PLAIN_KIND.get(e["type"], e["type"]), "confidence": e.get("confidence"),
+        "direction": e.get("direction"), f"peak ({info['unit']})": e.get("peak_value"),
+        f"expected ({info['unit']})": e.get("expected_value"), "times_bigger_than_usual_miss": e.get("severity"),
+        "why": e.get("explanation") or e.get("reason"),
+    } for e in info["episodes"]])
+    return Response("﻿" + rows.to_csv(index=False), media_type="text/csv; charset=utf-8",   # BOM so Excel reads µ and ³
+                    headers={"Content-Disposition": f'attachment; filename="{dataset_id}-{key}-unusual-periods.csv"'})
+
+
 @lru_cache(maxsize=1)
 def dataset_frame(dataset_id):
     return pd.read_csv(ARTIFACTS / dataset_id / "data.csv", parse_dates=["timestamp"], index_col="timestamp").asfreq("h")

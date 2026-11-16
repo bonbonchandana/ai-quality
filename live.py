@@ -112,6 +112,55 @@ def roll_forward(model, cols, start, hours, history, df):
     return out
 
 
+def weather_reasons(df, now, worst_hour):
+    """Plain sentences on how the next 24 hours of weather will push pollution up or down."""
+    nxt = df.loc[now + pd.Timedelta(hours=1):now + pd.Timedelta(hours=24)]
+    reasons = []
+    if "wind_speed" in nxt and nxt["wind_speed"].notna().any():
+        wind = float(nxt["wind_speed"].mean())
+        if wind < 8:
+            reasons.append(f"Light winds (about {wind:.0f} km/h), so pollution isn't blown away and can build up.")
+        elif wind > 20:
+            reasons.append(f"Strong winds (about {wind:.0f} km/h) will help blow pollution away.")
+        else:
+            reasons.append(f"Moderate winds (about {wind:.0f} km/h) will move some pollution along.")
+    if "rain" in nxt and nxt["rain"].notna().any():
+        rain = float(nxt["rain"].sum())
+        reasons.append(f"Rain is expected (about {rain:.0f} mm), which washes dust out of the air." if rain >= 1
+                       else "No real rain expected, so nothing will wash the dust out.")
+    if "relative_humidity" in nxt and nxt["relative_humidity"].notna().any() and nxt["relative_humidity"].mean() > 75:
+        reasons.append("The air is humid, which helps fine particles form and hang around.")
+    if worst_hour is not None and (worst_hour.hour >= 21 or worst_hour.hour <= 9):
+        reasons.append("At night and early morning the air near the ground is still and cool, "
+                       "so smoke and exhaust collect. That's why levels often peak then.")
+    return reasons
+
+
+def compare_with_normal(pm, now):
+    """How the last 24 hours compare with every day of the last 3 months."""
+    daily = pm.loc[:now].resample("D").mean().dropna()
+    last_day = float(pm.loc[now - pd.Timedelta(hours=23):now].mean())
+    worse_than = float((daily < last_day).mean() * 100)
+    typical = float(daily.median())
+    if worse_than >= 80:
+        verdict = "much worse than usual"
+    elif worse_than >= 60:
+        verdict = "a bit worse than usual"
+    elif worse_than > 40:
+        verdict = "about normal"
+    elif worse_than > 20:
+        verdict = "a bit better than usual"
+    else:
+        verdict = "much better than usual"
+    return {
+        "last_24h_avg": round(last_day, 1), "typical_day": round(typical, 1), "worse_than_pct": round(worse_than),
+        "verdict": verdict, "days": len(daily),
+        # Berkeley Earth's rough rule: breathing 22 µg/m³ of PM2.5 for a day is like smoking one cigarette
+        "cigarettes": round(last_day / 22, 1),
+        "daily": [{"date": d.strftime("%Y-%m-%d"), "pm25": round(float(v), 1), **aqi_from_pm25(v)} for d, v in daily.items()],
+    }
+
+
 def analyse(lat, lon, name=""):
     key = (round(lat, 2), round(lon, 2))
     saved = CACHE.get(key)
@@ -229,6 +278,8 @@ def analyse(lat, lon, name=""):
         "last_48h": [{"time": t.isoformat(), "pm25": None if np.isnan(v) else round(float(v), 1)}
                      for t, v in y.loc[now - pd.Timedelta(hours=47):now].items()],
         "pollutants": pollutants_now, "accuracy": accuracy, "model": model_name,
+        "normal": compare_with_normal(y, now),
+        "reasons": weather_reasons(df, now, pd.Timestamp(worst_hour["time"]) if worst_hour else None),
         "episodes": sorted(episodes, key=lambda e: -e["severity"])[:6], "episode_count": len(episodes),
         "episode_counts": {k: sum(e["type"] == k for e in episodes) for k in tm.KINDS},
         "source": "Open-Meteo (CAMS air quality model, about 11 km resolution). Estimated values, not a single street sensor.",
