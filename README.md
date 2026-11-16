@@ -11,6 +11,22 @@ results and a list of flagged episodes, each with a reason.
 https://ai-quality.onrender.com/docs). It runs on Render's free plan, so after about 15 quiet minutes it goes to sleep
 and the first request takes around 50 seconds to wake it up.
 
+## Live air for any city
+
+The app opens on **Live air**. Pick a city (or search for any place) and it:
+
+1. downloads the last 3 months of hourly air quality and weather for that spot from
+   [Open-Meteo](https://open-meteo.com) (free, no key, no sign-up; it serves the Copernicus CAMS model on an ~11 km grid),
+2. trains the same model as `train_model.py` on that history,
+3. forecasts fine dust (PM2.5) for the next 24 hours with a likely range, and turns it into the US EPA air quality index,
+4. replays the forecast on the last 10 days to show how far off it usually is, and runs the same episode checks on the last month.
+
+Results are cached for an hour per place. The code is in `live.py`; the endpoints are `GET /api/live/search?q=` and
+`GET /api/live?lat=&lon=&name=`. Open-Meteo data is free for non-commercial use with attribution.
+
+The page has three tabs: **Live air**, **Research datasets** (the Italy and Beijing results) and **How it works**
+(four steps and a glossary in plain language).
+
 ## Datasets
 
 | Dataset | Rows (hourly) | Pollutants | Weather used |

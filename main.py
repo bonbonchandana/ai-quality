@@ -19,13 +19,15 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
+import httpx
 import joblib
 import pandas as pd
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+import live
 import train_model
 
 BASE = Path(__file__).resolve().parent
@@ -222,6 +224,27 @@ def upload_status(job_id: str):
     if job_id not in JOBS:
         raise HTTPException(404, "Unknown upload job (the server may have restarted).")
     return JOBS[job_id]
+
+
+# ---------- live air quality for any city (free Open-Meteo data, no key) ----------
+@app.get("/api/live/search")
+def live_search(q: str = Query(..., min_length=2, max_length=80, description="City name, e.g. Hyderabad")):
+    try:
+        return live.search_places(q)
+    except Exception:
+        raise HTTPException(502, "The place search service didn't answer. Please try again in a moment.")
+
+
+@app.get("/api/live")
+def live_city(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180),
+              name: str = Query("", max_length=80)):
+    """Current air, the next 24 hours and unusual hours from the last month, for one place."""
+    try:
+        return live.analyse(lat, lon, name.strip())
+    except httpx.HTTPError:
+        raise HTTPException(502, "The free air quality service didn't answer. Please try again in a moment.")
+    except (ValueError, KeyError, IndexError) as exc:
+        raise HTTPException(422, f"Not enough air quality data for this place yet ({exc}).")
 
 
 app.mount("/dashboard", StaticFiles(directory=BASE / "frontend", html=True), name="dashboard")

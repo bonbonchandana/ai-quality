@@ -132,3 +132,28 @@ def test_new_episode_checks_are_used():
 def test_dashboard_is_served():
     assert len(client.get("/api/datasets").json()) >= 2
     assert client.get("/dashboard/").status_code == 200
+
+
+# ---------- live air (the outside service is replaced so the tests run offline) ----------
+def test_live_search_and_city(monkeypatch):
+    import live
+    monkeypatch.setattr(live, "search_places", lambda q: [{"name": "Hyderabad", "region": "Telangana",
+                                                           "country": "India", "lat": 17.38, "lon": 78.48}])
+    monkeypatch.setattr(live, "analyse", lambda lat, lon, name: {"place": name, "now": {"aqi": 120}})
+    r = client.get("/api/live/search", params={"q": "Hyder"})
+    assert r.status_code == 200 and r.json()[0]["name"] == "Hyderabad"
+    r = client.get("/api/live", params={"lat": 17.38, "lon": 78.48, "name": "Hyderabad"})
+    assert r.status_code == 200 and r.json()["now"]["aqi"] == 120
+
+
+def test_live_rejects_bad_input():
+    assert client.get("/api/live/search", params={"q": "a"}).status_code == 422
+    assert client.get("/api/live", params={"lat": 200, "lon": 0}).status_code == 422
+
+
+def test_aqi_bands():
+    import live
+    assert live.aqi_from_pm25(5)["category"] == "Good"
+    assert live.aqi_from_pm25(9)["aqi"] == 50
+    assert live.aqi_from_pm25(40)["category"] == "Unhealthy for sensitive groups"
+    assert live.aqi_from_pm25(900)["aqi"] == 500
