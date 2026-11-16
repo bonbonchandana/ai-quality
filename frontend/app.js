@@ -7,6 +7,7 @@ const LABELS = {
   absolute_humidity: "Absolute humidity", pressure: "Pressure (hPa)", dew_point: "Dew point (°C)",
   rain: "Rain (mm)", wind_speed: "Wind speed (m/s)", observed: "Actual value (optional)",
 };
+const TOP = 6;   // episodes shown before "Show all"
 const KINDS = ["Unusual pollution", "Data limitation", "Unclear"];
 const KIND_CLASS = { "Unusual pollution": "unusual", "Data limitation": "data", "Unclear": "unclear" };
 const KIND_COLOR = { "Unusual pollution": "#c2410c", "Data limitation": "#6d28d9", "Unclear": "#64748b" };
@@ -205,10 +206,10 @@ function episodeCard(e) {
 
 function showEpisodes() {
   const matching = results.episodes.filter((e) => filter === "all" || e.type === filter);
-  const list = showAll ? matching : [...matching].sort((a, b) => (b.severity || 0) - (a.severity || 0)).slice(0, 10);
+  const list = showAll ? matching : [...matching].sort((a, b) => (b.severity || 0) - (a.severity || 0)).slice(0, TOP);
   $("episodes").innerHTML = list.length ? list.map(episodeCard).join("") : `<p class="small">No episodes of this kind.</p>`;
-  $("more").hidden = matching.length <= 10;
-  $("more").textContent = showAll ? "Show only the 10 biggest" : `Show all ${matching.length} in time order`;
+  $("more").hidden = matching.length <= TOP;
+  $("more").textContent = showAll ? `Show only the ${TOP} biggest` : `Show all ${matching.length} in time order`;
 }
 
 // ---------- API demo ----------
