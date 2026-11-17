@@ -72,3 +72,9 @@ def test_pollutant_names_in_any_case():
     for name in ("NOx", "nox", "NOX"):
         assert client.get(f"/api/results/{name}").status_code == 200
     assert client.post("/predict", json={"pollutant": "nox", "hour": 8, "weekday": 1, "lag_1": 120}).status_code == 200
+
+
+def test_page_style_predict_ignores_unnamed_fields():
+    sample = client.get("/api/sample/CO").json()
+    features = {**sample["features"], "": None}      # a form button has no name
+    assert client.post("/predict", json={"pollutant": "CO", "features": features}).status_code == 200

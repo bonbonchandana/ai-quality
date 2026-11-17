@@ -122,8 +122,8 @@ def list_datasets():
 @app.post("/predict")
 def predict(data: PredictInput):
     info = pollutant_info(data.pollutant)
-    given = {k: v for k, v in (data.model_extra or {}).items() if k != "dataset"}   # flat (Postman) style
-    given.update(data.features)                                                      # grouped (web page) style
+    given = {k: v for k, v in (data.model_extra or {}).items() if k and k != "dataset"}   # flat (Postman) style
+    given.update({k: v for k, v in data.features.items() if k})                           # grouped (web page) style
     unknown = sorted(set(given) - set(info["features"]))
     if unknown:
         raise HTTPException(422, f"Unknown feature name(s): {', '.join(unknown)}. Expected: {', '.join(info['features'])}")
