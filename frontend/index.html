@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <title>UCI Air Quality Model</title>
-  <link rel="stylesheet" href="style.css"><script src="vendor/echarts.min.js"></script>
+  <link rel="stylesheet" href="style.css?v=3"><script src="vendor/echarts.min.js?v=3"></script>
 </head>
 <body>
   <header><p class="eyebrow">UCI AIR QUALITY · ITALY</p><h1>Pollution prediction</h1><p>One dataset, one clear workflow: choose a pollutant, inspect its test results, or predict the next hour.</p></header>
@@ -17,6 +17,6 @@
     <section class="panel"><div class="heading"><div><p class="eyebrow">JSON API</p><h2>Named features → pollutant prediction</h2></div><button id="load-sample" class="secondary">Load example</button></div><p class="muted">Enter the feature names and values used by the selected pollutant model. The API returns the resultant pollutant prediction.</p><form id="predict-form" class="form"></form><button type="submit" form="predict-form">Predict</button><p id="predict-result" class="result" hidden></p></section>
   </main>
   <footer>Data source: UCI Machine Learning Repository · JSON-backed FastAPI application</footer>
-  <script src="app.js"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
