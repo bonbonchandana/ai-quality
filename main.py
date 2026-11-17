@@ -1,269 +1,181 @@
-"""FastAPI app for the air quality models.
+"""Small JSON-backed API for the supplied UCI Air Quality dataset.
 
-Start the server from the project folder:
+Run from the project folder:
     python -m uvicorn main:app --reload
 
-    GET  /            check that the API is running
-    GET  /health      health status
-    POST /predict     next-hour prediction for a selected pollutant
-    GET  /docs        interactive API documentation
-    GET  /dashboard/  the web dashboard
+The app intentionally exposes one dataset only. Trained models and all
+dashboard values are read from artifacts/uci-italy/*.json and models/uci-italy/.
 """
+from __future__ import annotations
+
 import json
-import os
-import re
-import shutil
-import threading
-import uuid
 from functools import lru_cache
 from pathlib import Path
 from typing import Optional
 
-import httpx
 import joblib
 import pandas as pd
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-import live
-import train_model
-
 BASE = Path(__file__).resolve().parent
-ARTIFACTS = BASE / "artifacts"
-UPLOADS = BASE / "uploads"
-MAX_UPLOAD_MB = int(os.environ.get("MAX_UPLOAD_MB", "30"))
-ALLOW_UPLOAD = os.environ.get("ALLOW_UPLOAD", "true").lower() != "false"
-# On a small free server we train a lighter model set on at most two years of data (LIGHT_TRAINING=true).
-LIGHT_TRAINING = os.environ.get("LIGHT_TRAINING", "false").lower() == "true"
-JOBS = {}                          # upload job id -> its status
-TRAINING_LOCK = threading.Lock()   # one training at a time, so memory stays low
+DATASET_ID = "uci-italy"
+DATASET_TITLE = "UCI Air Quality — Italy"
+ARTIFACTS = BASE / "artifacts" / DATASET_ID
+MODELS = BASE / "models" / DATASET_ID
+
 
 class UTF8JSONResponse(JSONResponse):
-    media_type = "application/json; charset=utf-8"     # so units like mg/m³ show correctly in every client
+    media_type = "application/json; charset=utf-8"
 
 
-app = FastAPI(default_response_class=UTF8JSONResponse, title="Air Quality Prediction API",
-              description="Predicts the next-hour level of a selected pollutant and flags unusual readings.")
+app = FastAPI(
+    title="UCI Air Quality Prediction API",
+    version="1.0.0",
+    default_response_class=UTF8JSONResponse,
+    description="JSON API for the supplied UCI Air Quality dataset only.",
+)
 
 
-# ---------- loading saved results and models ----------
-def datasets():
-    """Each trained dataset, built-in or uploaded, has a dataset.json in artifacts/<id>/."""
-    found = [json.loads(p.read_text(encoding="utf-8")) for p in sorted(ARTIFACTS.glob("*/dataset.json"))]
-    return sorted(found, key=lambda d: d["id"] != "uci-italy")      # Italy first
+@lru_cache(maxsize=8)
+def load_results(pollutant: str) -> dict:
+    path = ARTIFACTS / f"{pollutant}.json"
+    if not path.exists():
+        raise HTTPException(404, f"Unknown UCI pollutant: {pollutant}")
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
-def find_pollutant(dataset_id, pollutant):
-    for d in datasets():
-        if d["id"] == dataset_id:
-            for p in d["pollutants"]:
-                if pollutant in (p["pollutant"], p["key"]):
-                    return p["key"]
-            raise HTTPException(404, f"Pollutant '{pollutant}' not in dataset '{dataset_id}'. "
-                                     f"Available: {[p['pollutant'] for p in d['pollutants']]}")
-    raise HTTPException(404, f"Dataset '{dataset_id}' not found. Available: {[d['id'] for d in datasets()]}")
+@lru_cache(maxsize=8)
+def load_model(pollutant: str):
+    path = MODELS / f"{pollutant}.pkl"
+    if not path.exists():
+        raise HTTPException(404, f"No trained model for pollutant: {pollutant}")
+    return joblib.load(path)
 
 
-@lru_cache(maxsize=2)          # keep only the last couple of models in memory
-def load_model(dataset_id, key):
-    return joblib.load(BASE / "models" / dataset_id / f"{key}.pkl")
+def pollutant_info(pollutant: str) -> dict:
+    info = load_results(pollutant.upper())
+    return info
 
 
-@lru_cache(maxsize=4)
-def load_results(dataset_id, key):
-    return json.loads((ARTIFACTS / dataset_id / f"{key}.json").read_text(encoding="utf-8"))
+def make_features(frame: pd.DataFrame, column: str, weather: dict[str, str]) -> pd.DataFrame:
+    features = pd.DataFrame(index=frame.index)
+    features["hour"] = frame.index.hour
+    features["weekday"] = frame.index.dayofweek
+    for lag in (1, 2, 3, 24):
+        features[f"lag_{lag}"] = frame[column].shift(lag)
+    for name, source in weather.items():
+        features[name] = frame[source].shift(1)
+    return features
 
 
-# ---------- request body for /predict ----------
 class PredictInput(BaseModel):
-    """What we know before the hour we want to predict. Weather fields a model doesn't use are ignored."""
-    dataset: str = Field("uci-italy", description="Dataset id (see /api/datasets)")
-    pollutant: str = Field(..., description="Pollutant to predict, e.g. CO, NO2, NOx, C6H6, PM2.5")
-    hour: int = Field(..., ge=0, le=23, description="Hour being predicted (0-23)")
-    weekday: int = Field(..., ge=0, le=6, description="Day of week (0 = Monday)")
-    lag_1: float = Field(..., ge=0, le=100000, description="Pollutant level 1 hour earlier")
-    lag_2: Optional[float] = Field(None, ge=0, le=100000, description="Level 2 hours earlier")
-    lag_3: Optional[float] = Field(None, ge=0, le=100000, description="Level 3 hours earlier")
-    lag_24: Optional[float] = Field(None, ge=0, le=100000, description="Level 24 hours earlier")
-    temperature: Optional[float] = Field(None, ge=-40, le=55, description="Previous hour temperature (°C)")
-    relative_humidity: Optional[float] = Field(None, ge=0, le=100, description="Previous hour relative humidity (%)")
-    absolute_humidity: Optional[float] = Field(None, ge=0, le=5, description="Previous hour absolute humidity")
-    pressure: Optional[float] = Field(None, ge=800, le=1100, description="Previous hour air pressure (hPa)")
-    dew_point: Optional[float] = Field(None, ge=-60, le=40, description="Previous hour dew point (°C)")
-    rain: Optional[float] = Field(None, ge=0, le=300, description="Previous hour rain (mm)")
-    wind_speed: Optional[float] = Field(None, ge=0, le=60, description="Previous hour wind speed (m/s)")
-    observed: Optional[float] = Field(None, ge=0, le=100000, description="Optional: the measured value, to check for an episode")
+    """Inputs used by the UCI Italy pollutant models."""
 
-    model_config = {"json_schema_extra": {"examples": [{
-        "pollutant": "CO", "hour": 18, "weekday": 2, "lag_1": 2.4, "lag_2": 2.0, "lag_3": 1.7, "lag_24": 2.9,
-        "temperature": 12.5, "relative_humidity": 55.0, "absolute_humidity": 0.8}]}}
+    pollutant: str = Field(..., description="CO, NO2, NOx, or C6H6")
+    hour: int = Field(..., ge=0, le=23)
+    weekday: int = Field(..., ge=0, le=6, description="0 = Monday")
+    lag_1: float = Field(..., ge=0, le=100000)
+    lag_2: Optional[float] = Field(None, ge=0, le=100000)
+    lag_3: Optional[float] = Field(None, ge=0, le=100000)
+    lag_24: Optional[float] = Field(None, ge=0, le=100000)
+    temperature: Optional[float] = Field(None, ge=-40, le=55)
+    relative_humidity: Optional[float] = Field(None, ge=0, le=100)
+    absolute_humidity: Optional[float] = Field(None, ge=0, le=5)
+    observed: Optional[float] = Field(None, ge=0, le=100000)
 
 
 @app.get("/")
 def root():
-    return {"message": "Air Quality Prediction API is running", "docs": "/docs", "dashboard": "/dashboard/"}
+    return {"message": "UCI Air Quality Prediction API is running", "dataset": DATASET_ID,
+            "docs": "/docs", "dashboard": "/dashboard/"}
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "datasets": [d["id"] for d in datasets()], "upload_enabled": ALLOW_UPLOAD}
+    return {"status": "ok", "dataset": DATASET_ID, "pollutants": [p["key"] for p in list_datasets()["pollutants"]]}
+
+
+@app.get("/api/datasets")
+def list_datasets():
+    dataset = json.loads((ARTIFACTS / "dataset.json").read_text(encoding="utf-8"))
+    dataset["id"] = DATASET_ID
+    return {"id": DATASET_ID, "title": DATASET_TITLE, "rows": dataset.get("rows"),
+            "start": dataset.get("start"), "end": dataset.get("end"),
+            "weather": dataset.get("weather", {}), "pollutants": [
+                {"pollutant": load_results(key)["pollutant"], "key": key,
+                 "unit": load_results(key)["unit"], "model": load_results(key)["model"],
+                 "test_MAE": round(next(m for m in load_results(key)["models"] if m["model"] == load_results(key)["model"])["test"]["MAE"], 3),
+                 "test_R2": round(next(m for m in load_results(key)["models"] if m["model"] == load_results(key)["model"])["test"]["R2"], 3)}
+                for key in ("CO", "NO2", "NOx", "C6H6") if (ARTIFACTS / f"{key}.json").exists()
+            ]}
 
 
 @app.post("/predict")
 def predict(data: PredictInput):
-    key = find_pollutant(data.dataset, data.pollutant)
-    info = load_results(data.dataset, key)
-    row = pd.DataFrame([{f: getattr(data, f) for f in info["features"]}]).astype(float)   # None -> filled in by the model
-    prediction = max(0.0, float(train_model.predict_level(load_model(data.dataset, key), row)[0]))
-    answer = {"dataset": data.dataset, "pollutant": info["pollutant"], "unit": info["unit"],
+    info = pollutant_info(data.pollutant)
+    values = {feature: getattr(data, feature) for feature in info["features"]}
+    row = pd.DataFrame([values]).astype(float)
+    model = load_model(info["pollutant"])
+    prediction = max(0.0, float(row["lag_1"].iloc[0] + model.predict(row)[0]))
+    answer = {"dataset": DATASET_ID, "pollutant": info["pollutant"], "unit": info["unit"],
               "prediction": round(prediction, 3), "model": info["model"]}
     if data.observed is not None:
         deviation = data.observed - prediction
         answer["episode_check"] = {"observed": data.observed, "deviation": round(deviation, 3),
-                                   "threshold": round(info["threshold"], 3), "flagged": abs(deviation) > info["threshold"]}
+                                    "threshold": round(info["threshold"], 3),
+                                    "flagged": abs(deviation) > info["threshold"]}
     return answer
 
 
-# ---------- data for the dashboard ----------
-@app.get("/api/datasets")
-def list_datasets():
-    return datasets()
+@app.get("/api/results/{pollutant}")
+def get_results(pollutant: str):
+    return pollutant_info(pollutant)
 
 
-@app.get("/api/results/{dataset_id}/{pollutant}")
-def get_results(dataset_id: str, pollutant: str):
-    return load_results(dataset_id, find_pollutant(dataset_id, pollutant))
-
-
-@app.get("/api/report/{dataset_id}/{pollutant}")
-def get_report(dataset_id: str, pollutant: str, download: bool = False):
-    """The results in plain words, as JSON. Add ?download=true to save it as a file."""
-    key = find_pollutant(dataset_id, pollutant)
-    title = next(d["title"] for d in datasets() if d["id"] == dataset_id)
-    report = train_model.build_report(load_results(dataset_id, key), title)
+@app.get("/api/report/{pollutant}")
+def get_report(pollutant: str, download: bool = False):
+    report = pollutant_info(pollutant) | {"dataset": DATASET_TITLE}
     if not download:
         return report
     return Response(json.dumps(report, indent=2, ensure_ascii=False), media_type="application/json",
-                    headers={"Content-Disposition": f'attachment; filename="{dataset_id}-{key}-report.json"'})
-
-
-PLAIN_KIND = {"Unusual pollution": "Real pollution event", "Data limitation": "Probably a data problem", "Unclear": "Not sure"}
-
-
-@app.get("/api/episodes/{dataset_id}/{pollutant}")
-def episodes_csv(dataset_id: str, pollutant: str):
-    """The unusual periods as a spreadsheet (CSV), for anyone who wants to check them in Excel."""
-    key = find_pollutant(dataset_id, pollutant)
-    info = load_results(dataset_id, key)
-    rows = pd.DataFrame([{
-        "start": e["start"], "end": e["end"], "hours_flagged": e.get("flagged_hours"),
-        "what_we_think": PLAIN_KIND.get(e["type"], e["type"]), "confidence": e.get("confidence"),
-        "direction": e.get("direction"), f"peak ({info['unit']})": e.get("peak_value"),
-        f"expected ({info['unit']})": e.get("expected_value"), "times_bigger_than_usual_miss": e.get("severity"),
-        "why": e.get("explanation") or e.get("reason"),
-    } for e in info["episodes"]])
-    return Response("﻿" + rows.to_csv(index=False), media_type="text/csv; charset=utf-8",   # BOM so Excel reads µ and ³
-                    headers={"Content-Disposition": f'attachment; filename="{dataset_id}-{key}-unusual-periods.csv"'})
+                    headers={"Content-Disposition": f'attachment; filename="uci-italy-{pollutant}-report.json"'})
 
 
 @lru_cache(maxsize=1)
-def dataset_frame(dataset_id):
-    return pd.read_csv(ARTIFACTS / dataset_id / "data.csv", parse_dates=["timestamp"], index_col="timestamp").asfreq("h")
+def dataset_frame() -> pd.DataFrame:
+    return pd.read_csv(ARTIFACTS / "data.csv", parse_dates=["timestamp"], index_col="timestamp").asfreq("h")
 
 
-@app.get("/api/sample/{dataset_id}/{pollutant}")
-def get_sample(dataset_id: str, pollutant: str):
-    """Picks a real hour from the test period that has every input, so it can be sent straight to /predict."""
-    key = find_pollutant(dataset_id, pollutant)
-    info = load_results(dataset_id, key)
-    df = dataset_frame(dataset_id)
-    weather = {name: col for name, col in json.loads((ARTIFACTS / dataset_id / "dataset.json")
-                                                       .read_text(encoding="utf-8"))["weather"].items()}
-    X = train_model.make_features(df, info["column"], weather)
+@app.get("/api/sample/{pollutant}")
+def get_sample(pollutant: str):
+    info = pollutant_info(pollutant)
+    df = dataset_frame()
+    weather = json.loads((ARTIFACTS / "dataset.json").read_text(encoding="utf-8"))["weather"]
+    features = make_features(df, info["column"], weather)
     test_times = pd.to_datetime([p["t"] for p in info["test_predictions"]])
-    complete = X.loc[X.index.intersection(test_times)].dropna()
+    complete = features.loc[features.index.intersection(test_times)].dropna()
     if complete.empty:
         raise HTTPException(404, "No complete sample found")
-    t = complete.sample(1).index[0]
-    values = {k: (int(v) if k in ("hour", "weekday") else float(v)) for k, v in complete.loc[t].items()}
-    return {"time": t.isoformat(), "input": {"dataset": dataset_id, "pollutant": info["pollutant"], **values,
-                                             "observed": float(df.at[t, info["column"]])}}
+    t = complete.index[0]
+    values = {key: (int(value) if key in ("hour", "weekday") else float(value)) for key, value in complete.loc[t].items()}
+    values["observed"] = float(df.at[t, info["column"]])
+    return {"time": t.isoformat(), "input": {"pollutant": info["pollutant"], **values}}
 
 
-def run_training(job_id, path, dataset_id, title):
-    """Runs in a background thread so the upload request can return straight away."""
-    with TRAINING_LOCK:
-        JOBS[job_id]["status"] = "training"
-        load_model.cache_clear()           # free the cached models while we train
-        dataset_frame.cache_clear()
-        try:
-            summary, _ = train_model.train_dataset(path, dataset_id, title, out_root=BASE, light=LIGHT_TRAINING)
-            JOBS[job_id].update(status="done", result={"id": dataset_id, "title": title, "pollutants": summary})
-        except Exception as exc:
-            path.unlink(missing_ok=True)
-            for folder in ("models", "artifacts"):
-                shutil.rmtree(BASE / folder / dataset_id, ignore_errors=True)
-            JOBS[job_id].update(status="error", message=f"Could not train on this file: {exc}")
-
-
-@app.post("/api/upload", status_code=202)
-def upload_dataset(file: UploadFile = File(...), name: str = Form("")):
-    """Takes your own hourly CSV, Excel or ZIP and starts training on it. Check progress at /api/upload/{job}."""
-    if not ALLOW_UPLOAD:
-        raise HTTPException(403, "Uploading is turned off on this server.")
-    content = file.file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
-    if len(content) > MAX_UPLOAD_MB * 1024 * 1024:
-        raise HTTPException(413, f"File is larger than {MAX_UPLOAD_MB} MB")
-    filename = (file.filename or "my-data.csv").lower()
-    suffix = next((ext for ext in (".zip", ".xlsx", ".csv") if filename.endswith(ext)), ".csv")
-    title = (name or Path(file.filename or "my-data").stem).strip()[:60]
-    dataset_id = "upload-" + (re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:30] or "data") + "-" + uuid.uuid4().hex[:6]
-    UPLOADS.mkdir(exist_ok=True)
-    path = UPLOADS / f"{dataset_id}{suffix}"
-    path.write_bytes(content)
-
-    # Quick check first, so a wrong file gets an answer right away instead of after training
-    try:
-        pollutants, _ = train_model.find_columns(train_model.load_data(path))
-    except Exception as exc:
-        path.unlink(missing_ok=True)
-        raise HTTPException(422, f"Could not use this file: {exc}")
-
-    job_id = uuid.uuid4().hex[:10]
-    JOBS[job_id] = {"job": job_id, "status": "waiting" if TRAINING_LOCK.locked() else "training",
-                    "title": title, "pollutants": list(pollutants), "light": LIGHT_TRAINING}
-    threading.Thread(target=run_training, args=(job_id, path, dataset_id, title), daemon=True).start()
-    return JOBS[job_id]
-
-
-@app.get("/api/upload/{job_id}")
-def upload_status(job_id: str):
-    if job_id not in JOBS:
-        raise HTTPException(404, "Unknown upload job (the server may have restarted).")
-    return JOBS[job_id]
-
-
-# ---------- live air quality for any city (free Open-Meteo data, no key) ----------
-@app.get("/api/live/search")
-def live_search(q: str = Query(..., min_length=2, max_length=80, description="City name, e.g. Hyderabad")):
-    try:
-        return live.search_places(q)
-    except Exception:
-        raise HTTPException(502, "The place search service didn't answer. Please try again in a moment.")
-
-
-@app.get("/api/live")
-def live_city(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180),
-              name: str = Query("", max_length=80)):
-    """Current air, the next 24 hours and unusual hours from the last month, for one place."""
-    try:
-        return live.analyse(lat, lon, name.strip())
-    except httpx.HTTPError:
-        raise HTTPException(502, "The free air quality service didn't answer. Please try again in a moment.")
-    except (ValueError, KeyError, IndexError) as exc:
-        raise HTTPException(422, f"Not enough air quality data for this place yet ({exc}).")
+@app.get("/api/episodes/{pollutant}")
+def episodes_csv(pollutant: str):
+    info = pollutant_info(pollutant)
+    rows = pd.DataFrame([{
+        "start": e["start"], "end": e["end"], "hours_flagged": e.get("flagged_hours"),
+        "type": e.get("type"), "confidence": e.get("confidence"),
+        "peak_value": e.get("peak_value"), "expected_value": e.get("expected_value"),
+        "why": e.get("explanation") or e.get("reason"),
+    } for e in info["episodes"]])
+    return Response("\ufeff" + rows.to_csv(index=False), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="uci-italy-{pollutant}-episodes.csv"'})
 
 
 app.mount("/dashboard", StaticFiles(directory=BASE / "frontend", html=True), name="dashboard")

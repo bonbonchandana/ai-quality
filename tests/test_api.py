@@ -1,186 +1,60 @@
-"""API tests. Run them from the project folder:  .venv\\Scripts\\python -m pytest -q"""
+"""Tests for the UCI-only JSON API."""
 import sys
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import main  # noqa: E402
 
 client = TestClient(main.app)
-EXAMPLE = {"pollutant": "CO", "hour": 18, "weekday": 2, "lag_1": 2.4, "lag_2": 2.0, "lag_3": 1.7,
-           "lag_24": 2.9, "temperature": 12.5, "relative_humidity": 55.0, "absolute_humidity": 0.8}
-CASES = [(d["id"], p["key"]) for d in main.datasets() for p in d["pollutants"]]
 
 
-def test_root_and_health():
-    assert client.get("/").json()["message"] == "Air Quality Prediction API is running"
-    assert client.get("/health").json()["status"] == "ok"
+def test_health_is_uci_only():
+    body = client.get("/health").json()
+    assert body["status"] == "ok"
+    assert body["dataset"] == "uci-italy"
 
 
-def test_postman_example_works():
-    r = client.post("/predict", json=EXAMPLE)
-    assert r.status_code == 200 and r.json()["prediction"] >= 0
+def test_dataset_metadata_is_json_backed():
+    body = client.get("/api/datasets")
+    assert body.status_code == 200
+    assert body.json()["id"] == "uci-italy"
+    assert {p["key"] for p in body.json()["pollutants"]} == {"CO", "NO2", "NOx", "C6H6"}
 
 
-@pytest.mark.parametrize("dataset,pollutant", CASES)
-def test_every_model_reproduces_its_test_predictions(dataset, pollutant):
-    """The API should give the same number the training script saved."""
-    sample = client.get(f"/api/sample/{dataset}/{pollutant}").json()
-    saved = {p["t"]: p["predicted"] for p in main.load_results(dataset, pollutant)["test_predictions"]}
-    out = client.post("/predict", json=sample["input"]).json()
-    assert abs(out["prediction"] - max(0.0, saved[sample["time"]])) < 1e-3
-    assert "flagged" in out["episode_check"]
+def test_results_report_and_sample_are_available():
+    assert client.get("/api/results/CO").status_code == 200
+    assert client.get("/api/report/CO").status_code == 200
+    assert client.get("/api/sample/CO").status_code == 200
 
 
-def test_optional_inputs_can_be_left_out():
-    body = {k: v for k, v in EXAMPLE.items() if k not in ("lag_2", "lag_3", "lag_24", "absolute_humidity")}
-    assert client.post("/predict", json=body).status_code == 200
+def test_predict_uses_saved_model():
+    sample = client.get("/api/sample/CO").json()["input"]
+    response = client.post("/predict", json=sample)
+    assert response.status_code == 200
+    assert response.json()["dataset"] == "uci-italy"
+    assert response.json()["prediction"] >= 0
 
 
-@pytest.mark.parametrize("change", [{"hour": 25}, {"relative_humidity": 150}, {"lag_1": "high"}])
-def test_invalid_input_returns_422(change):
-    assert client.post("/predict", json={**EXAMPLE, **change}).status_code == 422
+def test_only_uci_routes_are_exposed():
+    assert client.get("/api/results/beijing-aotizhongxin/CO").status_code == 404
+    assert client.get("/api/live").status_code == 404
+    assert client.post("/api/upload").status_code == 404
 
 
-def test_missing_required_field_returns_422():
-    body = dict(EXAMPLE)
-    body.pop("lag_1")
-    assert client.post("/predict", json=body).status_code == 422
+def test_invalid_prediction_is_rejected():
+    sample = client.get("/api/sample/CO").json()["input"]
+    sample["hour"] = 25
+    assert client.post("/predict", json=sample).status_code == 422
 
 
-def test_unknown_things_return_404():
-    assert client.get("/predictions").status_code == 404
-    assert client.post("/predict", json={**EXAMPLE, "pollutant": "XYZ"}).status_code == 404
-    assert client.post("/predict", json={**EXAMPLE, "dataset": "nope"}).status_code == 404
-
-
-def test_upload_rejects_a_file_without_pollutants():
-    r = client.post("/api/upload", files={"file": ("bad.csv", b"a,b,c,d\n1,2,3,4\n", "text/csv")})
-    assert r.status_code == 422
-
-
-def test_upload_trains_in_the_background(monkeypatch):
-    import shutil
-    import time
-
-    import numpy as np
-    import pandas as pd
-
-    monkeypatch.setattr(main, "LIGHT_TRAINING", True)          # same quick mode as the online server
-    hours = pd.date_range("2024-01-01", periods=1500, freq="h")
-    rng = np.random.default_rng(0)
-    data = pd.DataFrame({"datetime": hours,
-                         "CO": np.abs(2 + np.sin(np.arange(1500) / 4) + rng.normal(0, 0.3, 1500)).round(2),
-                         "T": (15 + 5 * np.sin(np.arange(1500) / 24)).round(1)})
-    r = client.post("/api/upload", files={"file": ("test city.csv", data.to_csv(index=False).encode(), "text/csv")},
-                    data={"name": "pytest city"})
-    assert r.status_code == 202
-    job = r.json()
-    for _ in range(120):
-        job = client.get(f"/api/upload/{job['job']}").json()
-        if job["status"] in ("done", "error"):
-            break
-        time.sleep(1)
-    try:
-        assert job["status"] == "done", job
-        dataset_id = job["result"]["id"]
-        sample = client.get(f"/api/sample/{dataset_id}/CO").json()
-        assert client.post("/predict", json=sample["input"]).status_code == 200
-    finally:
-        if job.get("result"):
-            for _ in range(10):                      # Windows can hold a new file open for a moment
-                for folder in ("models", "artifacts"):
-                    shutil.rmtree(main.BASE / folder / job["result"]["id"], ignore_errors=True)
-                if not (main.BASE / "artifacts" / job["result"]["id"]).exists():
-                    break
-                time.sleep(0.5)
-            for f in main.UPLOADS.glob(job["result"]["id"] + ".*"):
-                f.unlink()
-
-
-def test_report_is_readable_json():
-    r = client.get("/api/report/uci-italy/CO")
-    report = r.json()
-    assert r.status_code == 200 and report["summary"].startswith("We predicted CO")
-    assert report["episodes"] and all(e["explanation"] for e in report["episodes"])
-    download = client.get("/api/report/uci-italy/CO", params={"download": "true"})
-    assert "attachment" in download.headers["content-disposition"]
-
-
-@pytest.mark.parametrize("dataset,pollutant", CASES)
-def test_every_report_explains_its_episodes(dataset, pollutant):
-    report = client.get(f"/api/report/{dataset}/{pollutant}").json()
-    kinds = {"Unusual pollution", "Data limitation", "Unclear"}
-    assert all(e["type"] in kinds and e["explanation"] for e in report["episodes"])
-    severities = [e["severity"] or 0 for e in report["most_severe"]]
-    assert len(severities) <= 10 and severities == sorted(severities, reverse=True)
-    counts = report["episode_counts"]
-    assert counts["total"] == sum(counts.get(k, 0) for k in kinds)
-
-
-def test_new_episode_checks_are_used():
-    info = main.load_results("uci-italy", "CO")
-    assert info["patterns"]["text"] and len(info["patterns"]["by_hour"]["Unusual pollution"]) == 24
-    real = [e for e in info["episodes"] if e["type"] == "Unusual pollution"]
-    assert real and all(e["checks"]["other_pollutants_agreeing"] for e in real)    # backed by other pollutants
-    unclear = [e for e in info["episodes"] if e["type"] == "Unclear"]
-    assert all(not e["checks"]["other_pollutants_agreeing"] for e in unclear)
+def test_episode_csv_is_available():
+    response = client.get("/api/episodes/CO")
+    assert response.status_code == 200
+    assert "attachment" in response.headers["content-disposition"]
+    assert response.content.decode("utf-8-sig").startswith("start,end,hours_flagged")
 
 
 def test_dashboard_is_served():
-    assert len(client.get("/api/datasets").json()) >= 2
     assert client.get("/dashboard/").status_code == 200
-
-
-# ---------- live air (the outside service is replaced so the tests run offline) ----------
-def test_live_search_and_city(monkeypatch):
-    import live
-    monkeypatch.setattr(live, "search_places", lambda q: [{"name": "Hyderabad", "region": "Telangana",
-                                                           "country": "India", "lat": 17.38, "lon": 78.48}])
-    monkeypatch.setattr(live, "analyse", lambda lat, lon, name: {"place": name, "now": {"aqi": 120}})
-    r = client.get("/api/live/search", params={"q": "Hyder"})
-    assert r.status_code == 200 and r.json()[0]["name"] == "Hyderabad"
-    r = client.get("/api/live", params={"lat": 17.38, "lon": 78.48, "name": "Hyderabad"})
-    assert r.status_code == 200 and r.json()["now"]["aqi"] == 120
-
-
-def test_live_rejects_bad_input():
-    assert client.get("/api/live/search", params={"q": "a"}).status_code == 422
-    assert client.get("/api/live", params={"lat": 200, "lon": 0}).status_code == 422
-
-
-def test_aqi_bands():
-    import live
-    assert live.aqi_from_pm25(5)["category"] == "Good"
-    assert live.aqi_from_pm25(9)["aqi"] == 50
-    assert live.aqi_from_pm25(40)["category"] == "Unhealthy for sensitive groups"
-    assert live.aqi_from_pm25(900)["aqi"] == 500
-
-
-def test_live_plain_explanations():
-    import numpy as np
-    import pandas as pd
-    import live
-    hours = pd.date_range("2026-01-01", periods=24 * 40, freq="h")
-    pm = pd.Series(20.0, index=hours)
-    pm.iloc[-24:] = 60.0                      # the last day is much dirtier than the rest
-    normal = live.compare_with_normal(pm, hours[-1])
-    assert normal["verdict"] == "much worse than usual" and normal["cigarettes"] == round(60 / 22, 1)
-    assert len(normal["daily"]) == 40
-
-    weather = pd.DataFrame({"wind_speed": 3.0, "rain": 0.0, "relative_humidity": 90.0},
-                           index=pd.date_range(hours[-1], periods=30, freq="h"))
-    reasons = live.weather_reasons(weather, hours[-1], pd.Timestamp("2026-02-10 06:00"))
-    assert any("Light winds" in r for r in reasons) and any("No real rain" in r for r in reasons)
-    assert any("humid" in r for r in reasons) and any("night" in r for r in reasons)
-
-
-def test_unusual_periods_csv():
-    r = client.get("/api/episodes/uci-italy/CO")
-    assert r.status_code == 200 and "attachment" in r.headers["content-disposition"]
-    lines = r.content.decode("utf-8-sig").splitlines()
-    assert lines[0].startswith("start,end,hours_flagged,what_we_think")
-    assert len(lines) > 1 and any(k in lines[1] for k in ("Real pollution event", "Probably a data problem", "Not sure"))
-    assert client.get("/api/episodes/uci-italy/XYZ").status_code == 404

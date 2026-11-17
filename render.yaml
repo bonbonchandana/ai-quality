@@ -10,8 +10,8 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
-      - key: ALLOW_UPLOAD          # people can upload their own data online
-        value: "true"
+      - key: ALLOW_UPLOAD
+        value: "false"
       - key: LIGHT_TRAINING        # smaller models and the last 2 years only, to fit the free server
         value: "true"
       - key: MAX_UPLOAD_MB
