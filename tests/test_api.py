@@ -58,3 +58,17 @@ def test_episode_csv_is_available():
 
 def test_dashboard_is_served():
     assert client.get("/dashboard/").status_code == 200
+
+
+def test_postman_request_from_the_pdf_works():
+    body = {"pollutant": "CO", "hour": 18, "weekday": 2, "lag_1": 2.4, "lag_2": 2.0, "lag_3": 1.7, "lag_24": 2.9,
+            "temperature": 12.5, "relative_humidity": 55.0, "absolute_humidity": 0.8}
+    response = client.post("/predict", json=body)
+    assert response.status_code == 200, response.text
+    assert response.json()["prediction"] >= 0
+
+
+def test_pollutant_names_in_any_case():
+    for name in ("NOx", "nox", "NOX"):
+        assert client.get(f"/api/results/{name}").status_code == 200
+    assert client.post("/predict", json={"pollutant": "nox", "hour": 8, "weekday": 1, "lag_1": 120}).status_code == 200

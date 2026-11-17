@@ -55,9 +55,15 @@ def load_model(pollutant: str):
     return joblib.load(path)
 
 
+POLLUTANTS = ("CO", "NO2", "NOx", "C6H6")
+
+
 def pollutant_info(pollutant: str) -> dict:
-    info = load_results(pollutant.upper())
-    return info
+    # Match the name in any case (nox, NOX, NOx). File names are case-sensitive on the Linux server.
+    key = next((k for k in POLLUTANTS if k.lower() == pollutant.strip().lower()), None)
+    if key is None:
+        raise HTTPException(404, f"Unknown UCI pollutant: {pollutant}. Available: {', '.join(POLLUTANTS)}")
+    return load_results(key)
 
 
 def make_features(frame: pd.DataFrame, column: str, weather: dict[str, str]) -> pd.DataFrame:
@@ -72,7 +78,15 @@ def make_features(frame: pd.DataFrame, column: str, weather: dict[str, str]) -> 
 
 
 class PredictInput(BaseModel):
-    """Named feature values used by one UCI Italy pollutant model."""
+    """Named feature values used by one UCI Italy pollutant model.
+
+    Two ways to send them: flat, as in the Postman request ({"pollutant": "CO", "hour": 18, "lag_1": 2.4, ...}),
+    or grouped under "features" as the web page does.
+    """
+
+    model_config = {"extra": "allow", "json_schema_extra": {"examples": [{
+        "pollutant": "CO", "hour": 18, "weekday": 2, "lag_1": 2.4, "lag_2": 2.0, "lag_3": 1.7, "lag_24": 2.9,
+        "temperature": 12.5, "relative_humidity": 55.0, "absolute_humidity": 0.8}]}}
 
     pollutant: str = Field(..., description="CO, NO2, NOx, or C6H6")
     features: dict[str, Optional[float]] = Field(default_factory=dict, description="Feature names and values from the selected model JSON")
@@ -108,14 +122,20 @@ def list_datasets():
 @app.post("/predict")
 def predict(data: PredictInput):
     info = pollutant_info(data.pollutant)
-    unknown = sorted(set(data.features) - set(info["features"]))
+    given = {k: v for k, v in (data.model_extra or {}).items() if k != "dataset"}   # flat (Postman) style
+    given.update(data.features)                                                      # grouped (web page) style
+    unknown = sorted(set(given) - set(info["features"]))
     if unknown:
         raise HTTPException(422, f"Unknown feature name(s): {', '.join(unknown)}. Expected: {', '.join(info['features'])}")
+    try:
+        given = {k: None if v is None else float(v) for k, v in given.items()}
+    except (TypeError, ValueError):
+        raise HTTPException(422, "Every feature value must be a number (or null).")
     required = ["hour", "weekday", "lag_1"]
-    missing = [feature for feature in required if data.features.get(feature) is None]
+    missing = [feature for feature in required if given.get(feature) is None]
     if missing:
         raise HTTPException(422, f"Missing required feature name(s): {', '.join(missing)}")
-    values = {feature: data.features.get(feature) for feature in info["features"]}
+    values = {feature: given.get(feature) for feature in info["features"]}
     if not 0 <= values["hour"] <= 23 or not 0 <= values["weekday"] <= 6:
         raise HTTPException(422, "hour must be 0–23 and weekday must be 0–6")
     row = pd.DataFrame([values]).astype(float)
