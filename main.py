@@ -72,18 +72,10 @@ def make_features(frame: pd.DataFrame, column: str, weather: dict[str, str]) -> 
 
 
 class PredictInput(BaseModel):
-    """Inputs used by the UCI Italy pollutant models."""
+    """Named feature values used by one UCI Italy pollutant model."""
 
     pollutant: str = Field(..., description="CO, NO2, NOx, or C6H6")
-    hour: int = Field(..., ge=0, le=23)
-    weekday: int = Field(..., ge=0, le=6, description="0 = Monday")
-    lag_1: float = Field(..., ge=0, le=100000)
-    lag_2: Optional[float] = Field(None, ge=0, le=100000)
-    lag_3: Optional[float] = Field(None, ge=0, le=100000)
-    lag_24: Optional[float] = Field(None, ge=0, le=100000)
-    temperature: Optional[float] = Field(None, ge=-40, le=55)
-    relative_humidity: Optional[float] = Field(None, ge=0, le=100)
-    absolute_humidity: Optional[float] = Field(None, ge=0, le=5)
+    features: dict[str, Optional[float]] = Field(default_factory=dict, description="Feature names and values from the selected model JSON")
     observed: Optional[float] = Field(None, ge=0, le=100000)
 
 
@@ -116,7 +108,16 @@ def list_datasets():
 @app.post("/predict")
 def predict(data: PredictInput):
     info = pollutant_info(data.pollutant)
-    values = {feature: getattr(data, feature) for feature in info["features"]}
+    unknown = sorted(set(data.features) - set(info["features"]))
+    if unknown:
+        raise HTTPException(422, f"Unknown feature name(s): {', '.join(unknown)}. Expected: {', '.join(info['features'])}")
+    required = ["hour", "weekday", "lag_1"]
+    missing = [feature for feature in required if data.features.get(feature) is None]
+    if missing:
+        raise HTTPException(422, f"Missing required feature name(s): {', '.join(missing)}")
+    values = {feature: data.features.get(feature) for feature in info["features"]}
+    if not 0 <= values["hour"] <= 23 or not 0 <= values["weekday"] <= 6:
+        raise HTTPException(422, "hour must be 0–23 and weekday must be 0–6")
     row = pd.DataFrame([values]).astype(float)
     model = load_model(info["pollutant"])
     prediction = max(0.0, float(row["lag_1"].iloc[0] + model.predict(row)[0]))
@@ -161,8 +162,8 @@ def get_sample(pollutant: str):
         raise HTTPException(404, "No complete sample found")
     t = complete.index[0]
     values = {key: (int(value) if key in ("hour", "weekday") else float(value)) for key, value in complete.loc[t].items()}
-    values["observed"] = float(df.at[t, info["column"]])
-    return {"time": t.isoformat(), "input": {"pollutant": info["pollutant"], **values}}
+    return {"time": t.isoformat(), "pollutant": info["pollutant"], "features": values,
+            "observed": float(df.at[t, info["column"]])}
 
 
 @app.get("/api/episodes/{pollutant}")

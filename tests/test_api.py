@@ -30,8 +30,8 @@ def test_results_report_and_sample_are_available():
 
 
 def test_predict_uses_saved_model():
-    sample = client.get("/api/sample/CO").json()["input"]
-    response = client.post("/predict", json=sample)
+    sample = client.get("/api/sample/CO").json()
+    response = client.post("/predict", json={"pollutant": "CO", "features": sample["features"], "observed": sample["observed"]})
     assert response.status_code == 200
     assert response.json()["dataset"] == "uci-italy"
     assert response.json()["prediction"] >= 0
@@ -44,9 +44,9 @@ def test_only_uci_routes_are_exposed():
 
 
 def test_invalid_prediction_is_rejected():
-    sample = client.get("/api/sample/CO").json()["input"]
-    sample["hour"] = 25
-    assert client.post("/predict", json=sample).status_code == 422
+    sample = client.get("/api/sample/CO").json()
+    sample["features"]["hour"] = 25
+    assert client.post("/predict", json={"pollutant": "CO", "features": sample["features"]}).status_code == 422
 
 
 def test_episode_csv_is_available():
