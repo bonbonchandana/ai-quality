@@ -3,18 +3,40 @@ const fmt = (v, d = 3) => v == null ? "—" : Number(v).toFixed(d);
 const labels = { hour: "Hour (0–23)", weekday: "Weekday (0 = Monday)", lag_1: "Previous hour", lag_2: "2 hours before", lag_3: "3 hours before", lag_24: "24 hours before", temperature: "Temperature (°C)", relative_humidity: "Relative humidity (%)", absolute_humidity: "Absolute humidity", observed: "Actual value (optional)" };
 let results = null, chart = null;
 
-async function getJSON(url, options) { const response = await fetch(url, options); const body = await response.json(); if (!response.ok) throw body; return body; }
+async function getJSON(url, options) {
+  const response = await fetch(url, options);
+  const text = await response.text();
+  let body;
+  try { body = JSON.parse(text); } catch (_) { throw new Error(`Server returned ${response.status} for ${url}. Restart the API and refresh the dashboard.`); }
+  if (!response.ok) throw body;
+  return body;
+}
 
 async function start() {
   $("pollutant").addEventListener("change", () => loadPollutant($("pollutant").value));
   $("episode-filter").addEventListener("change", renderEpisodes);
   $("load-sample").addEventListener("click", loadSample);
   $("predict-form").addEventListener("submit", predict);
-  try { const dataset = await getJSON("/api/datasets"); $("pollutant").innerHTML = dataset.pollutants.map((p) => `<option value="${p.key}">${p.pollutant}</option>`).join(""); await loadPollutant(dataset.pollutants[0].key); } catch (error) { showError(error); }
+  try {
+    const dataset = await getJSON("/api/datasets");
+    $("pollutant").innerHTML = dataset.pollutants.map((p) => `<option value="${p.key}">${p.pollutant}</option>`).join("");
+    if (dataset.pollutants.length) await loadPollutant(dataset.pollutants[0].key);
+  } catch (error) { showError(error); }
 }
 
 async function loadPollutant(key) {
-  try { results = await getJSON(`/api/results/${key}`); $("download-json").href = `/api/report/${key}?download=true`; $("download-csv").href = `/api/episodes/${key}`; renderSummary(); renderChart(); renderPerformance(); renderEpisodes(); buildForm(); await loadSample(); $("error").hidden = true; } catch (error) { showError(error); }
+  try {
+    results = await getJSON(`/api/results/${key}`);
+    $("download-json").href = `/api/report/${key}?download=true`;
+    $("download-csv").href = `/api/episodes/${key}`;
+    renderSummary();
+    renderPerformance();
+    renderEpisodes();
+    buildForm();
+    await loadSample();
+    try { renderChart(); } catch (chartError) { $("chart").innerHTML = `<p class="muted">Chart unavailable: ${chartError.message}</p>`; }
+    $("error").hidden = true;
+  } catch (error) { showError(error); }
 }
 
 function renderSummary() {
