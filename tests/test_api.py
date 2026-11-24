@@ -148,3 +148,30 @@ def test_forecast_shares_hours_and_marks_missing_readings():
 def test_episode_csv_uses_plain_labels():
     lines = client.get("/api/episodes/CO").content.decode("utf-8-sig").splitlines()
     assert not any(raw in "\n".join(lines) for raw in (",Unusual pollution,", ",Data limitation,", ",Unclear,"))
+
+
+def test_example_file_can_be_checked():
+    example = client.get("/api/example-file")
+    assert example.status_code == 200 and "attachment" in example.headers["content-disposition"]
+    r = client.post("/api/check/CO", files={"file": ("readings.csv", example.content, "text/csv")})
+    assert r.status_code == 200, r.text
+    out = r.json()
+    assert out["hours"] > 100 and len(out["predicted"]) == len(out["actual"]) == len(out["times"]) == out["hours"]
+    assert out["typical_miss"] is not None and out["typical_miss"] < 2
+
+
+def test_check_reads_the_original_uci_format():
+    rows = ["Date;Time;CO(GT);T;RH;AH;;"]
+    for h in range(30):
+        rows.append(f"10/03/2004;{h % 24:02d}.00.00;{2 + (h % 5) * 0.3:.1f}".replace(".", ",", 1) + ";13,6;48,9;0,7578;;")
+    rows[10] = "10/03/2004;09.00.00;-200;13,6;48,9;0,7578;;"   # -200 means missing in the UCI file
+    text = "\n".join(rows).encode()
+    r = client.post("/api/check/CO", files={"file": ("uci.csv", text, "text/csv")})
+    assert r.status_code == 200, r.text
+    assert r.json()["hours"] >= 20
+
+
+def test_check_rejects_files_without_the_pollutant():
+    text = b"timestamp,NO2(GT)\n2005-01-01 00:00,100\n2005-01-01 01:00,110\n"
+    r = client.post("/api/check/CO", files={"file": ("x.csv", text, "text/csv")})
+    assert r.status_code == 422 and "CO" in r.json()["detail"]

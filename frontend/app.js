@@ -17,8 +17,8 @@ async function signIn(email, password) {
 }
 
 /* ---------------------------------------------------------------- data from main.py */
-async function getJSON(url) {
-  const res = await fetch(url);
+async function getJSON(url, options) {
+  const res = await fetch(url, options);
   let body = null;
   try { body = await res.json(); } catch (e) { /* not JSON */ }
   if (!res.ok) throw new Error((body && typeof body.detail === "string" && body.detail) || `The server answered ${res.status}.`);
@@ -35,6 +35,9 @@ const api = {
   forecast: (key) => cached(`/api/forecast/${encodeURIComponent(key)}`),   // 1 and 2 hours ahead for every hour
   reportUrl: (key) => `/api/report/${encodeURIComponent(key)}?download=true`,
   episodesCsvUrl: (key) => `/api/episodes/${encodeURIComponent(key)}`,
+  sample: (key) => getJSON(`/api/sample/${encodeURIComponent(key)}`),
+  predict: (body) => getJSON("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  check: (key, form) => getJSON(`/api/check/${encodeURIComponent(key)}`, { method: "POST", body: form }),   // uploaded CSV
 };
 
 /* ---------------------------------------------------------------- what the levels mean, in plain words */
@@ -73,12 +76,33 @@ const GUIDE = {
              rising: "If it keeps rising, find the source (traffic jams, fuel stations)." },
     warning: { means: "Very high benzene for this area. Find and report the source.",
                rising: "Repeated high levels raise the long-term cancer risk." },
+    tell: {   // benzene is a long-term risk, so hospitals don't need to get ready
+      watch: [["Environment team", "Find the source (traffic jams, fuel stations)."],
+              ["Schools and the public", "Avoid waiting near traffic jams and fuel stations."]],
+      warning: [["Environment team", "Find and stop the source today."],
+                ["Schools and the public", "Keep windows closed near busy roads and fuel stations."],
+                ["City traffic office", "Reduce traffic near the station if possible."]],
+    },
   },
 };
 const ACTIONS = {
   good: ["No action needed.", "Keep checking the forecast."],
   watch: ["Warn people with asthma, heart or lung disease.", "Tell hospitals and doctors to be ready.", "Move school sports away from busy roads."],
   warning: ["Alert the public (news, SMS).", "Ask hospitals to add staff and check oxygen and inhalers.", "Move school sports and breaks indoors.", "Ask the city to reduce traffic."],
+};
+// Who the health organisation tells at each level, and what
+const TELL = {
+  watch: [
+    ["Hospitals and clinics", "Be ready for more asthma, heart and lung patients."],
+    ["Doctors", "Tell patients with asthma, heart or lung disease to avoid busy roads and keep their medicines with them."],
+    ["Schools and the public", "People with asthma, heart or lung disease should spend less time outdoors near traffic."],
+  ],
+  warning: [
+    ["Hospitals and clinics", "Add emergency staff. Check oxygen and inhalers."],
+    ["Doctors", "Call high-risk patients and check they have their medicines."],
+    ["Schools and the public", "Stay indoors near busy roads. Move sports and breaks indoors."],
+    ["City traffic office", "Reduce traffic near the station if possible."],
+  ],
 };
 const CHECKLIST = [
   "Each morning, open the Dashboard and look at each pollutant.",
@@ -107,12 +131,14 @@ const RIGHTS = { admin: ["sendAlerts"], doctor: ["sendAlerts"], viewer: [] };   
 
 const ICONS = {
   home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  add: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 20h16"/>',
   alerts: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
   changes: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
   model: '<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>',
 };
 const PAGES = {
   home: { title: "Dashboard", render: renderHome },
+  add: { title: "Add data", render: renderAdd },
   alerts: { title: "Alerts", render: renderAlerts },
   changes: { title: "Unusual changes", render: renderChanges },
   model: { title: "Model", render: renderModel },
@@ -140,6 +166,31 @@ const toDate = (s) => new Date(String(s).replace(" ", "T"));
 function fmtTime(s) { const d = toDate(s); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${clock(d)}`; }
 function fmtMonth(s) { const d = toDate(s); return `${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
 const chip = (level) => `<span class="chip ${LEVELS[level][1]}">${LEVELS[level][0]}</span>`;
+
+const tellFor = (key, level) => (GUIDE[key].tell || TELL)[level];
+function alertMessage(key, level, value, at) {
+  const f = series[key];
+  return [
+    `Air quality ${LEVELS[level][0].toUpperCase()}: ${NAMES[key] || key} (${f.pollutant})`,
+    `Expected ${num(value)} ${f.unit} at ${clock(at)}, ${DAYS[at.getDay()]} ${at.getDate()} ${MONTHS[at.getMonth()]}.`,
+    GUIDE[key][level].means,
+    "",
+    ...tellFor(key, level).map(([who, what]) => `${who}: ${what}`),
+  ].join("\n");
+}
+async function copyText(text, button, field) {
+  try { await navigator.clipboard.writeText(text); button.textContent = "Copied"; }
+  catch {   // clipboard blocked: show the text selected, so Ctrl+C copies it
+    if (!field) { field = document.createElement("textarea"); field.rows = 8; field.readOnly = true; field.value = text; button.parentElement.after(field); }
+    field.select();
+    button.textContent = "Press Ctrl+C to copy";
+  }
+}
+function printPart(name) {   // print one card of the page, not the whole page
+  document.body.dataset.print = name;
+  window.addEventListener("afterprint", () => delete document.body.dataset.print, { once: true });
+  window.print();
+}
 
 // ---------- charts ----------
 function makeChart(el, option) {
@@ -391,6 +442,193 @@ async function renderHome(view) {
   update();
 }
 
+// ---------- Add data: type in readings, or upload a file ----------
+const shiftHours = (date, k) => { const d = new Date(date); d.setHours(d.getHours() + k); return d; };
+const forInput = (d) => { const two = (x) => String(x).padStart(2, "0"); return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:00`; };
+const mondayFirst = (d) => (d.getDay() + 6) % 7;   // the model counts weekdays from Monday = 0
+
+async function renderAdd(view, fresh) {
+  const key = pollutant;
+  const f = series[key];
+  const unit = esc(f.unit);
+  let example = null;   // the real value one hour later, when the form was filled from the dataset
+  view.innerHTML = `
+    <p class="intro no-print">Got new readings from your station? Type them in or upload a file. You get the level for the next 2 hours, who to tell, and a message ready to send.</p>
+    <section class="card" id="entry-card">
+      <h3>Type in readings</h3>
+      <p class="muted">For ${esc(NAMES[key] || key)} (${esc(f.pollutant)}, in ${unit}). Time and value now are needed; the rest helps but can be left empty.</p>
+      <form id="entry" class="form-grid">
+        <label>Time now<input name="time" type="datetime-local" step="3600" required></label>
+        <label>Value now<input name="now" type="number" step="any" min="0" required></label>
+        <label>1 hour ago<input name="ago1" type="number" step="any" min="0"></label>
+        <label>2 hours ago<input name="ago2" type="number" step="any" min="0"></label>
+        <label><span id="yday-label">Yesterday, 1 hour later</span><input name="yday" type="number" step="any" min="0"></label>
+        <label>Temperature (°C)<input name="temp" type="number" step="any"></label>
+        <label>Humidity (%)<input name="rh" type="number" step="any" min="0" max="100"></label>
+      </form>
+      <div class="row no-print">
+        <button type="button" id="example" class="btn ghost">Fill with a real example</button>
+        <button type="submit" form="entry" class="btn primary">Predict</button>
+      </div>
+      <div id="entry-result" aria-live="polite"></div>
+    </section>
+    <section class="card" id="upload-card">
+      <h3>Upload a file</h3>
+      <p class="muted">A CSV of hourly readings with a time column and a ${esc(f.pollutant)} column, like the UCI file.
+        <a href="/api/example-file">Download an example file</a></p>
+      <form id="upload" class="row no-print">
+        <input type="file" id="upload-file" accept=".csv,.txt" required>
+        <button type="submit" class="btn primary">Check file</button>
+      </form>
+      <div id="upload-result" aria-live="polite"></div>
+    </section>`;
+
+  const form = $("entry");
+  const value = (name) => (form[name].value === "" ? null : Number(form[name].value));
+  const relabel = () => {
+    const t = new Date(form.time.value);
+    $("yday-label").textContent = Number.isNaN(t.getTime()) ? "Yesterday, 1 hour later" : `Yesterday at ${clock(shiftHours(t, 1))}`;
+  };
+  form.time.addEventListener("input", relabel);
+  form.addEventListener("input", () => { example = null; });   // typed values are no longer the dataset example
+
+  $("example").addEventListener("click", async () => {
+    const s = await api.sample(key);
+    if (!fresh()) return;
+    const target = toDate(s.time);   // the hour the example predicts
+    form.time.value = forInput(shiftHours(target, -1));
+    form.now.value = s.features.lag_1 ?? "";
+    form.ago1.value = s.features.lag_2 ?? "";
+    form.ago2.value = s.features.lag_3 ?? "";
+    form.yday.value = s.features.lag_24 ?? "";
+    form.temp.value = s.features.temperature ?? "";
+    form.rh.value = s.features.relative_humidity ?? "";
+    example = { time: form.time.value, actual: s.observed, at: target };
+    relabel();
+    $("entry-result").innerHTML = "";
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const box = $("entry-result");
+    const t = new Date(form.time.value);
+    if (Number.isNaN(t.getTime()) || value("now") == null) {
+      box.innerHTML = `<p class="form-error">Enter the time and the value now.</p>`;
+      return;
+    }
+    const weather = { temperature: value("temp"), relative_humidity: value("rh") };
+    const in1 = shiftHours(t, 1);
+    const in2 = shiftHours(t, 2);
+    try {
+      // 1 hour ahead from what was typed in, then 2 hours ahead building on that prediction (same as the forecast)
+      const one = await api.predict({ pollutant: key, features: { hour: in1.getHours(), weekday: mondayFirst(in1),
+        lag_1: value("now"), lag_2: value("ago1"), lag_3: value("ago2"), lag_24: value("yday"), ...weather } });
+      const two = await api.predict({ pollutant: key, features: { hour: in2.getHours(), weekday: mondayFirst(in2),
+        lag_1: one.prediction, lag_2: value("now"), lag_3: value("ago1"), lag_24: null, ...weather } });
+      if (!fresh()) return;
+      const top = Math.max(one.prediction, two.prediction);
+      const at = two.prediction > one.prediction ? in2 : in1;
+      const level = levelOf(key, top);
+      const g = GUIDE[key];
+      const box2 = (label, v) => `<div class="card number ${LEVELS[levelOf(key, v)][1]}"><span>${label}</span><b>${num(v)}</b><small>${unit}</small>${chip(levelOf(key, v))}</div>`;
+      const real = example && example.time === form.time.value && example.actual != null
+        ? `<p class="note">In the dataset, the real value at ${esc(clock(example.at))} was <b>${num(example.actual)} ${unit}</b>.</p>` : "";
+      box.innerHTML = `
+        <div class="status ${LEVELS[level][1]} slim"><div class="status-level">${LEVELS[level][0]}</div>
+          <div><p>${esc(alerting(level) ? g[level].means : g.good)}</p>${alerting(level) ? `<p class="soft">${esc(g[level].rising)}</p>` : ""}</div></div>
+        <div class="numbers two">${box2(`In 1 hour (${clock(in1)})`, one.prediction)}${box2(`In 2 hours (${clock(in2)})`, two.prediction)}</div>
+        ${real}
+        ${alerting(level) ? `
+          <b>Who to tell</b>
+          <ul class="tell">${tellFor(key, level).map(([who, what]) => `<li><b>${esc(who)}:</b> ${esc(what)}</li>`).join("")}</ul>
+          <label class="message">Message, ready to send (you can edit it)<textarea id="message" rows="9">${esc(alertMessage(key, level, top, at))}</textarea></label>
+          <div class="row no-print">
+            <button type="button" id="copy" class="btn ghost">Copy message</button>
+            ${can("sendAlerts") ? `<button type="button" id="send" class="btn primary">Send alert</button>` : `<span class="muted">Admins and doctors can send alerts.</span>`}
+            <button type="button" id="print-entry" class="btn ghost">Print</button>
+          </div>
+          <p id="send-note" class="note" hidden>Preview only: nothing was sent yet. The backend will deliver it to hospitals, doctors and the public.</p>`
+        : `<p class="note ok">No alert needed. Check again when the next reading comes in.</p>`}`;
+      if (alerting(level)) {
+        $("copy").addEventListener("click", () => copyText($("message").value, $("copy"), $("message")));
+        $("print-entry").addEventListener("click", () => printPart("entry"));
+        if ($("send")) $("send").addEventListener("click", () => { $("send").disabled = true; $("send-note").hidden = false; });
+      }
+    } catch (err) {
+      if (fresh()) box.innerHTML = `<p class="form-error">${esc(err.message)}</p>`;
+    }
+  });
+
+  $("upload").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const file = $("upload-file").files[0];
+    const box = $("upload-result");
+    if (!file) return;
+    const body = new FormData();
+    body.append("file", file);
+    box.innerHTML = `<p class="muted">Checking…</p>`;
+    try {
+      const r = await api.check(key, body);
+      if (!fresh()) return;
+      const said = r.predicted.map((v) => levelOf(key, v));   // what the forecast said 1 hour before
+      const real = r.actual.map((v) => levelOf(key, v));      // what really happened
+      const high = real.filter(alerting).length;
+      const warned = real.filter((l, j) => alerting(l) && alerting(said[j])).length;
+      const extra = said.filter((l, j) => alerting(l) && real[j] === "good").length;
+      const periods = [];   // alert hours next to each other count as one alert
+      said.forEach((l, j) => {
+        if (!alerting(l)) return;
+        const t = toDate(r.times[j]);
+        const last = periods[periods.length - 1];
+        if (last && t - last.end <= 3600 * 1000) {
+          Object.assign(last, { end: t, hours: last.hours + 1, peak: Math.max(last.peak, r.predicted[j]), level: l === "warning" ? l : last.level });
+        } else periods.push({ start: t, startText: r.times[j], end: t, hours: 1, peak: r.predicted[j], level: l });
+      });
+      const tile = (label, value, note) => `<div class="card number"><span>${label}</span><b>${value}</b><small>${note}</small></div>`;
+      box.innerHTML = `
+        <p class="big-line">${num(r.hours)} hours checked</p>
+        <p class="muted">${esc(fmtTime(r.times[0]))} to ${esc(fmtTime(r.times[r.times.length - 1]))}</p>
+        <div class="numbers">
+          ${tile("Alerts to send", periods.length, "times you would send an alert")}
+          ${tile("Warned in time", high ? `${warned} of ${high}` : "–", "high hours caught 1 hour before")}
+          ${tile("Not needed", extra, "alert hours that stayed Good")}
+        </div>
+        <p>${high ? `Of the ${high} hours that were really at Watch or Warning, the forecast warned for <b>${warned}</b> one hour before.`
+          : "No hour in this file was really at Watch or Warning."}
+          It is usually off by <b>± ${num(r.typical_miss)} ${unit}</b>.
+          ${r.unusual_hours ? `<b>${r.unusual_hours}</b> hours were much further off than normal: check the sensor for those.` : ""}</p>
+        <div id="upload-chart" class="chart"></div>
+        <b>Alerts in this file</b>
+        <ul class="recent">${periods.length ? periods.slice(0, 10).map((x) =>
+          `<li>${chip(x.level)} <b>${esc(fmtTime(x.startText))}</b> <span class="muted">· ${x.hours} hour${x.hours === 1 ? "" : "s"} · up to ${num(x.peak)} ${unit}</span></li>`).join("")
+          + (periods.length > 10 ? `<li class="muted">and ${periods.length - 10} more</li>` : "")
+          : `<li class="muted">No alerts needed.</li>`}</ul>
+        <div class="row no-print"><button type="button" id="print-upload" class="btn ghost">Print summary</button></div>`;
+      $("print-upload").addEventListener("click", () => printPart("upload"));
+      const top = Math.max(0, ...r.actual.filter((v) => v != null), ...r.predicted);
+      const [watch, warning] = limitsOf(key);
+      const lines = [["Watch", watch, "#d97706"], ["Warning", warning, "#dc2626"]].filter(([, v]) => v <= top * 1.3)
+        .map(([label, v, color]) => ({ yAxis: v, label: { formatter: label, color }, lineStyle: { color, type: "dotted" } }));
+      const end = Math.min(100, Math.round(((24 * 7) / r.hours) * 100)) || 100;
+      makeChart($("upload-chart"), {
+        tooltip: { trigger: "axis", valueFormatter: (v) => (v == null ? "no reading" : `${num(v)} ${r.unit}`) },
+        legend: { data: ["Actual", "Predicted"], top: 0 },
+        grid: { left: 46, right: 64, top: 34, bottom: 58 },
+        xAxis: { type: "time" },
+        yAxis: { type: "value", name: r.unit, splitLine: gridLine },
+        dataZoom: [{ type: "inside", start: 0, end }, { type: "slider", start: 0, end, height: 18 }],
+        series: [
+          { name: "Actual", type: "line", showSymbol: false, connectNulls: false, color: "#1d4ed8", lineStyle: { width: 2 },
+            data: r.times.map((t, j) => [t, r.actual[j]]), markLine: { silent: true, symbol: "none", data: lines } },
+          { name: "Predicted", type: "line", showSymbol: false, color: "#0f766e", lineStyle: { width: 2, type: "dashed" }, data: r.times.map((t, j) => [t, r.predicted[j]]) },
+        ],
+      });
+    } catch (err) {
+      if (fresh()) box.innerHTML = `<p class="form-error">${esc(err.message)}</p>`;
+    }
+  });
+}
+
 // ---------- Alerts ----------
 async function renderAlerts(view) {
   const keys = dataset.pollutants.map((x) => x.key);
@@ -419,10 +657,11 @@ async function renderAlerts(view) {
       <p class="soft">${esc(g[s.level].rising)}</p>
       <b>What to do</b>
       <ul class="todo">${ACTIONS[s.level].map((a) => `<li>${esc(a)}</li>`).join("")}</ul>
-      <p class="muted">Send to: hospitals, doctors and public health teams</p>
+      <p class="muted">Send to: ${esc(tellFor(k, s.level).map(([who]) => who).join(", "))}</p>
       <div class="no-print">${!can("sendAlerts") ? `<p class="muted">Admins and doctors can send alerts.</p>`
         : sent.has(id) ? `<p class="note">Preview only: nothing was sent yet. The backend will deliver it.</p>`
-        : `<button type="button" class="btn primary small" data-send="${esc(id)}">Send alert</button>`}</div>
+        : `<button type="button" class="btn primary small" data-send="${esc(id)}">Send alert</button>`}
+        <button type="button" class="btn ghost small" data-copy="${esc(k)}">Copy message</button></div>
     </article>`;
   };
 
@@ -440,6 +679,10 @@ async function renderAlerts(view) {
       $("cards").innerHTML = active.length ? active.map(([k, s, since]) => card(k, s, since)).join("")
         : `<section class="card"><p class="note ok">No alerts right now. All pollutants look fine for the next 2 hours.</p></section>`;
       $("cards").querySelectorAll("[data-send]").forEach((b) => b.addEventListener("click", () => { sent.add(b.dataset.send); update(); }));
+      $("cards").querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", () => {
+        const s = statusAt(b.dataset.copy, time.i);
+        copyText(alertMessage(b.dataset.copy, s.level, s.top, shiftHours(toDate(hours()[time.i]), s.at)), b);
+      }));
     }
 
     const recent = [];

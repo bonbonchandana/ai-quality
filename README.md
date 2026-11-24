@@ -15,7 +15,11 @@ password `demo123`.
 
 - **Dashboard**: pick a pollutant. See one big status (Good, Watch or Warning) with what it means, the value now, in 1 hour
   and in 2 hours, a chart of actual vs predicted, and what to do now.
-- **Alerts**: all pollutants for the next 2 hours, active alerts with what to do (send or print), recent alerts and a daily
+- **Add data**: for new readings from your own station. Type in the latest readings to get the level in 1 and 2 hours,
+  who to tell (hospitals, doctors, schools and the public) and an alert message ready to copy, send or print. Or upload a
+  CSV of hourly readings (same columns as the UCI file) to see actual vs predicted, the alerts you would have sent, and how
+  many high hours the forecast warned about one hour before. Only the trained models are used; nothing is retrained.
+- **Alerts**: all pollutants for the next 2 hours, active alerts with what to do (send, copy the message or print), recent alerts and a daily
   checklist for public health teams.
 - **Unusual changes**: when a pollutant jumped or dropped, by how much, and the likely cause (real pollution or a sensor problem).
 - **Model**: how the model works and how accurate it is, with a chart of actual vs predicted on the test period.
@@ -54,6 +58,8 @@ aid, not a replacement for official warnings or clinical judgement.
 - `GET /api/sample/{pollutant}`
 - `GET /api/forecast/{pollutant}`: 1, 2 and 3 hours ahead for every hour of the test period
 - `GET /api/episodes/{pollutant}`: unusual periods, as CSV
+- `GET /api/example-file`: one week of readings in the format the upload accepts
+- `POST /api/check/{pollutant}`: upload a CSV of hourly readings (form field `file`, up to 5 MB); returns actual vs predicted
 - `POST /predict`
 
 Pollutants are CO, NO2, NOx and C6H6. `POST /predict` takes flat JSON, the way the Postman collections in `postman/`

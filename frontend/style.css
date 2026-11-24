@@ -126,6 +126,22 @@ input:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px
 .todo { margin: 6px 0 10px; padding-left: 20px; }
 .todo li { margin-bottom: 4px; }
 
+/* add data */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin: 10px 0; }
+.form-grid input { width: 100%; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+input[type=file] { padding: 6px; }
+.status.slim { padding: 12px 16px; margin: 12px 0; }
+.status.slim .status-level { font-size: 1.2rem; min-width: 100px; }
+.numbers.two { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
+#upload-chart { margin: 10px 0; }
+.intro { margin: 0 0 14px; color: var(--text-2); }
+.tell { margin: 6px 0 12px; padding-left: 20px; }
+.tell li { margin-bottom: 4px; }
+.message { margin: 10px 0; }
+textarea { font: inherit; color: var(--text); background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px; width: 100%; resize: vertical; }
+textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15); }
+
 /* alerts */
 .alert-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .alert-list:empty { display: none; }
@@ -193,4 +209,5 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
   .card { box-shadow: none; border: 1px solid var(--border); break-inside: avoid; }
   .alert-list { grid-template-columns: 1fr; }
   .view > * { animation: none; }
+  body[data-print="entry"] #upload-card, body[data-print="upload"] #entry-card { display: none !important; }
 }

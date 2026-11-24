@@ -8,6 +8,7 @@ dashboard values are read from artifacts/uci-italy/*.json and models/uci-italy/.
 """
 from __future__ import annotations
 
+import io
 import json
 from functools import lru_cache
 from pathlib import Path
@@ -16,7 +17,7 @@ from typing import Optional
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -254,6 +255,83 @@ def episodes_csv(pollutant: str):
     } for e in info["episodes"]])
     return Response("\ufeff" + rows.to_csv(index=False), media_type="text/csv; charset=utf-8",
                     headers={"Content-Disposition": f'attachment; filename="uci-italy-{pollutant}-episodes.csv"'})
+
+
+# ---------- checking new readings with our models ----------
+MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+MAX_HOURS = 10000
+
+
+def read_readings(raw: bytes) -> pd.DataFrame:
+    """Reads an hourly CSV: the original UCI file (Date;Time, decimal commas, -200 = missing) or one with a timestamp column."""
+    text = raw.decode("utf-8-sig", errors="replace")
+    try:
+        df = pd.read_csv(io.StringIO(text), sep=None, engine="python", dtype=str)
+    except Exception:
+        raise HTTPException(422, "Couldn't read this file. Please upload a CSV.")
+    df.columns = [str(c).strip() for c in df.columns]
+    df = df.loc[:, [c for c in df.columns if c and not c.startswith("Unnamed")]]
+    if {"Date", "Time"} <= set(df.columns):
+        stamp = pd.to_datetime(df["Date"] + " " + df["Time"].str.replace(".", ":", regex=False), dayfirst=True, errors="coerce")
+        values = df.drop(columns=["Date", "Time"])
+    else:
+        column = next((c for c in df.columns if c.lower() in ("timestamp", "datetime", "date_time", "time", "date")), None)
+        if column is None:
+            raise HTTPException(422, "The file needs a time column: 'Date' and 'Time', or 'timestamp'.")
+        stamp = pd.to_datetime(df[column], errors="coerce")
+        values = df.drop(columns=[column])
+    values = values.apply(lambda col: pd.to_numeric(col.str.replace(",", ".", regex=False), errors="coerce")).replace(-200, np.nan)
+    values.index = stamp
+    values = values[values.index.notna()]
+    values = values[~values.index.duplicated()].sort_index()
+    if values.empty:
+        raise HTTPException(422, "No readable hours in this file.")
+    return values.asfreq("h")
+
+
+@app.get("/api/example-file")
+def example_file():
+    """One week of real readings in the format /api/check accepts, to try the upload."""
+    week = dataset_frame().iloc[-24 * 7:]
+    keep = [c for c in week.columns if c in ("CO(GT)", "NO2(GT)", "NOx(GT)", "C6H6(GT)", "T", "RH", "AH")]
+    return Response(week[keep].to_csv(index_label="timestamp"), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="example-readings.csv"'})
+
+
+@app.post("/api/check/{pollutant}")
+async def check_file(pollutant: str, file: UploadFile = File(...)):
+    """Runs our trained model over an uploaded file of hourly readings: next-hour prediction vs what was measured."""
+    info = pollutant_info(pollutant)
+    raw = await file.read(MAX_UPLOAD_BYTES + 1)   # never hold more than the limit in memory
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(413, "The file is too big (5 MB at most).")
+    df = read_readings(raw)
+    if len(df) > MAX_HOURS:
+        raise HTTPException(422, f"The file covers too many hours ({MAX_HOURS:,} at most).")
+    column = next((c for c in (info["column"], info["pollutant"]) if c in df.columns), None)
+    if column is None:
+        raise HTTPException(422, f"The file has no {info['pollutant']} column (expected '{info['column']}').")
+    weather = json.loads((ARTIFACTS / "dataset.json").read_text(encoding="utf-8"))["weather"]
+    for source in weather.values():
+        if source not in df.columns:
+            df[source] = np.nan      # missing weather is filled in by the model, as in training
+    X = make_features(df, column, weather)[info["features"]].astype(float)
+    usable = X["lag_1"].notna().to_numpy()
+    if not usable.any():
+        raise HTTPException(422, "Not enough readings: the model needs at least two hours in a row.")
+    X = X[usable]
+    predicted = (X["lag_1"].to_numpy() + load_model(info["pollutant"]).predict(X)).clip(min=0)
+    actual = df[column].reindex(X.index).to_numpy()
+    measured = ~np.isnan(actual)
+    miss = np.abs(actual[measured] - predicted[measured])
+    clean = lambda values: [None if np.isnan(v) else round(float(v), 3) for v in values]
+    return {
+        "pollutant": info["pollutant"], "unit": info["unit"], "hours": int(len(X)),
+        "times": [t.strftime("%Y-%m-%dT%H:%M") for t in X.index],
+        "actual": clean(actual), "predicted": clean(predicted),
+        "typical_miss": round(float(miss.mean()), 3) if miss.size else None,
+        "unusual_hours": int((miss > info["threshold"]).sum()), "threshold": round(info["threshold"], 3),
+    }
 
 
 app.mount("/dashboard", StaticFiles(directory=BASE / "frontend", html=True), name="dashboard")
