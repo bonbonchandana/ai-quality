@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 import joblib
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, Response
@@ -168,6 +169,56 @@ def get_report(pollutant: str, download: bool = False):
 @lru_cache(maxsize=1)
 def dataset_frame() -> pd.DataFrame:
     return pd.read_csv(ARTIFACTS / "data.csv", parse_dates=["timestamp"], index_col="timestamp").asfreq("h")
+
+
+@lru_cache(maxsize=4)
+def forecast_table(key: str) -> dict:
+    """Forecasts 1, 2 and 3 hours ahead from every hour of the test period, using only what was known then.
+
+    The model predicts one hour ahead. For 2 and 3 hours ahead, its own forecast is fed back in as the
+    "value 1 hour before", and the weather stays at the last known hour (no peeking at future weather).
+    """
+    info = load_results(key)
+    df = dataset_frame()
+    y = df[info["column"]]
+    weather = json.loads((ARTIFACTS / "dataset.json").read_text(encoding="utf-8"))["weather"]
+    model = load_model(key)
+    hour = pd.Timedelta(hours=1)
+    test_from, test_to = (pd.Timestamp(t) for t in info["periods"]["test"])
+    origins = pd.date_range(test_from - hour, test_to - hour, freq="h")    # "now" moments; targets fall in the test period
+    known = lambda steps: y.reindex(origins + steps * hour).to_numpy()   # real value `steps` hours from now (0 = now)
+
+    forecasts = {}
+    for step in (1, 2, 3):
+        target = origins + step * hour
+        X = pd.DataFrame({"hour": target.hour, "weekday": target.dayofweek}, index=origins)
+        for lag in (1, 2, 3, 24):
+            ahead = step - lag                     # >= 1 means that hour is still in the future: use our forecast
+            X[f"lag_{lag}"] = forecasts[ahead] if ahead >= 1 else known(ahead)
+        for name, column in weather.items():
+            X[name] = df[column].reindex(origins).to_numpy()
+        X = X[info["features"]].astype(float)
+        forecasts[step] = (X["lag_1"].to_numpy() + model.predict(X)).clip(min=0)
+
+    def mae(predicted, actual):
+        ok = ~(np.isnan(predicted) | np.isnan(actual))
+        return round(float(np.abs(predicted[ok] - actual[ok]).mean()), 4)
+
+    clean = lambda values: [None if np.isnan(v) else round(float(v), 4) for v in values]
+    now = known(0)
+    return {
+        "pollutant": info["pollutant"], "unit": info["unit"], "model": info["model"],
+        "times": [t.strftime("%Y-%m-%dT%H:%M") for t in origins],
+        "now": clean(now), "f1": clean(forecasts[1]), "f2": clean(forecasts[2]), "f3": clean(forecasts[3]),
+        "mae": {str(s): mae(forecasts[s], known(s)) for s in (1, 2, 3)},
+        "simple_guess_mae": {str(s): mae(now, known(s)) for s in (1, 2, 3)},
+    }
+
+
+@app.get("/api/forecast/{pollutant}")
+def get_forecast(pollutant: str):
+    """1, 2 and 3 hours ahead for every hour of the test period (the part the model never saw)."""
+    return forecast_table(pollutant_info(pollutant)["pollutant"])
 
 
 @app.get("/api/sample/{pollutant}")

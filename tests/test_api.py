@@ -2,6 +2,7 @@
 import sys
 from pathlib import Path
 
+import pandas as pd
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -86,5 +87,29 @@ def test_portal_uses_only_the_real_dataset():
     script = client.get("/dashboard/app.js").text
     for made_up in ("Hyderabad", "Delhi", "Bengaluru", "SAMPLE_GROUPS", "pm25At", "Sample data"):
         assert made_up not in script, made_up
-    for endpoint in ("/api/datasets", "/api/results/", "/api/sample/", "/predict", "/api/episodes/", "/api/report/"):
+    for endpoint in ("/api/datasets", "/api/results/", "/api/forecast/", "/api/sample/", "/predict", "/api/episodes/", "/api/report/"):
         assert endpoint in script, endpoint
+
+
+def test_forecast_one_to_three_hours_ahead():
+    r = client.get("/api/forecast/CO")
+    assert r.status_code == 200
+    f = r.json()
+    n = len(f["times"])
+    assert n > 1000 and all(len(f[k]) == n for k in ("now", "f1", "f2", "f3"))
+    # the 1-hour forecast is exactly the model's own test prediction for that hour
+    results = client.get("/api/results/CO").json()
+    predicted = {p["t"][:16]: p["predicted"] for p in results["test_predictions"]}
+    checked = 0
+    for t, f1 in zip(f["times"][:200], f["f1"][:200]):
+        nxt = (pd.Timestamp(t) + pd.Timedelta(hours=1)).isoformat()[:16]
+        if f1 is not None and nxt in predicted:
+            assert abs(f1 - predicted[nxt]) < 1e-2
+            checked += 1
+    assert checked > 50
+    # forecasts further ahead are harder: the typical miss grows with the horizon
+    assert f["mae"]["1"] < f["mae"]["3"]
+
+
+def test_forecast_unknown_pollutant():
+    assert client.get("/api/forecast/XYZ").status_code == 404
