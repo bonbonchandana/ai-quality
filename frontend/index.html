@@ -6,35 +6,33 @@
   <title>Air Health Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
-  <!-- Sign-in. The real check happens on the backend; this screen only collects the details. -->
+  <!-- Sign-in. The real check will happen on the backend; this screen only collects the details. -->
   <section id="signin" class="signin" hidden>
     <div class="signin-card">
       <div class="brand big">
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/><path d="M3 12h4l2-3 3 6 2-3h7"/></svg></span>
-        <div><h1>Air Health Portal</h1><p>Air quality planning for healthcare centers</p></div>
+        <div><h1>Air Health Portal</h1><p>Air quality prediction and unusual-period analysis for healthcare centers</p></div>
       </div>
       <form id="signin-form" novalidate>
-        <label>Healthcare center<select id="signin-center" required></select></label>
         <label>Work email<input id="signin-email" type="email" autocomplete="username" required placeholder="name@yourcenter.org"></label>
         <label>Password<input id="signin-password" type="password" autocomplete="current-password" required></label>
         <p id="signin-error" class="form-error" role="alert" hidden></p>
         <button type="submit" class="btn primary wide">Sign in</button>
       </form>
       <details class="demo-accounts">
-        <summary>Sample accounts for this preview</summary>
+        <summary>Accounts for this preview</summary>
         <p>Password for all: <code>demo123</code></p>
         <ul>
-          <li><code>admin@demo.health</code>: everything, including users</li>
-          <li><code>doctor@demo.health</code>: can send alerts and change alert levels</li>
-          <li><code>viewer@demo.health</code>: can only view</li>
+          <li><code>admin@demo.health</code>: everything, including the users list</li>
+          <li><code>doctor@demo.health</code>: all results and predictions</li>
+          <li><code>viewer@demo.health</code>: all results and predictions</li>
         </ul>
       </details>
-      <p class="fine">Preview: sign-in is simulated with sample accounts and sample data. In the real system, only staff of
-        registered healthcare centers can sign in, and the center's server checks every sign-in and what each role can see.
-        No patient names are shown.</p>
+      <p class="fine">Preview: sign-in is simulated with these accounts. In the real system, only staff of registered
+        healthcare centers can sign in, and the server checks every sign-in.</p>
     </div>
   </section>
 
@@ -58,8 +56,8 @@
         </button>
         <h2 id="page-title"></h2>
         <div class="topbar-right">
-          <span class="sample-badge" title="Numbers on this preview are sample data until the backend is connected">Sample data</span>
-          <label class="center-pick"><span class="sr-only">Healthcare center</span><select id="center-switch"></select></label>
+          <span class="data-badge" title="Every number here comes from the UCI Air Quality dataset and the models trained on it">UCI Italy dataset</span>
+          <label class="pollutant-pick">Pollutant<select id="pollutant"></select></label>
         </div>
       </header>
       <main id="view" class="view" tabindex="-1"></main>
@@ -68,6 +66,6 @@
   </div>
 
   <script src="vendor/echarts.min.js"></script>
-  <script src="app.js?v=8"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

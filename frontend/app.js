@@ -1,353 +1,129 @@
-// Air Health Portal: the frontend for healthcare centers.
+// Air Health Portal: air quality prediction and unusual-period analysis for healthcare centers.
 //
-// The file has three parts:
-//   0. SHARED: the AQI scale and small helpers, used by everything below.
-//   1. SAMPLE DATA: stands in for the backend. Each api.* function names the endpoint it will become.
-//      The backend team replaces this part, one function at a time, with fetch() calls that return the same shapes.
-//   2. APP: sign-in, menu and the screens. It only gets data through api.*.
+// Everything on screen comes from our own work, served by main.py: the UCI Air Quality dataset (Italy, 2004-2005),
+// the models trained on it, their results on the future test period and the unusual periods they flagged.
+// Only the sign-in below is a stand-in until the backend team adds real accounts.
 
 /* =====================================================================================================
-   0. SHARED
+   SIGN-IN (stand-in: replace with POST /api/auth/login on the backend)
    ===================================================================================================== */
-
-// US EPA air quality index for PM2.5 (2024 bands): [low, high, AQI low, AQI high, name, colour, text colour on it]
-const AQI_BANDS = [
-  [0, 9, 0, 50, "Good", "#16a34a", "#0f172a"],
-  [9.1, 35.4, 51, 100, "Moderate", "#ca8a04", "#0f172a"],
-  [35.5, 55.4, 101, 150, "Unhealthy for sensitive groups", "#ea580c", "#0f172a"],
-  [55.5, 125.4, 151, 200, "Unhealthy", "#dc2626", "#ffffff"],
-  [125.5, 225.4, 201, 300, "Very unhealthy", "#9333ea", "#ffffff"],
-  [225.5, 325.4, 301, 500, "Hazardous", "#7f1d1d", "#ffffff"],
+const ACCOUNTS = [
+  { email: "admin@demo.health", name: "Center admin", role: "admin" },
+  { email: "doctor@demo.health", name: "Duty doctor", role: "doctor" },
+  { email: "viewer@demo.health", name: "Read-only viewer", role: "viewer" },
 ];
-
-const HOUR = 3600000;
-const round1 = (v) => Math.round(v * 10) / 10;
-const sum = (list) => list.reduce((a, b) => a + b, 0);
-function startOfHour(d = new Date()) { const t = new Date(d); t.setMinutes(0, 0, 0); return t; }
-function startOfDay(d = new Date()) { const t = new Date(d); t.setHours(0, 0, 0, 0); return t; }
-function addDays(d, n) { const t = new Date(d); t.setDate(t.getDate() + n); return t; }
-function dateKey(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
-
-// PM2.5 (µg/m³) -> {aqi, category, color}. Above the top of the scale it shows as 500.
-function aqiOf(pm25) {
-  const pm = Math.max(0, round1(pm25));
-  for (const [lo, hi, aLo, aHi, category, color] of AQI_BANDS) {
-    if (pm <= hi) return { aqi: Math.round(aLo + ((aHi - aLo) * (Math.max(pm, lo) - lo)) / (hi - lo)), category, color };
-  }
-  const top = AQI_BANDS[AQI_BANDS.length - 1];
-  return { aqi: 500, category: top[4], color: top[5] };
+async function signIn(email, password) {
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const user = ACCOUNTS.find((a) => a.email === email.trim().toLowerCase());
+  if (!user || password !== "demo123") throw new Error("That email and password don't match a staff account.");
+  return { token: "preview-token", user: { ...user } };
 }
 
-// The band for an AQI number. The screens take colours from here, never from the data.
-function bandFor(aqi) { const a = Number(aqi); return AQI_BANDS.find((b) => a <= b[3]) || AQI_BANDS[AQI_BANDS.length - 1]; }
+/* =====================================================================================================
+   DATA (all from main.py)
+   ===================================================================================================== */
+async function getJSON(url, options) {
+  const res = await fetch(url, options);
+  let body = null;
+  try { body = await res.json(); } catch (e) { /* not JSON */ }
+  if (!res.ok) {
+    const detail = body && body.detail;
+    throw new Error(typeof detail === "string" ? detail : Array.isArray(detail) ? detail.map((d) => `${d.loc[d.loc.length - 1]}: ${d.msg}`).join(". ") : `The server answered ${res.status}.`);
+  }
+  return body;
+}
 
-// Session storage that never throws (private windows can block it)
+const resultsCache = new Map();   // one results file per pollutant, fetched once
+const api = {
+  datasets: () => getJSON("/api/datasets"),
+  results(key) {
+    if (!resultsCache.has(key)) {
+      resultsCache.set(key, getJSON(`/api/results/${encodeURIComponent(key)}`).catch((err) => { resultsCache.delete(key); throw err; }));
+    }
+    return resultsCache.get(key);
+  },
+  sample: (key) => getJSON(`/api/sample/${encodeURIComponent(key)}`),
+  predict: (body) => getJSON("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
+  reportUrl: (key) => `/api/report/${encodeURIComponent(key)}?download=true`,
+  episodesCsvUrl: (key) => `/api/episodes/${encodeURIComponent(key)}`,
+};
+
+/* =====================================================================================================
+   APP
+   ===================================================================================================== */
+const $ = (id) => document.getElementById(id);
+// Every value that goes into HTML passes through esc(), numbers too: data from a server is never trusted.
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const CALM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const NARROW = window.matchMedia("(max-width: 860px)");   // the width where the menu becomes a slide-out
+const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const ROLE_NAMES = { admin: "Admin", doctor: "Doctor", viewer: "Viewer" };
+const RIGHTS = { admin: ["manageUsers"], doctor: [], viewer: [] };   // the backend must enforce the same rules
+const KINDS = {
+  "Unusual pollution": ["Real pollution event", "tag-real", "#c2410c"],
+  "Data limitation": ["Probably a data problem", "tag-sensor", "#7c3aed"],
+  "Unclear": ["Not sure", "tag-unsure", "#64748b"],
+};
+const FEATURES = {
+  hour: "Hour of the day", weekday: "Day of the week (0 = Monday)", lag_1: "Value 1 hour before", lag_2: "Value 2 hours before",
+  lag_3: "Value 3 hours before", lag_24: "Same hour yesterday", temperature: "Temperature, previous hour (°C)",
+  relative_humidity: "Humidity, previous hour (%)", absolute_humidity: "Absolute humidity, previous hour",
+};
+const SETTING_NAMES = { n_estimators: "trees", max_depth: "depth", min_samples_leaf: "hours per leaf", learning_rate: "learning rate" };
+
+const ICONS = {
+  overview: '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
+  dataset: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  model: '<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>',
+  unusual: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  predict: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  reports: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
+  settings: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+};
+const PAGES = {
+  overview: { title: "Overview", render: renderOverview },
+  dataset: { title: "Dataset", render: renderDataset },
+  model: { title: "Model results", render: renderModel },
+  unusual: { title: "Unusual periods", render: renderUnusual },
+  predict: { title: "Try a prediction", render: renderPredict },
+  reports: { title: "Reports", render: renderReports },
+  settings: { title: "Settings", render: renderSettings },
+};
+
 const store = {
   get(key, fallback) { try { return JSON.parse(sessionStorage.getItem(key)) ?? fallback; } catch (e) { return fallback; } },
   set(key, value) { try { sessionStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* keep going without it */ } },
   remove(key) { try { sessionStorage.removeItem(key); } catch (e) { /* ignore */ } },
 };
 
-/* =====================================================================================================
-   1. SAMPLE DATA (replace with the backend)
-
-   Endpoints the backend should provide. All JSON, all behind the sign-in token, all limited to the
-   signed-in user's center and role. Patient data is counts only, never names.
-
-     POST /api/auth/login                     {email, password, centerId} -> {token, user: {name, email, role}, center}
-     GET  /api/centers                        -> [{id, name, city}]
-     GET  /api/centers/{id}                   -> {id, name, city, lat, lon, beds, erBeds, usualVisits}
-     GET  /api/centers/{id}/overview          -> {now, forecast, load, actions}
-     GET  /api/centers/{id}/surge?days=7      -> [{date, pm25, aqi, category, usualVisits, expectedVisits, level, bedsNeeded, erStaff}]
-     GET  /api/centers/{id}/patient-groups    -> [{area, group, count}]
-     GET  /api/centers/{id}/alerts            -> [{sentAt, group, channel, reached, aqi}]
-     POST /api/centers/{id}/alerts            {group, channel, message} -> {queued}
-     GET  /api/centers/{id}/thresholds        -> {group: aqi, ...}
-     PUT  /api/centers/{id}/thresholds        {group: aqi, ...} -> same
-     GET  /api/centers/{id}/unusual-periods   -> [{start, end, label: real|sensor|unsure, pollutant, peak, expected, reason}]
-     GET  /api/centers/{id}/reports/{YYYY-MM} -> {month, days, summary}
-     GET  /api/centers/{id}/users             -> [{name, email, role, lastActive}]   (admins only)
-   ===================================================================================================== */
-
-const CENTERS = [
-  { id: "hyd-chc", name: "Hyderabad Community Health Centre", city: "Hyderabad", lat: 17.385, lon: 78.487,
-    beds: 120, erBeds: 18, usualVisits: 42, base: 58, seed: 11, areas: ["Secunderabad", "Ameerpet", "Old City", "Kukatpally"] },
-  { id: "del-dh", name: "Delhi District Hospital", city: "Delhi", lat: 28.614, lon: 77.209,
-    beds: 320, erBeds: 44, usualVisits: 90, base: 92, seed: 23, areas: ["Karol Bagh", "Rohini", "Saket", "Lajpat Nagar"] },
-  { id: "blr-uhc", name: "Bengaluru Urban Health Centre", city: "Bengaluru", lat: 12.972, lon: 77.595,
-    beds: 80, erBeds: 12, usualVisits: 26, base: 34, seed: 37, areas: ["Whitefield", "Jayanagar", "Hebbal", "Yeshwanthpur"] },
-];
-const ACCOUNTS = [
-  { email: "admin@demo.health", name: "Center admin", role: "admin" },
-  { email: "doctor@demo.health", name: "Duty doctor", role: "doctor" },
-  { email: "viewer@demo.health", name: "Read-only viewer", role: "viewer" },
-];
-const STAFF = [
-  ...ACCOUNTS,
-  { email: "er.lead@demo.health", name: "ER nurse lead", role: "viewer" },
-  { email: "health.officer@demo.health", name: "Public health officer", role: "viewer" },
-];
-const SAMPLE_GROUPS = ["Asthma", "COPD", "Heart disease", "Pregnancy", "Children under 5", "Over 65"];
-const DEFAULT_THRESHOLDS = { Asthma: 100, COPD: 100, "Heart disease": 120, Pregnancy: 100, "Children under 5": 100, "Over 65": 120 };
-
-const pause = (ms = 150) => new Promise((resolve) => setTimeout(resolve, ms));   // feels like a network call
-function noise(n) { const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }
-function findCenter(id) { const c = CENTERS.find((x) => x.id === id); if (!c) throw new Error("Unknown center."); return c; }
-
-// Hourly fine dust (PM2.5, µg/m³): a rush-hour cycle, slower multi-day pollution spells and some noise.
-// The same hour always gives the same value, so the sample looks identical on every load.
-function pm25At(center, time) {
-  const h = Math.floor(time.getTime() / HOUR);
-  const hour = time.getHours();
-  const rush = 1 + 0.3 * Math.cos(((hour - 8) / 24) * 2 * Math.PI) + 0.2 * Math.cos(((hour - 21) / 12) * 2 * Math.PI);
-  const spell = 1 + 0.55 * Math.max(0, Math.sin(h / 24 / 2.7 + center.seed));
-  const jitter = 0.85 + 0.3 * noise(h + center.seed * 1000);
-  return Math.max(4, center.base * rush * spell * jitter);
-}
-function dayMean(center, day) {
-  let total = 0;
-  for (let i = 0; i < 24; i++) total += pm25At(center, new Date(day.getTime() + i * HOUR));
-  return total / 24;
-}
-
-// Sample rule until the backend's model is connected: about 6% more breathing-related visits
-// for every 10 µg/m³ of fine dust above 35.
-function expectedVisits(center, pm25) { return Math.round(center.usualVisits * (1 + 0.006 * Math.max(0, pm25 - 35))); }
-function loadLevel(expected, usual) { const r = expected / usual; return r >= 1.3 ? "High" : r >= 1.1 ? "Medium" : "Low"; }
-
-function actionsFor(level) {
-  const all = [
-    { id: "staff", text: "Add one doctor and one nurse to the evening ER shift", why: "Breathing-related visits usually peak in the evening on bad-air days", levels: ["High"] },
-    { id: "beds", text: "Keep 2–3 observation beds free for breathing problems", why: "Based on the expected visits for the next 24 hours", levels: ["High"] },
-    { id: "stock", text: "Check stock of inhalers, nebuliser solution and oxygen", why: "Enough for at least 3 busy days", levels: ["High", "Medium"] },
-    { id: "alert", text: "Send an air alert to asthma and COPD patients", why: "Preview and send it from Patient alerts", levels: ["High", "Medium"] },
-    { id: "indoor", text: "Keep ward windows closed and run air purifiers", why: "Indoor fine dust follows outdoor levels", levels: ["High", "Medium"] },
-    { id: "routine", text: "No extra staff needed: keep the usual daily checks", why: "The air is expected to stay near normal", levels: ["Low"] },
-  ];
-  return all.filter((a) => a.levels.includes(level)).map(({ levels, ...a }) => a);
-}
-
-const PERIOD_TEMPLATES = [
-  { daysAgo: 2, from: 19, hours: 4, label: "real", factor: 2.1,
-    reason: "Coarse dust and nitrogen dioxide rose at the same time, which points to real pollution such as waste burning or heavy traffic." },
-  { daysAgo: 4, from: 1, hours: 7, label: "sensor", factor: 1.7,
-    reason: "The reading stayed at exactly the same value for 7 hours. A stuck sensor is the likely cause." },
-  { daysAgo: 6, from: 8, hours: 3, label: "real", factor: 1.8,
-    reason: "Morning rush hour with very little wind; carbon monoxide and nitrogen dioxide also rose." },
-  { daysAgo: 9, from: 14, hours: 2, label: "sensor", factor: 4.2,
-    reason: "A sudden jump to about 4 times the usual level for 2 hours while nothing else moved, then straight back. Probably a glitch or the sensor was being serviced." },
-  { daysAgo: 12, from: 22, hours: 5, label: "unsure", factor: 1.9,
-    reason: "The level was well above what the model expected and the data looked complete, but no other pollutant moved with it." },
-  { daysAgo: 17, from: 6, hours: 3, label: "sensor", factor: 1.6,
-    reason: "Readings were missing for 5 of the 6 hours before, so the model had little to go on." },
-  { daysAgo: 21, from: 18, hours: 6, label: "real", factor: 2.4,
-    reason: "Fine and coarse dust rose together through the evening, which fits a fireworks or festival night." },
-  { daysAgo: 26, from: 3, hours: 2, label: "unsure", factor: 1.7,
-    reason: "A short rise at night with complete data; no other pollutant confirms it." },
-];
-
-const api = {
-  // POST /api/auth/login
-  async signIn(email, password, centerId) {
-    await pause(350);
-    const user = ACCOUNTS.find((a) => a.email === email.trim().toLowerCase());
-    const center = CENTERS.find((c) => c.id === centerId);
-    if (!user || password !== "demo123" || !center) throw new Error("That email and password don't match a staff account at this center.");
-    return { token: "sample-token", user: { ...user }, center: { id: center.id, name: center.name, city: center.city } };
-  },
-
-  // GET /api/centers
-  async centers() { return CENTERS.map(({ id, name, city }) => ({ id, name, city })); },
-
-  // GET /api/centers/{id}
-  async center(centerId) {
-    await pause();
-    const { id, name, city, lat, lon, beds, erBeds, usualVisits } = findCenter(centerId);
-    return { id, name, city, lat, lon, beds, erBeds, usualVisits };
-  },
-
-  // GET /api/centers/{id}/overview
-  async overview(centerId) {
-    await pause();
-    const c = findCenter(centerId);
-    const now = startOfHour();
-    const nowPm = pm25At(c, now);
-    const forecast = Array.from({ length: 72 }, (_, i) => {
-      const t = new Date(now.getTime() + (i + 1) * HOUR);
-      const pm = pm25At(c, t);
-      return { time: t.toISOString(), pm25: round1(pm), ...aqiOf(pm) };
-    });
-    const next24 = forecast.slice(0, 24);
-    const meanPm = sum(next24.map((f) => f.pm25)) / 24;
-    const expected = expectedVisits(c, meanPm);
-    const level = loadLevel(expected, c.usualVisits);
-    const peak = next24.reduce((a, b) => (b.pm25 > a.pm25 ? b : a));
-    return {
-      now: { time: now.toISOString(), pm25: round1(nowPm), ...aqiOf(nowPm) },
-      forecast,
-      load: { level, expectedVisits: expected, usualVisits: c.usualVisits, next24Pm25: round1(meanPm), peak },
-      actions: actionsFor(level),
-    };
-  },
-
-  // GET /api/centers/{id}/surge?days=7
-  async surge(centerId) {
-    await pause();
-    const c = findCenter(centerId);
-    return Array.from({ length: 7 }, (_, i) => {
-      const day = addDays(startOfDay(), i);
-      const pm = dayMean(c, day);
-      const expected = expectedVisits(c, pm);
-      return { date: dateKey(day), pm25: round1(pm), ...aqiOf(pm), usualVisits: c.usualVisits, expectedVisits: expected,
-        level: loadLevel(expected, c.usualVisits), bedsNeeded: Math.ceil(expected * 0.15), erStaff: Math.max(2, Math.ceil(expected / 14)) };
-    });
-  },
-
-  // GET /api/centers/{id}/patient-groups (counts only)
-  async patientGroups(centerId) {
-    await pause();
-    const c = findCenter(centerId);
-    const scale = c.beds / 120;
-    return c.areas.flatMap((area, a) => SAMPLE_GROUPS.map((group, g) => ({
-      area, group, count: Math.round((40 + 260 * noise(c.seed * 100 + a * 10 + g)) * scale),
-    })));
-  },
-
-  // GET /api/centers/{id}/alerts
-  async alertHistory(centerId) {
-    await pause();
-    const c = findCenter(centerId);
-    const out = [];
-    for (let i = 1; i <= 30 && out.length < 10; i++) {
-      const day = addDays(startOfDay(), -i);
-      const q = aqiOf(dayMean(c, day));
-      if (q.aqi <= 100) continue;
-      const wide = q.aqi > 150;
-      out.push({ sentAt: new Date(day.getTime() + 7 * HOUR).toISOString(), group: wide ? "All at-risk groups" : "Asthma and COPD",
-        channel: ["SMS", "WhatsApp", "Patient portal"][i % 3], reached: Math.round(c.usualVisits * (wide ? 22 : 9) * (0.8 + 0.4 * noise(c.seed + i))), aqi: q.aqi });
-    }
-    return out;
-  },
-
-  // POST /api/centers/{id}/alerts. The sample only previews; the backend does the sending.
-  async sendAlert(centerId, alert) {
-    await pause(300);
-    findCenter(centerId);
-    return { queued: false, preview: true, ...alert };
-  },
-
-  // GET /api/centers/{id}/thresholds
-  async thresholds(centerId) { await pause(); return { ...DEFAULT_THRESHOLDS, ...store.get(`ahp-thresholds-${centerId}`, {}) }; },
-
-  // PUT /api/centers/{id}/thresholds
-  async saveThresholds(centerId, values) { await pause(250); store.set(`ahp-thresholds-${centerId}`, values); return values; },
-
-  // GET /api/centers/{id}/unusual-periods
-  async unusualPeriods(centerId) {
-    await pause();
-    const c = findCenter(centerId);
-    return PERIOD_TEMPLATES.map((p) => {
-      const start = new Date(addDays(startOfDay(), -p.daysAgo).getTime() + p.from * HOUR);
-      const expected = pm25At(c, start);
-      return { start: start.toISOString(), end: new Date(start.getTime() + p.hours * HOUR).toISOString(), label: p.label,
-        pollutant: "PM2.5", peak: round1(expected * p.factor), expected: round1(expected), reason: p.reason };
-    });
-  },
-
-  // GET /api/centers/{id}/reports/{YYYY-MM}
-  async monthlyReport(centerId, month) {
-    await pause();
-    const c = findCenter(centerId);
-    const [year, mon] = month.split("-").map(Number);
-    const lastDay = new Date(year, mon, 0).getDate();
-    const limits = { ...DEFAULT_THRESHOLDS, ...store.get(`ahp-thresholds-${centerId}`, {}) };
-    const lowest = Math.min(...Object.values(limits));
-    const days = [];
-    for (let d = 1; d <= lastDay; d++) {
-      const day = new Date(year, mon - 1, d);
-      if (day > startOfDay()) break;
-      const pm = dayMean(c, day);
-      const q = aqiOf(pm);
-      const expected = expectedVisits(c, pm);
-      days.push({ date: dateKey(day), pm25: round1(pm), aqi: q.aqi, category: q.category,
-        expectedVisits: expected, usualVisits: c.usualVisits, alertsSent: q.aqi > lowest ? 1 : 0 });
-    }
-    const worst = days.length ? days.reduce((a, b) => (b.pm25 > a.pm25 ? b : a)) : null;
-    return {
-      month, days,
-      summary: {
-        avgPm25: days.length ? round1(sum(days.map((d) => d.pm25)) / days.length) : null,
-        alertsSent: sum(days.map((d) => d.alertsSent)),
-        extraVisits: sum(days.map((d) => Math.max(0, d.expectedVisits - d.usualVisits))),
-        worst,
-        byCategory: AQI_BANDS.map((b) => ({ category: b[4], days: days.filter((d) => d.category === b[4]).length })),
-      },
-    };
-  },
-
-  // GET /api/centers/{id}/users (admins only)
-  async users(centerId) {
-    await pause();
-    findCenter(centerId);
-    return STAFF.map((s, i) => ({ ...s, lastActive: new Date(Date.now() - (i * 7 + 2) * HOUR).toISOString() }));
-  },
-};
-
-/* =====================================================================================================
-   2. APP
-   ===================================================================================================== */
-
-const $ = (id) => document.getElementById(id);
-// Every value that goes into HTML passes through esc(), numbers too: data from a server is never trusted.
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-const num = (v) => esc(Number(v).toLocaleString("en-IN"));
-const CALM = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const LABELS = { real: ["Real pollution event", "tag-real"], sensor: ["Probably a sensor problem", "tag-sensor"], unsure: ["Not sure", "tag-unsure"] };
-const ROLE_NAMES = { admin: "Admin", doctor: "Doctor", viewer: "Viewer" };
-const LEVELS = ["Low", "Medium", "High"];
-
-// What each role may do. The backend must enforce the same rules; hiding a button is not security.
-const RIGHTS = {
-  admin: ["sendAlerts", "editThresholds", "tickActions", "manageUsers", "switchCenter"],
-  doctor: ["sendAlerts", "editThresholds", "tickActions"],
-  viewer: [],
-};
-
-const ICONS = {
-  overview: '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
-  surge: '<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>',
-  alerts: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
-  unusual: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
-  reports: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
-  settings: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
-};
-const PAGES = {
-  overview: { title: "Overview", render: renderOverview },
-  surge: { title: "Surge planning", render: renderSurge },
-  alerts: { title: "Patient alerts", render: renderAlerts },
-  unusual: { title: "Unusual periods", render: renderUnusual },
-  reports: { title: "Reports", render: renderReports },
-  settings: { title: "Settings", render: renderSettings },
-};
-
-let session = store.get("ahp-session", null);   // {token, user, center}
+let session = store.get("ahp-session", null);   // {token, user}
+let dataset = null;                             // /api/datasets
+let pollutant = store.get("ahp-pollutant", null);
 let charts = [];
 let renderToken = 0;
 
 const can = (action) => !!session && (RIGHTS[session.user.role] || []).includes(action);
 
 // ---------- formatting ----------
+const num = (v, digits) => {
+  const n = Number(v);
+  if (v == null || !Number.isFinite(n)) return "–";
+  const d = digits ?? (Math.abs(n) < 10 ? 3 : Math.abs(n) < 100 ? 1 : 0);
+  return esc(n.toLocaleString("en-IN", { minimumFractionDigits: d, maximumFractionDigits: d }));
+};
+const pct = (v, digits = 0) => (v == null ? "–" : `${num(v, digits)}%`);
 function clock(d) { const h = d.getHours(); return `${h % 12 || 12} ${h < 12 ? "am" : "pm"}`; }
-function fmtHour(iso) { const d = new Date(iso); return `${DAYS[d.getDay()]} ${clock(d)}`; }
-function fmtDateTime(iso) { const d = new Date(iso); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}, ${clock(d)}`; }
-function parseKey(key) { const [y, m, d] = String(key).split("-").map(Number); return new Date(y, m - 1, d); }
-function fmtDay(key) { const d = parseKey(key); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`; }
-function fmtMonth(key) { const [y, m] = key.split("-").map(Number); return `${MONTH_NAMES[m - 1]} ${y}`; }
-const levelPill = (level) => { const l = LEVELS.includes(level) ? level : "Low"; return `<span class="pill level-${l.toLowerCase()}">${l}</span>`; };
-const aqiPill = (q) => { const b = bandFor(q.aqi); return `<span class="pill" style="background:${b[5]};color:${b[6]}">${esc(q.aqi)} · ${b[4]}</span>`; };
+function fmtDate(iso) { const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
+function fmtDateTime(iso) { const d = new Date(iso); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${clock(d)}`; }
+const info = () => dataset.pollutants.find((p) => p.key === pollutant);
+const unit = () => esc(info().unit);
+const bestOf = (r) => r.models.find((m) => m.model === r.model);
+const persistenceOf = (r) => r.models.find((m) => m.model.startsWith("Persistence"));
+function settingsText(settings) {
+  if (!settings) return "";
+  return Object.entries(SETTING_NAMES).filter(([k]) => settings[k] != null).map(([k, name]) => `${esc(settings[k])} ${name}`).join(", ");
+}
 
 // ---------- charts ----------
 function makeChart(el, option) {
@@ -358,17 +134,16 @@ function makeChart(el, option) {
 }
 function clearCharts() { charts.forEach((c) => c.dispose()); charts = []; }
 window.addEventListener("resize", () => charts.forEach((c) => c.resize()));
+const grid = { lineStyle: { color: "#eef2f7" } };
 
-// Light AQI colour stripes behind a PM2.5 axis
-function aqiStripes(top) {
-  return AQI_BANDS.filter((b) => b[0] < top).map((b) => [
-    { yAxis: b[0], itemStyle: { color: b[5], opacity: 0.08 } }, { yAxis: Math.min(b[1], top) }]);
+// The train / validation / test split as shaded bands on a time chart
+function splitBands(periods) {
+  const band = (name, [from, to], color) => [{ name, xAxis: from, itemStyle: { color, opacity: 0.1 } }, { xAxis: to }];
+  return [band("Learning", periods.train, "#1d4ed8"), band("Choosing", periods.validation, "#d97706"), band("Test (future)", periods.test, "#16a34a")];
 }
 
-// ---------- sign-in ----------
-async function startSignIn() {
-  const centers = await api.centers();
-  $("signin-center").innerHTML = centers.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
+// ---------- sign-in and shell ----------
+function startSignIn() {
   $("signin-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const error = $("signin-error");
@@ -384,7 +159,7 @@ async function startSignIn() {
     button.disabled = true;
     button.textContent = "Signing in…";
     try {
-      session = await api.signIn(email, password, $("signin-center").value);   // backend: keep the token for api calls
+      session = await signIn(email, password);
       store.set("ahp-session", session);
       $("signin-password").value = "";
       await setupShell();
@@ -408,21 +183,17 @@ function signOut() {
   show();
 }
 
-// ---------- shell ----------
 async function setupShell() {
   $("nav").innerHTML = Object.entries(PAGES).map(([name, page]) =>
     `<a href="#/${name}" data-page="${name}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>${esc(page.title)}</a>`).join("");
   $("me-name").textContent = session.user.name;
   $("me-role").textContent = ROLE_NAMES[session.user.role] || session.user.role;
-  const centers = can("switchCenter") ? await api.centers() : [session.center];
-  const pick = $("center-switch");
-  pick.innerHTML = centers.map((c) => `<option value="${esc(c.id)}">${esc(c.name)}</option>`).join("");
-  pick.value = session.center.id;
-  pick.disabled = !can("switchCenter");
-  pick.title = can("switchCenter") ? "Switch center" : "Your center";
+  dataset = dataset || await api.datasets();
+  if (!dataset.pollutants.some((p) => p.key === pollutant)) pollutant = dataset.pollutants[0].key;
+  $("pollutant").innerHTML = dataset.pollutants.map((p) => `<option value="${esc(p.key)}">${esc(p.pollutant)} (${esc(p.unit)})</option>`).join("");
+  $("pollutant").value = pollutant;
 }
 
-const NARROW = window.matchMedia("(max-width: 860px)");   // the width where the menu becomes a slide-out
 function openMenu(open) {
   $("shell").classList.toggle("menu-open", open);
   $("scrim").hidden = !open;
@@ -432,7 +203,7 @@ function openMenu(open) {
 
 function currentPage() { const name = location.hash.replace(/^#\/?/, ""); return PAGES[name] ? name : "overview"; }
 
-// keep: id of a control to keep focus on after the screen redraws (e.g. a dropdown being changed)
+// keep: id of a control to keep focus on after the screen redraws (e.g. the pollutant menu being changed)
 async function show(keep) {
   if (!session) {
     $("shell").hidden = true;
@@ -456,6 +227,7 @@ async function show(keep) {
   const fresh = () => token === renderToken;   // false once the user has moved on to another screen
   $("view").innerHTML = `<div class="card"><p class="muted">Loading…</p></div>`;
   try {
+    if (!dataset) await setupShell();
     await page.render($("view"), fresh);
   } catch (err) {
     if (fresh()) $("view").innerHTML = `<div class="card"><p class="form-error">Couldn't load this screen: ${esc(err.message)}</p></div>`;
@@ -465,421 +237,419 @@ async function show(keep) {
 
 // ---------- 1. Overview ----------
 async function renderOverview(view, fresh) {
-  const o = await api.overview(session.center.id);
+  const all = await Promise.all(dataset.pollutants.map((p) => api.results(p.key)));
   if (!fresh()) return;
-  const load = o.load;
-  const nowBand = bandFor(o.now.aqi);
-  const nextBand = bandFor(aqiOf(load.next24Pm25).aqi);
-  const doneKey = `ahp-done-${session.center.id}-${dateKey(new Date())}`;
-  const tickable = can("tickActions");
-  const done = store.get(doneKey, []);
-  const reason = load.level === "Low"
-    ? `Fine dust is expected to average ${esc(load.next24Pm25)} µg/m³, close to normal.`
-    : `Because fine dust is expected to average ${esc(load.next24Pm25)} µg/m³ (${nextBand[4].toLowerCase()}).`;
+  const r = all[dataset.pollutants.findIndex((p) => p.key === pollutant)];
+  const best = bestOf(r);
   view.innerHTML = `
-    ${load.level === "High" ? `<p class="note warn"><b>Busy day ahead.</b> Breathing-related visits are expected to be well above normal. See the suggested actions.</p>` : ""}
+    <p class="note">Hourly readings from an air quality station on a busy road in an Italian city, ${esc(fmtDate(dataset.start))}
+      to ${esc(fmtDate(dataset.end))} (${num(dataset.rows, 0)} hours, UCI Machine Learning Repository). The models learned from
+      the earlier part and were tested on the last part, from ${esc(fmtDate(r.periods.test[0]))}, which they never saw.</p>
     <div class="grid cols-4">
-      <section class="card span-2">
-        <div class="card-head"><h3>Air quality now</h3><span class="muted">${esc(session.center.name)} · ${esc(clock(new Date(o.now.time)))}</span></div>
-        <div class="aqi-now">
-          <div class="aqi-dial" style="--c:${nowBand[5]};--p:${Math.min(100, (Number(o.now.aqi) / 300) * 100) || 0}%"><b>${esc(o.now.aqi)}</b><span>AQI</span></div>
-          <div>
-            <p class="category"><span class="dot" style="background:${nowBand[5]}"></span>${nowBand[4]}</p>
-            <p class="muted">Fine dust (PM2.5) ${esc(o.now.pm25)} µg/m³</p>
-          </div>
-        </div>
-        <div class="aqi-scale" aria-hidden="true">${AQI_BANDS.map((b) => `<span class="${b === nowBand ? "on" : ""}" style="background:${b[5]}"></span>`).join("")}</div>
-      </section>
-      <section class="card kpi">
-        <span class="label">Expected patient load, next 24 h</span>
-        <span class="value">${levelPill(load.level)}</span>
-        <span class="sub">About <b>${esc(load.expectedVisits)}</b> breathing-related visits (usually ${esc(load.usualVisits)}). ${reason}</span>
-      </section>
-      <section class="card kpi">
-        <span class="label">Worst hour, next 24 h</span>
-        <span class="value">${esc(fmtHour(load.peak.time))}</span>
-        <span class="sub">${aqiPill(load.peak)}</span>
-      </section>
-    </div>
-    <div class="grid cols-3">
-      <section class="card span-2">
-        <div class="card-head"><h3>Next 3 days</h3><span class="muted">Fine dust forecast · colour stripes show the air quality level</span></div>
-        <div id="forecast-chart" class="chart"></div>
-      </section>
-      <section class="card">
-        <div class="card-head"><h3>Suggested actions</h3><span class="muted">Planning ideas for staff</span></div>
-        <ul class="checklist">${o.actions.map((a) => `
-          <li class="${done.includes(a.id) ? "done" : ""}"><label><input type="checkbox" data-id="${esc(a.id)}" ${done.includes(a.id) ? "checked" : ""} ${tickable ? "" : "disabled"}>
-            <span>${esc(a.text)}<small>${esc(a.why)}</small></span></label></li>`).join("")}</ul>
-        ${tickable ? "" : `<p class="muted" style="margin-top:10px">Admins and doctors tick these off.</p>`}
-      </section>
-    </div>`;
-  view.querySelectorAll(".checklist input").forEach((box) => box.addEventListener("change", () => {
-    const ids = [...view.querySelectorAll(".checklist input:checked")].map((b) => b.dataset.id);
-    store.set(doneKey, ids);
-    box.closest("li").classList.toggle("done", box.checked);
-  }));
-  const top = Math.max(...o.forecast.map((f) => Number(f.pm25))) * 1.15;
-  makeChart($("forecast-chart"), {
-    tooltip: { trigger: "axis", formatter: (items) => {
-      const f = o.forecast[items[0].dataIndex];
-      return `<b>${esc(fmtHour(f.time))}</b><br>Fine dust ${esc(f.pm25)} µg/m³<br>AQI ${esc(f.aqi)}, ${bandFor(f.aqi)[4]}`;
-    } },
-    grid: { left: 44, right: 12, top: 16, bottom: 30 },
-    xAxis: { type: "category", data: o.forecast.map((f) => fmtHour(f.time)), axisLabel: { interval: 11 } },
-    yAxis: { type: "value", name: "µg/m³", max: Math.ceil(top), splitLine: { lineStyle: { color: "#eef2f7" } } },
-    series: [{ type: "line", smooth: true, showSymbol: false, color: "#1d4ed8", lineStyle: { width: 2 },
-      areaStyle: { color: "rgba(29,78,216,0.08)" }, data: o.forecast.map((f) => Number(f.pm25)),
-      markArea: { silent: true, data: aqiStripes(top) } }],
-  });
-}
-
-// ---------- 2. Surge planning ----------
-async function renderSurge(view, fresh) {
-  const days = await api.surge(session.center.id);
-  if (!fresh()) return;
-  const busiest = days.reduce((a, b) => (b.expectedVisits > a.expectedVisits ? b : a));
-  view.innerHTML = `
-    <div class="grid cols-3">
-      <section class="card kpi"><span class="label">Busiest day this week</span><span class="value">${esc(fmtDay(busiest.date))}</span>
-        <span class="sub">About ${esc(busiest.expectedVisits)} breathing-related visits (usually ${esc(busiest.usualVisits)})</span></section>
-      <section class="card kpi"><span class="label">High-load days</span><span class="value">${days.filter((d) => d.level === "High").length} <small>of ${days.length}</small></span>
-        <span class="sub">${days.filter((d) => d.level === "Medium").length} more at medium load</span></section>
-      <section class="card kpi"><span class="label">Most beds needed in a day</span><span class="value">${esc(Math.max(...days.map((d) => Number(d.bedsNeeded))))}</span>
-        <span class="sub">Observation beds for breathing problems</span></section>
+      <section class="card kpi"><span class="label">Best model for ${esc(r.pollutant)}</span><span class="value">${esc(r.model)}</span>
+        <span class="sub">Picked on the validation period</span></section>
+      <section class="card kpi"><span class="label">Typical miss per hour</span><span class="value">± ${num(best.test.MAE)} <small>${unit()}</small></span>
+        <span class="sub">On the future test period</span></section>
+      <section class="card kpi"><span class="label">Accuracy</span><span class="value">${pct(r.accuracy_within_20pct)}</span>
+        <span class="sub">of test hours within 20% of the real value</span></section>
+      <section class="card kpi"><span class="label">Better than a simple guess</span>
+        <span class="value ${r.improvement_vs_persistence_pct >= 1 ? "good" : ""}">${r.improvement_vs_persistence_pct >= 0 ? "+" : "−"}${pct(Math.abs(r.improvement_vs_persistence_pct), 1)}</span>
+        <span class="sub">vs. assuming next hour = this hour</span></section>
     </div>
     <section class="card">
-      <div class="card-head"><h3>Next 7 days: air vs expected visits</h3><span class="muted">Bars: expected visits · line: fine dust</span></div>
-      <div id="surge-chart" class="chart"></div>
-      <p class="note">Sample rule until the backend's model is connected: about 6% more breathing-related visits for every
-        10 µg/m³ of fine dust above 35.</p>
+      <div class="card-head"><h3>${esc(r.pollutant)}: daily average over the whole dataset</h3><span class="muted">Shaded: learning · choosing the model · future test</span></div>
+      <div id="daily-chart" class="chart"></div>
     </section>
     <section class="card">
-      <div class="card-head"><h3>Day by day</h3></div>
+      <div class="card-head"><h3>All four pollutants</h3><span class="muted">Click a row to see that pollutant</span></div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Day</th><th>Air quality</th><th class="num">Fine dust</th><th class="num">Expected visits</th><th>Load</th><th class="num">Beds</th><th class="num">ER doctors</th></tr></thead>
-        <tbody>${days.map((d) => `<tr><td>${esc(fmtDay(d.date))}</td><td>${aqiPill(d)}</td><td class="num">${esc(d.pm25)}</td>
-          <td class="num">${esc(d.expectedVisits)} <span class="muted">/ ${esc(d.usualVisits)}</span></td><td>${levelPill(d.level)}</td>
-          <td class="num">${esc(d.bedsNeeded)}</td><td class="num">${esc(d.erStaff)}</td></tr>`).join("")}</tbody>
+        <thead><tr><th>Pollutant</th><th>Best model</th><th class="num">Typical miss</th><th class="num">R²</th><th class="num">Within 20%</th>
+          <th class="num">Better than simple guess</th><th class="num">Unusual periods</th><th>Overfitting check</th></tr></thead>
+        <tbody>${all.map((x, i) => { const p = dataset.pollutants[i]; const b = bestOf(x); return `
+          <tr class="pick ${p.key === pollutant ? "on" : ""}" data-key="${esc(p.key)}" tabindex="0">
+            <td><b>${esc(x.pollutant)}</b> <span class="muted">${esc(x.unit)}</span></td><td>${esc(x.model)}</td>
+            <td class="num">${num(b.test.MAE)}</td><td class="num">${num(b.test.R2, 2)}</td><td class="num">${pct(x.accuracy_within_20pct)}</td>
+            <td class="num">${x.improvement_vs_persistence_pct >= 0 ? "+" : "−"}${pct(Math.abs(x.improvement_vs_persistence_pct), 1)}</td>
+            <td class="num">${num(x.episode_counts.total, 0)}</td><td>${esc(x.overfitting_check ? x.overfitting_check.verdict : "–")}</td></tr>`; }).join("")}</tbody>
       </table></div>
     </section>`;
-  const levelColor = { Low: "#16a34a", Medium: "#d97706", High: "#dc2626" };
-  makeChart($("surge-chart"), {
-    tooltip: { trigger: "axis" },
-    legend: { data: ["Expected visits", "Usual visits", "Fine dust"], top: 0 },
-    grid: { left: 44, right: 50, top: 36, bottom: 28 },
-    xAxis: { type: "category", data: days.map((d) => fmtDay(d.date)) },
-    yAxis: [{ type: "value", name: "visits", splitLine: { lineStyle: { color: "#eef2f7" } } },
-      { type: "value", name: "µg/m³", splitLine: { show: false } }],
-    series: [
-      { name: "Expected visits", type: "bar", barWidth: "45%", color: "#1d4ed8",
-        data: days.map((d) => ({ value: Number(d.expectedVisits), itemStyle: { color: levelColor[d.level] || "#1d4ed8", borderRadius: [4, 4, 0, 0] } })) },
-      { name: "Usual visits", type: "line", color: "#64748b", symbol: "none", lineStyle: { type: "dashed" }, data: days.map((d) => Number(d.usualVisits)) },
-      { name: "Fine dust", type: "line", yAxisIndex: 1, color: "#0f766e", smooth: true, data: days.map((d) => Number(d.pm25)) },
-    ],
+  view.querySelectorAll("tr.pick").forEach((row) => {
+    const pick = () => choosePollutant(row.dataset.key);
+    row.addEventListener("click", pick);
+    row.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pick(); } });
+  });
+  makeChart($("daily-chart"), {
+    tooltip: { trigger: "axis", valueFormatter: (v) => (v == null ? "no readings" : `${Number(v).toFixed(2)} ${info().unit}`) },
+    grid: { left: 44, right: 14, top: 16, bottom: 56 },
+    xAxis: { type: "time" },
+    yAxis: { type: "value", name: info().unit, splitLine: grid },
+    dataZoom: [{ type: "inside" }, { type: "slider", height: 18 }],
+    series: [{ name: "Daily average", type: "line", showSymbol: false, connectNulls: false, color: "#1d4ed8", lineStyle: { width: 1.5 },
+      data: r.data.daily.map(([day, v]) => [day, v]), markArea: { silent: true, label: { color: "#475569", fontSize: 11 }, data: splitBands(r.periods) } }],
   });
 }
 
-// ---------- 3. Patient alerts ----------
-async function renderAlerts(view, fresh) {
-  const id = session.center.id;
-  const [groups, history, limits, overview] = await Promise.all([api.patientGroups(id), api.alertHistory(id), api.thresholds(id), api.overview(id)]);
+function choosePollutant(key, keep) {
+  if (!dataset.pollutants.some((p) => p.key === key)) return;
+  pollutant = key;
+  store.set("ahp-pollutant", key);
+  $("pollutant").value = key;
+  show(keep);
+}
+
+// ---------- 2. Dataset ----------
+async function renderDataset(view, fresh) {
+  const all = await Promise.all(dataset.pollutants.map((p) => api.results(p.key)));
   if (!fresh()) return;
-  const groupNames = [...new Set(groups.map((r) => r.group))];
-  const areas = [...new Set(groups.map((r) => r.area))];
-  const countOf = (area, group) => Number((groups.find((r) => r.area === area && r.group === group) || {}).count) || 0;
-  const totals = groupNames.map((g) => ({ group: g, count: sum(areas.map((a) => countOf(a, g))) }));
-  const worst = overview.forecast.slice(0, 36).reduce((a, b) => (b.aqi > a.aqi ? b : a));
-  const editable = can("editThresholds");
+  const r = all[dataset.pollutants.findIndex((p) => p.key === pollutant)];
+  const missingDays = r.data.daily.filter(([, v]) => v == null).length;
+  const monthly = {};
+  r.data.daily.forEach(([day, v]) => { if (v == null) return; const m = day.slice(0, 7); (monthly[m] = monthly[m] || []).push(v); });
+  const months = Object.keys(monthly).sort();
+  const weather = Object.keys(dataset.weather || {});
   view.innerHTML = `
-    <div class="grid cols-3">
-      <section class="card kpi"><span class="label">At-risk patients registered</span><span class="value">${num(sum(totals.map((t) => t.count)))}</span>
-        <span class="sub">Counts only. Names stay in the hospital system.</span></section>
-      <section class="card kpi"><span class="label">Worst air in the next 36 h</span><span class="value">${esc(fmtHour(worst.time))}</span>
-        <span class="sub">${aqiPill(worst)}</span></section>
-      <section class="card kpi"><span class="label">Alerts sent, last 30 days</span><span class="value">${history.length}</span>
-        <span class="sub">${num(sum(history.map((h) => Number(h.reached) || 0)))} patients reached</span></section>
+    <div class="grid cols-2">
+      <section class="card">
+        <div class="card-head"><h3>About the dataset</h3></div>
+        <div class="table-wrap"><table><tbody>
+          <tr><th>Source</th><td>UCI Machine Learning Repository: Air Quality (Italy)</td></tr>
+          <tr><th>Where</th><td>Sensor station on a busy road in an Italian city</td></tr>
+          <tr><th>Period</th><td>${esc(fmtDate(dataset.start))} to ${esc(fmtDate(dataset.end))}</td></tr>
+          <tr><th>Size</th><td>${num(dataset.rows, 0)} hourly rows</td></tr>
+          <tr><th>Pollutants</th><td>${dataset.pollutants.map((p) => `${esc(p.pollutant)} (${esc(p.unit)})`).join(", ")}</td></tr>
+          <tr><th>Weather</th><td>${weather.map((w) => esc(FEATURES[w] ? FEATURES[w].replace(", previous hour", "") : w)).join(", ")}</td></tr>
+          <tr><th>Missing values</th><td>Marked as -200 in the original file and treated as missing</td></tr>
+        </tbody></table></div>
+      </section>
+      <section class="card">
+        <div class="card-head"><h3>How complete the readings are</h3><span class="muted">Share of hours with a reading</span></div>
+        <div id="complete-chart" class="chart small"></div>
+        <p class="muted">${esc(r.pollutant)}: ${num(missingDays, 0)} days without any reading.</p>
+      </section>
     </div>
     <div class="grid cols-2">
       <section class="card">
-        <div class="card-head"><h3>At-risk patients by area</h3></div>
-        <div id="groups-chart" class="chart"></div>
+        <div class="card-head"><h3>${esc(r.pollutant)} through a typical day</h3><span class="muted">Average for each hour</span></div>
+        <div id="hourly-chart" class="chart"></div>
       </section>
       <section class="card">
-        <div class="card-head"><h3>Send an air alert</h3><span class="muted">To patients who opted in</span></div>
-        ${can("sendAlerts") ? `
-        <form id="composer" class="composer">
-          <div class="row">
-            <label>Who<select id="alert-group"><option value="All at-risk groups">All at-risk groups</option>${groupNames.map((g) => `<option value="${esc(g)}">${esc(g)}</option>`).join("")}</select></label>
-            <label>How<select id="alert-channel"><option>SMS</option><option>WhatsApp</option><option>Patient portal</option></select></label>
-          </div>
-          <label>Message<textarea id="alert-message" maxlength="320"></textarea></label>
-          <div class="preview"><b>Preview</b><div id="alert-preview"></div></div>
-          <button type="submit" class="btn primary">Send alert</button>
-          <p id="alert-result" class="note" role="status" hidden></p>
-        </form>` : `<p class="note">You can view alerts. Ask an admin or a doctor to send one.</p>`}
+        <div class="card-head"><h3>${esc(r.pollutant)} month by month</h3><span class="muted">Monthly average</span></div>
+        <div id="monthly-chart" class="chart"></div>
       </section>
+    </div>`;
+  makeChart($("complete-chart"), {
+    tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(1)}%` },
+    grid: { left: 60, right: 30, top: 8, bottom: 24 },
+    xAxis: { type: "value", max: 100, splitLine: grid },
+    yAxis: { type: "category", data: all.map((x) => x.pollutant) },
+    series: [{ type: "bar", barWidth: "55%", data: all.map((x) => ({ value: Number(x.data.observed_pct.toFixed(1)),
+      itemStyle: { color: x.pollutant === r.pollutant ? "#1d4ed8" : "#93c5fd", borderRadius: [0, 4, 4, 0] } })),
+      label: { show: true, position: "right", formatter: (p) => `${p.value}%` } }],
+  });
+  makeChart($("hourly-chart"), {
+    tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(2)} ${info().unit}` },
+    grid: { left: 44, right: 12, top: 16, bottom: 28 },
+    xAxis: { type: "category", data: [...Array(24).keys()].map((h) => `${h}:00`) },
+    yAxis: { type: "value", name: info().unit, splitLine: grid },
+    series: [{ type: "bar", barWidth: "60%", color: "#0f766e", data: r.data.hourly_profile, itemStyle: { borderRadius: [3, 3, 0, 0] } }],
+  });
+  makeChart($("monthly-chart"), {
+    tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(2)} ${info().unit}` },
+    grid: { left: 44, right: 12, top: 16, bottom: 28 },
+    xAxis: { type: "category", data: months.map((m) => `${MONTHS[Number(m.slice(5)) - 1]} ${m.slice(2, 4)}`) },
+    yAxis: { type: "value", name: info().unit, splitLine: grid },
+    series: [{ type: "bar", barWidth: "60%", color: "#1d4ed8", itemStyle: { borderRadius: [3, 3, 0, 0] },
+      data: months.map((m) => Number((monthly[m].reduce((a, b) => a + b, 0) / monthly[m].length).toFixed(3))) }],
+  });
+}
+
+// ---------- 3. Model results ----------
+async function renderModel(view, fresh) {
+  const r = await api.results(pollutant);
+  if (!fresh()) return;
+  const best = bestOf(r);
+  const base = persistenceOf(r);
+  const o = r.overfitting_check;
+  const days = (from, to) => Math.max(1, (new Date(to) - new Date(from)) / 86400000);
+  const parts = [["Learning", r.periods.train, "#1d4ed8"], ["Choosing the model", r.periods.validation, "#d97706"], ["Future test", r.periods.test, "#16a34a"]];
+  const total = parts.reduce((s, [, p]) => s + days(...p), 0);
+  view.innerHTML = `
+    <div class="grid cols-4">
+      <section class="card kpi"><span class="label">Best model</span><span class="value">${esc(r.model)}</span>
+        <span class="sub">${settingsText(r.settings) || "Default settings"}</span></section>
+      <section class="card kpi"><span class="label">Typical miss per hour</span><span class="value">± ${num(best.test.MAE)} <small>${unit()}</small></span>
+        <span class="sub">Simple guess misses by ± ${num(base.test.MAE)}</span></section>
+      <section class="card kpi"><span class="label">Ups and downs explained (R²)</span><span class="value">${pct(best.test.R2 * 100)}</span>
+        <span class="sub">${pct(r.accuracy_within_20pct)} of hours within 20%</span></section>
+      <section class="card kpi"><span class="label">Overfitting check</span><span class="value small-value">${esc(o ? o.verdict : "–")}</span>
+        <span class="sub">${o ? `Miss on learned hours ${num(o.mae_on_learned_data)} vs new hours ${num(o.mae_on_test)}` : ""}</span></section>
     </div>
     <section class="card">
-      <div class="card-head"><h3>Alert levels</h3><span class="muted">Send an alert to a group when the forecast AQI goes above its level</span></div>
-      <form id="thresholds-form">
-        <div class="thresholds">${Object.entries(limits).map(([g, v]) => `<label>${esc(g)}
-          <input type="number" min="51" max="300" step="1" name="${esc(g)}" value="${esc(v)}" ${editable ? "" : "readonly"}></label>`).join("")}</div>
-        ${editable ? `<p style="margin-top:12px"><button type="submit" class="btn ghost">Save alert levels</button> <span id="thresholds-result" class="muted" role="status"></span></p>`
-          : `<p class="muted" style="margin-top:12px">Only admins and doctors can change these.</p>`}
-      </form>
+      <div class="card-head"><h3>How the data was split by time</h3><span class="muted">The test period comes after everything the model learned from</span></div>
+      <div class="timeline">${parts.map(([name, p, color]) => `<div style="flex:${days(...p) / total};--c:${color}">
+        <b>${esc(name)}</b><span>${esc(fmtDate(p[0]))} – ${esc(fmtDate(p[1]))}</span></div>`).join("")}</div>
     </section>
     <section class="card">
-      <div class="card-head"><h3>Alerts sent</h3><span class="muted">Last 30 days</span></div>
-      ${history.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Sent</th><th>To</th><th>How</th><th class="num">Patients reached</th><th class="num">AQI that day</th></tr></thead>
-        <tbody>${history.map((h) => `<tr><td>${esc(fmtDateTime(h.sentAt))}</td><td>${esc(h.group)}</td><td>${esc(h.channel)}</td>
-          <td class="num">${num(h.reached)}</td><td class="num">${esc(h.aqi)}</td></tr>`).join("")}</tbody>
-      </table></div>` : `<p class="muted">No alerts were needed in the last 30 days.</p>`}
-    </section>`;
+      <div class="card-head"><h3>Real vs predicted on the future test period</h3><span class="muted">Red dots: unusual hours · drag the slider to move</span></div>
+      <div id="test-chart" class="chart tall"></div>
+    </section>
+    <div class="grid cols-2">
+      <section class="card">
+        <div class="card-head"><h3>All models compared</h3><span class="muted">Typical miss, shorter is better</span></div>
+        <div id="models-chart" class="chart"></div>
+      </section>
+      <section class="card">
+        <div class="card-head"><h3>What the model relies on</h3><span class="muted">Share of importance of each input</span></div>
+        <div id="importance-chart" class="chart"></div>
+      </section>
+    </div>
+    ${o ? `<p class="note">${esc(o.explanation)}</p>` : ""}`;
 
-  makeChart($("groups-chart"), {
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-    legend: { top: 0, type: "scroll" },
-    grid: { left: 110, right: 16, top: 34, bottom: 24 },
-    xAxis: { type: "value", splitLine: { lineStyle: { color: "#eef2f7" } } },
-    yAxis: { type: "category", data: groupNames },
-    series: areas.map((area, i) => ({ name: area, type: "bar", stack: "all", color: ["#1d4ed8", "#0f766e", "#7c3aed", "#d97706"][i % 4],
-      data: groupNames.map((g) => countOf(area, g)) })),
+  const points = r.test_predictions;
+  const end = Math.min(100, Math.round(((24 * 14) / points.length) * 100)) || 100;
+  makeChart($("test-chart"), {
+    tooltip: { trigger: "axis" },
+    legend: { data: ["Real", "Predicted", "Unusual hour"], top: 0 },
+    grid: { left: 50, right: 16, top: 34, bottom: 60 },
+    xAxis: { type: "time" },
+    yAxis: { type: "value", name: info().unit, splitLine: grid },
+    dataZoom: [{ type: "inside", start: 0, end }, { type: "slider", start: 0, end, height: 18 }],
+    series: [
+      { name: "Real", type: "line", showSymbol: false, color: "#1d4ed8", lineStyle: { width: 1.4 }, data: points.map((p) => [p.t, p.actual]) },
+      { name: "Predicted", type: "line", showSymbol: false, color: "#0f766e", lineStyle: { width: 1.4, type: "dashed" }, data: points.map((p) => [p.t, p.predicted]) },
+      { name: "Unusual hour", type: "scatter", symbolSize: 8, color: "#dc2626", data: points.filter((p) => p.flagged).map((p) => [p.t, p.actual]) },
+    ],
   });
-
-  if (can("sendAlerts")) {
-    const message = $("alert-message");
-    message.value = `Air alert from ${session.center.name}: the air is expected to be ${bandFor(worst.aqi)[4].toLowerCase()} around ${fmtHour(worst.time)} (AQI about ${worst.aqi}). `
-      + "If you have a breathing or heart condition, keep your medicines with you, limit long time outdoors, and contact us if you feel unwell.";
-    const preview = () => {
-      const who = $("alert-group").value;
-      const count = who === "All at-risk groups" ? sum(totals.map((t) => t.count)) : (totals.find((t) => t.group === who) || { count: 0 }).count;
-      $("alert-preview").innerHTML = `<p><strong>To:</strong> ${num(count)} patients · ${esc(who)} · by ${esc($("alert-channel").value)}</p><p>${esc(message.value)}</p>`;
-    };
-    ["alert-group", "alert-channel", "alert-message"].forEach((el) => $(el).addEventListener("input", preview));
-    preview();
-    $("composer").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const button = event.target.querySelector("button");
-      const result = $("alert-result");
-      button.disabled = true;
-      try {
-        const r = await api.sendAlert(id, { group: $("alert-group").value, channel: $("alert-channel").value, message: message.value });
-        if (!fresh()) return;
-        result.className = "note";
-        result.textContent = r.preview ? "Preview only: nothing was sent. Sending will work once the backend is connected." : "Alert queued.";
-      } catch (err) {
-        if (!fresh()) return;
-        result.className = "note warn";
-        result.textContent = `Couldn't send the alert: ${err.message}`;
-      } finally {
-        if (fresh()) { button.disabled = false; result.hidden = false; }
-      }
-    });
-  }
-  if (editable) {
-    $("thresholds-form").addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const status = $("thresholds-result");
-      const values = {};
-      for (const input of event.target.querySelectorAll("input")) {
-        const v = Number(input.value);
-        if (!Number.isFinite(v) || v < 51 || v > 300) {
-          status.textContent = `${input.name}: use a number from 51 to 300.`;
-          input.focus();
-          return;
-        }
-        values[input.name] = Math.round(v);
-      }
-      try {
-        await api.saveThresholds(id, values);
-        if (fresh()) status.textContent = "Saved.";
-      } catch (err) {
-        if (fresh()) status.textContent = `Couldn't save: ${err.message}`;
-      }
-    });
-  }
+  const models = r.models.map((m) => ({ ...m, label: m.model.startsWith("Persistence") ? "Simple guess" : m.model }));
+  makeChart($("models-chart"), {
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v) => `${Number(v).toFixed(3)} ${info().unit}` },
+    legend: { top: 0 },
+    grid: { left: 110, right: 20, top: 30, bottom: 24 },
+    xAxis: { type: "value", splitLine: grid },
+    yAxis: { type: "category", data: models.map((m) => m.label) },
+    series: [
+      { name: "Choosing period", type: "bar", color: "#fbbf24", data: models.map((m) => Number(m.validation.MAE.toFixed(4))) },
+      { name: "Future test", type: "bar", data: models.map((m) => ({ value: Number(m.test.MAE.toFixed(4)), itemStyle: { color: m.model === r.model ? "#1d4ed8" : "#93c5fd" } })) },
+    ],
+  });
+  const imp = [...r.feature_importance].reverse();
+  makeChart($("importance-chart"), {
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v) => `${Number(v).toFixed(1)}%` },
+    grid: { left: 190, right: 30, top: 8, bottom: 24 },
+    xAxis: { type: "value", splitLine: grid, axisLabel: { formatter: "{value}%" } },
+    yAxis: { type: "category", data: imp.map((f) => FEATURES[f.feature] || f.feature) },
+    series: [{ type: "bar", barWidth: "60%", color: "#0f766e", itemStyle: { borderRadius: [0, 4, 4, 0] }, data: imp.map((f) => Number((f.importance * 100).toFixed(1))) }],
+  });
 }
 
 // ---------- 4. Unusual periods ----------
 async function renderUnusual(view, fresh) {
-  const periods = await api.unusualPeriods(session.center.id);
+  const r = await api.results(pollutant);
   if (!fresh()) return;
+  const TOP = 12;
   let filter = "all";
-  const options = [["all", `All (${periods.length})`], ...Object.entries(LABELS).map(([k, [name]]) =>
-    [k, `${name} (${periods.filter((p) => p.label === k).length})`])];
-  const draw = () => {
-    const shown = periods.filter((p) => filter === "all" || p.label === filter);
-    $("filters").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.k === filter)));
-    $("events").innerHTML = shown.map((p) => {
-      const [name, cls] = LABELS[p.label] || LABELS.unsure;
-      const peak = Number(p.peak);
-      const expected = Number(p.expected);
-      return `<article class="event ${cls}">
-        <div class="top"><b>${esc(fmtDateTime(p.start))}</b><span class="muted">to ${esc(clock(new Date(p.end)))}</span><span class="pill">${name}</span></div>
-        <p>${esc(p.pollutant)} reached <b>${esc(peak)} µg/m³</b>; the model expected about ${esc(expected)}
-          (${peak >= expected ? "+" : "−"}${esc(round1(Math.abs(peak - expected)))}).</p>
-        <p>${esc(p.reason)}</p></article>`;
-    }).join("") || `<p class="muted">None of this kind.</p>`;
-  };
+  let showAll = false;
+  const counts = r.episode_counts;
+  const options = [["all", `All (${counts.total})`], ...Object.entries(KINDS).map(([k, [name]]) => [k, `${name} (${counts[k] || 0})`])];
   view.innerHTML = `
-    <p class="note">These are hours when the fine dust level was far from what the model expected. Each one is checked:
-      if other pollutants moved too, it was probably <b>real pollution</b>; if the readings were stuck, missing or jumped on
-      their own, it was probably <b>a sensor problem</b> (worth a call to the data team); otherwise we say <b>not sure</b>.</p>
+    <p class="note">Hours when the real ${esc(r.pollutant)} level was much further from the model's prediction than usual
+      (more than ${num(r.threshold)} ${unit()}, bigger than 95% of misses on the choosing period). Each one is checked: if other
+      pollutants moved too, it was probably <b>real pollution</b>; if readings were missing, stuck or jumped on their own, it was
+      probably <b>a data problem</b>; otherwise <b>not sure</b>.</p>
+    <div class="grid cols-2">
+      <section class="card">
+        <div class="card-head"><h3>When they happen</h3><span class="muted">By hour of the day</span></div>
+        <div id="hours-chart" class="chart small"></div>
+        <p class="muted">${esc(r.patterns ? r.patterns.text : "")}</p>
+      </section>
+      <section class="card">
+        <div class="card-head"><h3>What they were</h3></div>
+        <div id="kinds-chart" class="chart small"></div>
+      </section>
+    </div>
     <section class="card">
-      <div class="card-head"><h3>Last 30 days</h3></div>
+      <div class="card-head"><h3>Unusual periods in the test period</h3><a class="btn ghost small" href="${esc(api.episodesCsvUrl(pollutant))}">Download CSV</a></div>
       <div id="filters" class="filters" role="group" aria-label="Filter by type">${options.map(([k, text]) =>
-        `<button type="button" data-k="${k}" aria-pressed="${k === "all"}">${esc(text)}</button>`).join("")}</div>
+        `<button type="button" data-k="${esc(k)}" aria-pressed="${k === "all"}">${esc(text)}</button>`).join("")}</div>
       <div id="events" class="events" style="margin-top:14px"></div>
+      <p style="margin-top:12px"><button type="button" id="more" class="btn ghost small" hidden></button></p>
     </section>`;
+  const draw = () => {
+    $("filters").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.k === filter)));
+    const matching = r.episodes.filter((e) => filter === "all" || e.type === filter);
+    const list = showAll ? matching : [...matching].sort((a, b) => (b.severity || 0) - (a.severity || 0)).slice(0, TOP);
+    $("events").innerHTML = list.map((e) => {
+      const [name, cls] = KINDS[e.type] || KINDS.Unclear;
+      const diff = Number(e.peak_value) - Number(e.expected_value);
+      return `<article class="event ${cls}">
+        <div class="top"><b>${esc(e.when || fmtDateTime(e.start))}</b><span class="pill">${esc(name)}</span><span class="muted">${esc(e.confidence)} confidence</span></div>
+        ${e.peak_value != null ? `<p>Reached <b>${num(e.peak_value)} ${unit()}</b>; the model expected ${num(e.expected_value)}
+          (${diff >= 0 ? "+" : "−"}${num(Math.abs(diff))}).</p>` : ""}
+        <p>${esc(e.explanation || e.reason)}</p></article>`;
+    }).join("") || `<p class="muted">None of this kind.</p>`;
+    $("more").hidden = matching.length <= TOP;
+    $("more").textContent = showAll ? `Show only the ${TOP} biggest` : `Show all ${matching.length} in time order`;
+  };
   $("filters").addEventListener("click", (event) => {
     const b = event.target.closest("button");
     if (!b) return;
     filter = b.dataset.k;
+    showAll = false;
     draw();
   });
+  $("more").addEventListener("click", () => { showAll = !showAll; draw(); });
   draw();
+  const p = r.patterns;
+  if (p) {
+    makeChart($("hours-chart"), {
+      tooltip: { trigger: "axis" },
+      grid: { left: 30, right: 8, top: 10, bottom: 24 },
+      xAxis: { type: "category", data: [...Array(24).keys()].map(String) },
+      yAxis: { type: "value", minInterval: 1, splitLine: grid },
+      series: Object.keys(KINDS).filter((k) => p.by_hour[k]).map((k) => ({
+        name: KINDS[k][0], type: "bar", stack: "all", color: KINDS[k][2], barWidth: "60%", data: p.by_hour[k] })),
+    });
+  }
+  makeChart($("kinds-chart"), {
+    tooltip: { trigger: "item", formatter: (x) => `${esc(x.name)}: ${esc(x.value)}` },
+    legend: { bottom: 0 },
+    series: [{ type: "pie", radius: ["45%", "70%"], label: { formatter: "{c}" },
+      data: Object.entries(KINDS).map(([k, [name, , color]]) => ({ name, value: counts[k] || 0, itemStyle: { color } })).filter((x) => x.value) }],
+  });
 }
 
-// ---------- 5. Reports ----------
-async function renderReports(view, fresh) {
-  const months = [0, 1, 2].map((i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i); return dateKey(d).slice(0, 7); });
-  const chosen = store.get("ahp-report-month", months[0]);
-  const month = months.includes(chosen) ? chosen : months[0];
-  const report = await api.monthlyReport(session.center.id, month);
+// ---------- 5. Try a prediction ----------
+async function renderPredict(view, fresh) {
+  const r = await api.results(pollutant);
   if (!fresh()) return;
-  const s = report.summary;
+  view.innerHTML = `
+    <section class="card">
+      <div class="card-head"><h3>Predict the next hour of ${esc(r.pollutant)}</h3><span class="muted">Model: ${esc(r.model)}</span></div>
+      <p class="muted">Fill in what you know about the hour before, or load a real hour from the test period. This sends the same
+        request as Postman: <code>POST /predict</code>.</p>
+      <form id="predict-form" class="form-grid">
+        ${r.features.map((f) => `<label>${esc(FEATURES[f] || f)}<input name="${esc(f)}" type="number" step="any" ${["hour", "weekday", "lag_1"].includes(f) ? "required" : ""}></label>`).join("")}
+        <label>Real value (optional, to check it)<input name="observed" type="number" step="any" min="0"></label>
+      </form>
+      <p style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <button type="button" id="load-sample" class="btn ghost">Load a real hour</button>
+        <button type="submit" form="predict-form" class="btn primary">Predict</button>
+      </p>
+      <div id="predict-result" role="status"></div>
+    </section>`;
+  const form = $("predict-form");
+  $("load-sample").addEventListener("click", async () => {
+    try {
+      const s = await api.sample(pollutant);
+      if (!fresh()) return;
+      for (const input of form.elements) input.value = input.name === "observed" ? s.observed ?? "" : s.features[input.name] ?? "";
+      $("predict-result").innerHTML = `<p class="muted">Loaded ${esc(fmtDateTime(s.time))}.</p>`;
+    } catch (err) {
+      if (fresh()) $("predict-result").innerHTML = `<p class="form-error">${esc(err.message)}</p>`;
+    }
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const box = $("predict-result");
+    const features = {};
+    let observed = null;
+    for (const input of form.elements) {
+      if (!input.name) continue;
+      const value = input.value === "" ? null : Number(input.value);
+      if (input.name === "observed") observed = value; else features[input.name] = value;
+    }
+    try {
+      const answer = await api.predict({ pollutant, features, observed });
+      if (!fresh()) return;
+      const c = answer.episode_check;
+      box.innerHTML = `<div class="answer">
+        <span class="kpi-label">Predicted ${esc(answer.pollutant)} for the next hour</span>
+        <b>${num(answer.prediction)} <small>${esc(answer.unit)}</small></b>
+        ${c ? `<p class="${c.flagged ? "form-error" : "note ok"}" style="margin-top:8px">Real value ${num(c.observed)}, a difference of
+          ${num(Math.abs(c.deviation))}. ${c.flagged ? `That is more than the ${num(c.threshold)} limit, so this hour would be flagged as unusual.`
+          : `That is within the ${num(c.threshold)} limit, so this hour looks normal.`}</p>` : ""}</div>`;
+    } catch (err) {
+      if (fresh()) box.innerHTML = `<p class="form-error">${esc(err.message)}</p>`;
+    }
+  });
+}
+
+// ---------- 6. Reports ----------
+async function renderReports(view, fresh) {
+  const all = await Promise.all(dataset.pollutants.map((p) => api.results(p.key)));
+  if (!fresh()) return;
+  const r = all[dataset.pollutants.findIndex((p) => p.key === pollutant)];
+  const best = bestOf(r);
   view.innerHTML = `
     <section class="card no-print">
-      <div class="card-head" style="margin:0">
-        <label style="flex-direction:row;align-items:center;gap:8px">Month
-          <select id="report-month">${months.map((m) => `<option value="${m}" ${m === month ? "selected" : ""}>${esc(fmtMonth(m))}</option>`).join("")}</select></label>
+      <div class="card-head" style="margin:0"><h3>Download or print</h3>
         <span style="display:flex;gap:8px;flex-wrap:wrap">
-          <button type="button" id="report-csv" class="btn ghost small" ${report.days.length ? "" : "disabled"}>Download CSV</button>
+          <a class="btn ghost small" href="${esc(api.reportUrl(pollutant))}">Full report for ${esc(r.pollutant)} (JSON)</a>
+          <a class="btn ghost small" href="${esc(api.episodesCsvUrl(pollutant))}">Unusual periods (CSV)</a>
           <button type="button" id="report-print" class="btn ghost small">Print / save as PDF</button>
-        </span>
-      </div>
+        </span></div>
     </section>
-    <h3>${esc(session.center.name)} · ${esc(fmtMonth(month))}</h3>
-    ${report.days.length ? `
-    <div class="grid cols-4">
-      <section class="card kpi"><span class="label">Average fine dust</span><span class="value">${esc(s.avgPm25)} <small>µg/m³</small></span>
-        <span class="sub">${aqiPill(aqiOf(Number(s.avgPm25)))}</span></section>
-      <section class="card kpi"><span class="label">Worst day</span><span class="value">${esc(fmtDay(s.worst.date))}</span>
-        <span class="sub">${aqiPill(s.worst)}</span></section>
-      <section class="card kpi"><span class="label">Days alerts were sent</span><span class="value">${esc(s.alertsSent)}</span>
-        <span class="sub">of ${report.days.length} days so far</span></section>
-      <section class="card kpi"><span class="label">Extra visits expected</span><span class="value">${num(s.extraVisits)}</span>
-        <span class="sub">Above a normal month's level</span></section>
-    </div>
-    <div class="grid cols-3">
-      <section class="card span-2"><div class="card-head"><h3>Daily fine dust</h3><span class="muted">Coloured by air quality level</span></div>
-        <div id="daily-chart" class="chart"></div></section>
-      <section class="card"><div class="card-head"><h3>Days at each level</h3></div><div id="level-chart" class="chart"></div></section>
-    </div>` : `<p class="note">No data for this month yet.</p>`}`;
-  $("report-month").addEventListener("change", (event) => { store.set("ahp-report-month", event.target.value); show("report-month"); });
-  $("report-print").addEventListener("click", () => window.print());
-  if (!report.days.length) return;
-  $("report-csv").addEventListener("click", () => {
-    const rows = report.days.map((d) => ({ date: d.date, pm25_ugm3: d.pm25, aqi: d.aqi, air_quality: bandFor(d.aqi)[4],
-      expected_visits: d.expectedVisits, usual_visits: d.usualVisits, alert_sent: d.alertsSent ? "yes" : "no" }));
-    downloadCsv(`${session.center.id}-${month}-report.csv`, rows);
-  });
-  makeChart($("daily-chart"), {
-    tooltip: { trigger: "axis", formatter: (items) => { const d = report.days[items[0].dataIndex];
-      return `<b>${esc(fmtDay(d.date))}</b><br>Fine dust ${esc(d.pm25)} µg/m³<br>AQI ${esc(d.aqi)}, ${bandFor(d.aqi)[4]}`; } },
-    grid: { left: 40, right: 10, top: 12, bottom: 26 },
-    xAxis: { type: "category", data: report.days.map((d) => String(parseKey(d.date).getDate())) },
-    yAxis: { type: "value", name: "µg/m³", splitLine: { lineStyle: { color: "#eef2f7" } } },
-    series: [{ type: "bar", barWidth: "65%", data: report.days.map((d) => ({ value: Number(d.pm25), itemStyle: { color: bandFor(d.aqi)[5], borderRadius: [3, 3, 0, 0] } })) }],
-  });
-  const used = s.byCategory.filter((c) => c.days > 0);
-  const colorOf = (category) => (AQI_BANDS.find((b) => b[4] === category) || [])[5] || "#64748b";
-  makeChart($("level-chart"), {
-    tooltip: { trigger: "item", formatter: (p) => `${esc(p.name)}: ${esc(p.value)} day${p.value === 1 ? "" : "s"}` },
-    series: [{ type: "pie", radius: ["45%", "72%"], label: { formatter: "{c}" },
-      data: used.map((c) => ({ name: c.category, value: Number(c.days), itemStyle: { color: colorOf(c.category) } })) }],
-    legend: { bottom: 0, type: "scroll" },
-  });
-}
-
-function downloadCsv(name, rows) {
-  const cell = (v) => {
-    let t = String(v ?? "");
-    if (typeof v === "string" && /^[=+\-@\t\r]/.test(t)) t = "'" + t;   // Excel would run text starting with = + - @ as a formula
-    return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
-  };
-  const cols = Object.keys(rows[0]);
-  const text = [cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\r\n");
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" }));   // BOM so Excel reads µ
-  link.download = name;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-}
-
-// ---------- 6. Settings ----------
-async function renderSettings(view, fresh) {
-  const [c, users] = await Promise.all([api.center(session.center.id), can("manageUsers") ? api.users(session.center.id) : []]);
-  if (!fresh()) return;
-  view.innerHTML = `
-    <div class="grid cols-2">
-      <section class="card">
-        <div class="card-head"><h3>Center</h3></div>
-        <div class="table-wrap"><table><tbody>
-          <tr><th>Name</th><td>${esc(c.name)}</td></tr>
-          <tr><th>City</th><td>${esc(c.city)}</td></tr>
-          <tr><th>Location</th><td>${esc(c.lat)}, ${esc(c.lon)}</td></tr>
-          <tr><th>Beds</th><td>${esc(c.beds)} (ER: ${esc(c.erBeds)})</td></tr>
-          <tr><th>Usual breathing-related visits</th><td>${esc(c.usualVisits)} a day</td></tr>
-        </tbody></table></div>
-      </section>
-      <section class="card">
-        <div class="card-head"><h3>Data sources</h3></div>
-        <div class="table-wrap"><table><tbody>
-          <tr><th>Air quality</th><td>Nearest monitoring station or air quality model</td><td><span class="sample-badge">Sample</span></td></tr>
-          <tr><th>Visit counts</th><td>Hospital system, daily totals only</td><td><span class="sample-badge">Sample</span></td></tr>
-          <tr><th>At-risk patients</th><td>Hospital registry, counts by area only</td><td><span class="sample-badge">Sample</span></td></tr>
-          <tr><th>Alerts</th><td>SMS / WhatsApp / portal provider</td><td><span class="sample-badge">Sample</span></td></tr>
-        </tbody></table></div>
-      </section>
-    </div>
     <section class="card">
-      <div class="card-head"><h3>Users and roles</h3>${can("manageUsers") ? `<button type="button" class="btn ghost small" disabled title="Invites are handled by the backend">Invite user</button>` : ""}</div>
-      ${can("manageUsers") ? `<div class="table-wrap"><table>
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Last active</th></tr></thead>
-        <tbody>${users.map((u) => `<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(ROLE_NAMES[u.role] || u.role)}</td><td>${esc(fmtDateTime(u.lastActive))}</td></tr>`).join("")}</tbody>
+      <h3>Air quality model report: ${esc(r.pollutant)}</h3>
+      <p class="muted" style="margin-top:4px">UCI Air Quality dataset (Italy), ${esc(fmtDate(dataset.start))} – ${esc(fmtDate(dataset.end))}</p>
+      <p style="margin-top:10px">The best model, <b>${esc(r.model)}</b>, predicts next hour's ${esc(r.pollutant)} with a typical miss of
+        <b>${num(best.test.MAE)} ${unit()}</b> on the future test period (${esc(fmtDate(r.periods.test[0]))} – ${esc(fmtDate(r.periods.test[1]))}).
+        That is ${pct(Math.abs(r.improvement_vs_persistence_pct), 1)} ${r.improvement_vs_persistence_pct >= 0 ? "better" : "worse"} than assuming the next hour
+        equals this hour, and ${pct(r.accuracy_within_20pct)} of test hours were within 20% of the real value.
+        ${r.overfitting_check ? esc(r.overfitting_check.verdict) + "." : ""} It flagged ${num(r.episode_counts.total, 0)} unusual periods:
+        ${num(r.episode_counts["Unusual pollution"] || 0, 0)} real pollution events, ${num(r.episode_counts["Data limitation"] || 0, 0)} likely data problems
+        and ${num(r.episode_counts.Unclear || 0, 0)} not sure.</p>
+    </section>
+    <section class="card">
+      <div class="card-head"><h3>All pollutants</h3></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Pollutant</th><th>Best model</th><th class="num">Typical miss</th><th class="num">R²</th><th class="num">Within 20%</th>
+          <th class="num">Better than simple guess</th><th class="num">Unusual periods</th></tr></thead>
+        <tbody>${all.map((x) => { const b = bestOf(x); return `<tr><td><b>${esc(x.pollutant)}</b> <span class="muted">${esc(x.unit)}</span></td>
+          <td>${esc(x.model)}</td><td class="num">${num(b.test.MAE)}</td><td class="num">${num(b.test.R2, 2)}</td><td class="num">${pct(x.accuracy_within_20pct)}</td>
+          <td class="num">${x.improvement_vs_persistence_pct >= 0 ? "+" : "−"}${pct(Math.abs(x.improvement_vs_persistence_pct), 1)}</td>
+          <td class="num">${num(x.episode_counts.total, 0)}</td></tr>`; }).join("")}</tbody>
       </table></div>
-      <p class="muted" style="margin-top:10px">Admins see everything and manage users. Doctors can send alerts and change alert levels. Viewers can only look.</p>`
-      : `<p class="muted">Only admins can see and manage users. You are signed in as <b>${esc(ROLE_NAMES[session.user.role])}</b>.</p>`}
+    </section>`;
+  $("report-print").addEventListener("click", () => window.print());
+}
+
+// ---------- 7. Settings ----------
+async function renderSettings(view) {
+  view.innerHTML = `
+    <section class="card">
+      <div class="card-head"><h3>Data and models</h3></div>
+      <div class="table-wrap"><table><tbody>
+        <tr><th>Dataset</th><td>UCI Air Quality (Italy), ${num(dataset.rows, 0)} hourly rows</td></tr>
+        <tr><th>Models</th><td>${dataset.pollutants.map((p) => `${esc(p.pollutant)}: ${esc(p.model)}`).join(" · ")}</td></tr>
+        <tr><th>How they were trained</th><td>train_model.py and the Kaggle notebook, on the same data</td></tr>
+        <tr><th>Served by</th><td>main.py: /api/datasets, /api/results, /api/report, /api/episodes, /api/sample, /predict</td></tr>
+      </tbody></table></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h3>Users and roles</h3></div>
+      ${can("manageUsers") ? `<div class="table-wrap"><table>
+        <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
+        <tbody>${ACCOUNTS.map((u) => `<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(ROLE_NAMES[u.role])}</td></tr>`).join("")}</tbody>
+      </table></div><p class="muted" style="margin-top:10px">Accounts will be managed by the backend.</p>`
+      : `<p class="muted">Only admins can see users. You are signed in as <b>${esc(ROLE_NAMES[session.user.role])}</b>.</p>`}
     </section>`;
 }
 
 // ---------- start ----------
-async function start() {
-  await startSignIn();
+function start() {
+  startSignIn();
   $("signout").addEventListener("click", signOut);
   $("menu-toggle").addEventListener("click", () => openMenu(!$("shell").classList.contains("menu-open")));
   $("scrim").addEventListener("click", () => openMenu(false));
-  $("center-switch").addEventListener("change", async (event) => {
-    if (!can("switchCenter")) return;
-    const c = (await api.centers()).find((x) => x.id === event.target.value);
-    if (!c) return;
-    session.center = c;
-    store.set("ahp-session", session);
-    show("center-switch");
-  });
-  window.addEventListener("hashchange", () => show());
+  $("pollutant").addEventListener("change", (event) => choosePollutant(event.target.value, "pollutant"));
   $("nav").addEventListener("click", (event) => { if (event.target.closest("a")) openMenu(false); });   // also when tapping the screen you're on
+  window.addEventListener("hashchange", () => show());
   NARROW.addEventListener("change", () => openMenu(false));
+  document.addEventListener("keydown", (event) => { if (event.key === "Escape") openMenu(false); });
   // charts keep their screen size when printing unless told to resize
   window.addEventListener("beforeprint", () => charts.forEach((c) => c.resize()));
   window.addEventListener("afterprint", () => charts.forEach((c) => c.resize()));
-  document.addEventListener("keydown", (event) => { if (event.key === "Escape") openMenu(false); });
-  if (session) await setupShell();
   show();
 }
 

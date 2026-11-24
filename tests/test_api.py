@@ -80,3 +80,11 @@ def test_page_style_predict_ignores_unnamed_fields():
     sample = client.get("/api/sample/CO").json()
     features = {**sample["features"], "": None}      # a form button has no name
     assert client.post("/predict", json={"pollutant": "CO", "features": features}).status_code == 200
+
+
+def test_portal_uses_only_the_real_dataset():
+    script = client.get("/dashboard/app.js").text
+    for made_up in ("Hyderabad", "Delhi", "Bengaluru", "SAMPLE_GROUPS", "pm25At", "Sample data"):
+        assert made_up not in script, made_up
+    for endpoint in ("/api/datasets", "/api/results/", "/api/sample/", "/predict", "/api/episodes/", "/api/report/"):
+        assert endpoint in script, endpoint
