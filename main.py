@@ -206,12 +206,15 @@ def forecast_table(key: str) -> dict:
 
     clean = lambda values: [None if np.isnan(v) else round(float(v), 4) for v in values]
     now = known(0)
+    learned = y[y.index < test_from].dropna()   # alert levels come only from the hours before the test period
     return {
         "pollutant": info["pollutant"], "unit": info["unit"], "model": info["model"],
         "times": [t.strftime("%Y-%m-%dT%H:%M") for t in origins],
         "now": clean(now), "f1": clean(forecasts[1]), "f2": clean(forecasts[2]), "f3": clean(forecasts[3]),
         "mae": {str(s): mae(forecasts[s], known(s)) for s in (1, 2, 3)},
         "simple_guess_mae": {str(s): mae(now, known(s)) for s in (1, 2, 3)},
+        # "high" = above 95 in 100 earlier hours at this station, "very high" = above 99 in 100
+        "levels": {"high": round(float(learned.quantile(0.95)), 4), "very_high": round(float(learned.quantile(0.99)), 4)},
     }
 
 
@@ -237,12 +240,15 @@ def get_sample(pollutant: str):
             "observed": float(df.at[t, info["column"]])}
 
 
+PLAIN_TYPES = {"Unusual pollution": "Real pollution event", "Data limitation": "Probably a data problem", "Unclear": "Not sure"}
+
+
 @app.get("/api/episodes/{pollutant}")
 def episodes_csv(pollutant: str):
     info = pollutant_info(pollutant)
     rows = pd.DataFrame([{
         "start": e["start"], "end": e["end"], "hours_flagged": e.get("flagged_hours"),
-        "type": e.get("type"), "confidence": e.get("confidence"),
+        "type": PLAIN_TYPES.get(e.get("type"), e.get("type")), "confidence": e.get("confidence"),
         "peak_value": e.get("peak_value"), "expected_value": e.get("expected_value"),
         "why": e.get("explanation") or e.get("reason"),
     } for e in info["episodes"]])

@@ -156,12 +156,7 @@ td.wrap { white-space: normal; min-width: 240px; }
 .timeline b { font-size: 0.9rem; }
 .timeline span { font-size: 0.8rem; color: var(--muted); }
 
-/* prediction */
-.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-.form-grid input { width: 100%; }
-.answer { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: var(--primary-soft); }
-.answer b { display: block; font-size: 2rem; font-variant-numeric: tabular-nums; }
-.answer b small { font-size: 1rem; font-weight: 500; color: var(--muted); }
+.downloads { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* replay */
 .replay-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
@@ -191,6 +186,11 @@ ul.plain { margin: 0 0 6px; padding-left: 18px; }
 .dot-inline.st-alert { background: var(--bad); }
 .event details summary { cursor: pointer; color: var(--primary); font-size: 0.86rem; margin-top: 4px; }
 
+.advice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 8px 0; }
+.advice-grid div { background: #f8fafc; border-radius: 10px; padding: 8px 10px; }
+.advice-grid p { margin: 2px 0 0; font-size: 0.9rem; color: var(--text-2); }
+.print-only { display: none; }
+
 /* motion */
 @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 .view > * { animation: rise 0.4s var(--ease) both; }
@@ -211,7 +211,7 @@ ul.plain { margin: 0 0 6px; padding-left: 18px; }
   .sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 260px; z-index: 10; transform: translateX(-100%); transition: transform 0.25s var(--ease); }
   .shell.menu-open .sidebar { transform: none; }
   .icon-btn { display: inline-grid; place-items: center; }
-  .cols-2, .cols-3, .events, .alert-list { grid-template-columns: 1fr; }
+  .cols-2, .cols-3, .events, .alert-list, .advice-grid { grid-template-columns: 1fr; }
   .span-2 { grid-column: 1 / -1; }
   .topbar { padding: 10px 14px; flex-wrap: wrap; }
   .topbar-right { width: 100%; }
@@ -230,6 +230,8 @@ ul.plain { margin: 0 0 6px; padding-left: 18px; }
 /* ---------- print (Reports → PDF) ---------- */
 @media print {
   .sidebar, .topbar, .no-print, .scrim { display: none !important; }
+  .print-only { display: block; margin-bottom: 12px; }
+  .alert-list { grid-template-columns: 1fr; }
   .shell { display: block; }
   body { background: #fff; }
   .card { box-shadow: none; border: 1px solid var(--border); break-inside: avoid; }

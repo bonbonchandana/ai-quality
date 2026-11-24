@@ -6,7 +6,7 @@
   <title>Air Health Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=12">
 </head>
 <body>
   <!-- Sign-in. The real check will happen on the backend; this screen only collects the details. -->
@@ -14,7 +14,7 @@
     <div class="signin-card">
       <div class="brand big">
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/><path d="M3 12h4l2-3 3 6 2-3h7"/></svg></span>
-        <div><h1>Air Health Portal</h1><p>Air quality prediction and unusual-period analysis for healthcare centers</p></div>
+        <div><h1>Air Health Portal</h1><p>Air quality forecasts and health warnings for hospitals, doctors and public health organisations</p></div>
       </div>
       <form id="signin-form" novalidate>
         <label>Work email<input id="signin-email" type="email" autocomplete="username" required placeholder="name@yourcenter.org"></label>
@@ -26,13 +26,13 @@
         <summary>Accounts for this preview</summary>
         <p>Password for all: <code>demo123</code></p>
         <ul>
-          <li><code>admin@demo.health</code>: everything, including the users list</li>
-          <li><code>doctor@demo.health</code>: all results and predictions</li>
-          <li><code>viewer@demo.health</code>: all results and predictions</li>
+          <li><code>admin@demo.health</code>: can send warnings</li>
+          <li><code>doctor@demo.health</code>: can send warnings</li>
+          <li><code>viewer@demo.health</code>: can only view</li>
         </ul>
       </details>
       <p class="fine">Preview: sign-in is simulated with these accounts. In the real system, only staff of registered
-        healthcare centers can sign in, and the server checks every sign-in.</p>
+        hospitals and public health organisations can sign in, and the server checks every sign-in.</p>
     </div>
   </section>
 
@@ -66,6 +66,6 @@
   </div>
 
   <script src="vendor/echarts.min.js"></script>
-  <script src="app.js?v=10"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

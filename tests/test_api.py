@@ -87,7 +87,7 @@ def test_portal_uses_only_the_real_dataset():
     script = client.get("/dashboard/app.js").text
     for made_up in ("Hyderabad", "Delhi", "Bengaluru", "SAMPLE_GROUPS", "pm25At", "Sample data"):
         assert made_up not in script, made_up
-    for endpoint in ("/api/datasets", "/api/results/", "/api/forecast/", "/api/sample/", "/predict", "/api/episodes/", "/api/report/"):
+    for endpoint in ("/api/datasets", "/api/results/", "/api/forecast/", "/api/episodes/", "/api/report/"):
         assert endpoint in script, endpoint
 
 
@@ -113,3 +113,38 @@ def test_forecast_one_to_three_hours_ahead():
 
 def test_forecast_unknown_pollutant():
     assert client.get("/api/forecast/XYZ").status_code == 404
+
+
+def test_forecast_alert_levels_come_from_training_data():
+    for p in ("CO", "NO2", "NOx", "C6H6"):
+        levels = client.get(f"/api/forecast/{p}").json()["levels"]
+        assert 0 < levels["high"] < levels["very_high"]
+
+
+def test_forecast_uses_no_future_data(monkeypatch):
+    import numpy as np
+    real = main.dataset_frame()
+    cut = pd.Timestamp("2005-02-20 10:00")
+    noisy = real.copy()
+    later = noisy.index > cut
+    noisy.loc[later, :] = noisy.loc[later, :] * np.random.default_rng(0).uniform(0.2, 5, size=noisy.loc[later, :].shape)
+    before = main.forecast_table.__wrapped__("CO")
+    monkeypatch.setattr(main, "dataset_frame", lambda: noisy)
+    after = main.forecast_table.__wrapped__("CO")
+    earlier = [i for i, t in enumerate(before["times"]) if pd.Timestamp(t) + pd.Timedelta(hours=3) <= cut]
+    assert len(earlier) > 500
+    for k in ("f1", "f2", "f3"):
+        assert [before[k][i] for i in earlier] == [after[k][i] for i in earlier]
+
+
+def test_forecast_shares_hours_and_marks_missing_readings():
+    tables = [client.get(f"/api/forecast/{p}").json() for p in ("CO", "NO2", "NOx", "C6H6")]
+    assert all(t["times"] == tables[0]["times"] for t in tables)
+    co = tables[0]
+    missing = [i for i, v in enumerate(co["now"]) if v is None]
+    assert missing and all(co["f1"][i] is None for i in missing)
+
+
+def test_episode_csv_uses_plain_labels():
+    lines = client.get("/api/episodes/CO").content.decode("utf-8-sig").splitlines()
+    assert not any(raw in "\n".join(lines) for raw in (",Unusual pollution,", ",Data limitation,", ",Unclear,"))

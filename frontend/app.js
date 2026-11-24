@@ -1,4 +1,4 @@
-// Air Health Portal: air quality prediction and unusual-period analysis for healthcare centers.
+// Air Health Portal: air quality forecasts and health warnings for hospitals, doctors and public health organisations.
 //
 // Everything on screen comes from our own work, served by main.py: the UCI Air Quality dataset (Italy, 2004-2005),
 // the models trained on it, their results on the future test period and the unusual periods they flagged.
@@ -49,8 +49,6 @@ const api = {
     }
     return forecastCache.get(key);
   },
-  sample: (key) => getJSON(`/api/sample/${encodeURIComponent(key)}`),
-  predict: (body) => getJSON("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }),
   reportUrl: (key) => `/api/report/${encodeURIComponent(key)}?download=true`,
   episodesCsvUrl: (key) => `/api/episodes/${encodeURIComponent(key)}`,
 };
@@ -66,7 +64,7 @@ const NARROW = window.matchMedia("(max-width: 860px)");   // the width where the
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const ROLE_NAMES = { admin: "Admin", doctor: "Doctor", viewer: "Viewer" };
-const RIGHTS = { admin: ["manageUsers", "sendAlerts"], doctor: ["sendAlerts"], viewer: [] };   // the backend must enforce the same rules
+const RIGHTS = { admin: ["sendAlerts"], doctor: ["sendAlerts"], viewer: [] };   // the backend must enforce the same rules
 const KINDS = {
   "Unusual pollution": ["Real pollution event", "tag-real", "#c2410c"],
   "Data limitation": ["Probably a data problem", "tag-sensor", "#7c3aed"],
@@ -77,58 +75,60 @@ const FEATURES = {
   lag_3: "Value 3 hours before", lag_24: "Same hour yesterday", temperature: "Temperature, previous hour (°C)",
   relative_humidity: "Humidity, previous hour (%)", absolute_humidity: "Absolute humidity, previous hour",
 };
-// Health reference levels from WHO and the EU. NOx and benzene have no short-term health limit, so for them a
-// warning means "higher than 95% of hours at this station" or a sharp rise.
+// What each gas means for health, in plain words. Alert levels themselves come from the server ("levels"):
+// High = above 95 in 100 earlier hours at this station, Very high = above 99 in 100.
 const HEALTH = {
   CO: {
-    watch: 4, alert: 10, limits: "WHO guidelines: 4 mg/m³ over a day, 10 mg/m³ over 8 hours",
-    risk: "Carbon monoxide lowers how much oxygen the blood can carry. It can cause headaches, dizziness and chest pain, and is most dangerous for people with heart disease, pregnant women and young children.",
-    prepare: ["Keep oxygen and pulse oximeters ready in the emergency room", "Remind staff of carbon monoxide symptoms: headache, dizziness, confusion", "Watch heart patients more closely"],
-    publicAdvice: "Avoid busy roads and idling traffic, never run engines or stoves in closed rooms, and people with heart disease should avoid hard exercise.",
+    risk: "Carbon monoxide lowers how much oxygen the blood can carry. At roadside levels like these it mainly matters for people with heart disease.",
+    reference: "WHO guideline: 4 mg/m³ averaged over 24 hours (35 mg/m³ over 1 hour).",
   },
   NO2: {
-    watch: 150, alert: 200, limits: "EU and WHO 1-hour limit: 200 µg/m³",
-    risk: "Nitrogen dioxide inflames the airways. It can trigger asthma attacks, coughing and wheezing, and brings more hospital visits for breathing problems, especially among children and older people.",
-    prepare: ["Stock inhalers, nebulisers and steroid medicines", "Plan extra staff for the respiratory clinic and emergency room", "Contact registered asthma and COPD patients"],
-    publicAdvice: "People with asthma should carry their inhaler and avoid exercise near traffic; keep windows closed at rush hour.",
+    limit: 200, limitName: "the EU 1-hour limit of 200 µg/m³",
+    risk: "Nitrogen dioxide irritates the airways. Higher levels are linked to more asthma attacks and more hospital visits for breathing problems, especially in children and older people.",
+    reference: "EU 1-hour limit: 200 µg/m³. WHO 24-hour guideline: 25 µg/m³.",
   },
   NOx: {
-    limits: "No health limit for NOx itself; it is a marker of traffic exhaust",
-    risk: "Nitrogen oxides come mostly from vehicle exhaust. They irritate the airways and usually rise together with nitrogen dioxide and fine dust.",
-    prepare: ["Expect more breathing complaints from people living near main roads", "Check stock of inhalers and nebulisers"],
-    publicAdvice: "Avoid main roads at rush hour; people with lung disease should limit time outdoors.",
+    risk: "Nitrogen oxides come mostly from traffic exhaust. They irritate the airways and rise together with nitrogen dioxide.",
+    reference: "No separate health limit; used as a sign of traffic pollution.",
   },
   C6H6: {
-    limits: "EU limit: 5 µg/m³ as a yearly average; there is no short-term limit",
-    risk: "Benzene comes from petrol and exhaust. High short-term levels can cause dizziness and headaches; long-term exposure raises the risk of leukaemia.",
-    prepare: ["Be ready for headache and dizziness complaints", "Report repeated high levels to the public health office"],
-    publicAdvice: "Avoid fuel stations and heavy traffic, and keep children away from idling vehicles.",
+    risk: "Benzene comes from petrol and exhaust. The concern is long-term exposure, which raises the risk of leukaemia; short rises at these levels don't cause symptoms.",
+    reference: "EU limit: 5 µg/m³ as a yearly average.",
   },
 };
-const LEVELS = { normal: ["Normal", "st-normal"], watch: ["Watch", "st-watch"], alert: ["Alert", "st-alert"], unknown: ["No data", "st-unknown"] };
+// Planning guidance for each audience (adapted from the team's action protocol)
+const GUIDE = {
+  high: {
+    "Hospitals and doctors": "Readiness level 1: let the emergency and respiratory teams know, and check inhaler and nebuliser stock.",
+    "Sensitive groups": "People with asthma, lung or heart disease, older people, children and pregnant women: keep usual medicines handy and avoid long exercise near traffic.",
+    "Schools and sports": "Move hard outdoor sports away from busy roads.",
+    "Public": "Avoid busy roads at rush hour and keep windows on the traffic side closed.",
+  },
+  veryhigh: {
+    "Hospitals and doctors": "Readiness level 2: consider extra staff for the emergency room and respiratory clinic, and check beds and oxygen supply.",
+    "Sensitive groups": "Limit time outdoors near busy roads, especially at rush hour, and follow your care plan.",
+    "Schools and sports": "Hold sports and break time indoors where possible.",
+    "Public": "Limit time near traffic. Local authorities can consider traffic and anti-idling measures.",
+  },
+};
+const LEVELS = { normal: ["Normal", "st-normal"], high: ["High", "st-watch"], veryhigh: ["Very high", "st-alert"], unknown: ["No data", "st-unknown"] };
+const RECIPIENTS = "nearby hospitals · doctors · public health organisations";
+const DISCLAIMER = "Planning aid based on a research forecast. It doesn't replace official warnings or clinical judgement.";
 const SETTING_NAMES = { n_estimators: "trees", max_depth: "depth", min_samples_leaf: "hours per leaf", learning_rate: "learning rate" };
 
 const ICONS = {
   live: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   alerts: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
-  overview: '<path d="M3 13h8V3H3zM13 21h8V11h-8zM3 21h8v-6H3zM13 3v6h8V3z"/>',
   dataset: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
   model: '<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>',
   unusual: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
-  predict: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
-  reports: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/>',
-  settings: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
 };
 const PAGES = {
   live: { title: "Live forecast", render: renderLive },
   alerts: { title: "Health alerts", render: renderAlerts },
   unusual: { title: "Unusual changes", render: renderUnusual },
-  overview: { title: "Overview", render: renderOverview },
   model: { title: "Model results", render: renderModel },
   dataset: { title: "Dataset", render: renderDataset },
-  predict: { title: "Try a prediction", render: renderPredict },
-  reports: { title: "Reports", render: renderReports },
-  settings: { title: "Settings", render: renderSettings },
 };
 
 const store = {
@@ -154,8 +154,8 @@ const num = (v, digits) => {
 };
 const pct = (v, digits = 0) => (v == null ? "–" : `${num(v, digits)}%`);
 function clock(d) { const h = d.getHours(); return `${h % 12 || 12} ${h < 12 ? "am" : "pm"}`; }
-function fmtDate(iso) { const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
-function fmtDateTime(iso) { const d = new Date(iso); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${clock(d)}`; }
+function fmtDate(iso) { const d = new Date(String(iso).replace(" ", "T")); return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; }
+function fmtDateTime(iso) { const d = new Date(String(iso).replace(" ", "T")); return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${clock(d)}`; }
 const info = () => dataset.pollutants.find((p) => p.key === pollutant);
 const unit = () => esc(info().unit);
 const bestOf = (r) => r.models.find((m) => m.model === r.model);
@@ -217,6 +217,8 @@ function startSignIn() {
 function signOut() {
   renderToken++;
   pauseReplay();
+  sent.clear();
+  replay.i = START_HOUR;
   session = null;
   store.remove("ahp-session");
   clearCharts();
@@ -280,15 +282,16 @@ async function show(keep) {
 
 // ---------- unusual changes: what changed and why ----------
 function possibleReason(e) {
-  const d = new Date(e.start);
-  const h = d.getHours();
+  const when = new Date(String(e.peak_time || e.start).replace(" ", "T"));
+  const h = when.getHours();
+  const weekend = when.getDay() === 0 || when.getDay() === 6;
   const others = (e.checks && e.checks.other_pollutants_agreeing) || [];
   const list = others.join(", ");
-  if (e.type === "Data limitation") return "Probably a sensor or data problem (missing, stuck or jumpy readings), not real pollution.";
-  if (e.type === "Unclear") return "Only this gas moved and the data looked fine, so the cause is unclear.";
-  if (e.direction === "lower") return `${list} fell at the same time, which usually means wind or rain cleared the air.`;
-  if ((h >= 7 && h <= 10) || (h >= 17 && h <= 21)) return `Rush-hour traffic: ${list} rose at the same time, which points to vehicle exhaust.`;
-  if ([10, 11, 0, 1].includes(d.getMonth()) && (h >= 18 || h <= 6)) return `A winter evening or night: heating and still, cold air keep exhaust near the ground (${list} rose too).`;
+  if (e.type === "Data limitation") return "The readings around this time look unreliable (missing, stuck or jumpy), so this may be a sensor or data problem rather than real pollution.";
+  if (e.type === "Unclear" || !others.length) return "Only this gas moved and the data looked fine, so the cause is unclear.";
+  if (e.direction === "lower") return `${list} fell at the same time: usually a quieter period (night, weekend or holiday) or cleaner air.`;
+  if (!weekend && ((h >= 7 && h <= 10) || (h >= 17 && h <= 21))) return `Weekday rush hour: ${list} rose at the same time, which points to traffic exhaust.`;
+  if ([10, 11, 0, 1].includes(when.getMonth()) && (h >= 18 || h <= 6)) return `A winter evening or night: heating and still, cold air keep exhaust near the ground (${list} rose too).`;
   return `${list} rose at the same time, which points to a real local source such as traffic, burning or industry.`;
 }
 
@@ -305,14 +308,23 @@ function changeLines(e, unitHtml) {
 }
 
 // ---------- replay: the test period played back hour by hour, as if live ----------
-const series = {};       // pollutant -> /api/forecast table (all pollutants share the same hours)
-const stats = {};        // pollutant -> {p50, p95} of the real values in the test period
-const episodesOf = {};   // pollutant -> unusual changes found by the model
-const replay = { i: 0, playing: false, speed: 1000, timer: null, listener: null, last: {} };
+const START_HOUR = 48;    // start two days in, so the chart has some history
+const series = {};        // pollutant -> /api/forecast table (all pollutants share the same hours)
+const episodesOf = {};    // pollutant -> unusual changes found by the model
+const replay = { i: START_HOUR, playing: false, speed: 1000, timer: null, listener: null };
 const sent = new Set();
-let alertLog = [];
+const statusCache = new Map();
+const warning = (level) => level === "high" || level === "veryhigh";
 
-const plainNum = (v) => { const n = Number(v); return Math.abs(n) < 10 ? n.toFixed(2) : Math.abs(n) < 100 ? n.toFixed(1) : n.toFixed(0); };
+async function loadReplayData() {
+  const keys = dataset.pollutants.map((x) => x.key);
+  if (keys.every((k) => series[k])) return;
+  const [forecasts, results] = await Promise.all([Promise.all(keys.map((k) => api.forecast(k))), Promise.all(keys.map((k) => api.results(k)))]);
+  keys.forEach((k, j) => { series[k] = forecasts[j]; episodesOf[k] = results[j].episodes; });
+  replay.i = Math.min(replay.i, replayLength() - 1);
+}
+const replayLength = () => { const any = Object.values(series)[0]; return any ? any.times.length : 0; };
+const replayTime = () => Object.values(series)[0].times[replay.i];
 function plusHours(s, k) {
   const d = new Date(s);
   d.setHours(d.getHours() + k);
@@ -320,70 +332,69 @@ function plusHours(s, k) {
   return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:00`;
 }
 
-async function loadReplayData() {
-  const keys = dataset.pollutants.map((x) => x.key);
-  if (keys.every((k) => series[k])) return;
-  const [forecasts, results] = await Promise.all([Promise.all(keys.map((k) => api.forecast(k))), Promise.all(keys.map((k) => api.results(k)))]);
-  keys.forEach((k, j) => {
-    series[k] = forecasts[j];
-    const real = results[j].test_predictions.map((x) => x.actual).filter((v) => v != null).sort((a, b) => a - b);
-    stats[k] = { p50: real[Math.floor(real.length * 0.5)], p95: real[Math.floor(real.length * 0.95)] };
-    episodesOf[k] = results[j].episodes;
-  });
-  setReplay(replay.i);
-}
-const replayLength = () => { const any = Object.values(series)[0]; return any ? any.times.length : 0; };
-const replayTime = () => Object.values(series)[0].times[replay.i];
-
 function levelOf(key, value) {
   if (value == null) return "unknown";
-  const h = HEALTH[key] || {};
-  if (h.alert != null && value >= h.alert) return "alert";
-  if (h.watch != null && value >= h.watch) return "watch";
-  if (h.watch == null && stats[key] && value >= stats[key].p95) return "watch";
+  const levels = series[key].levels;
+  if (value >= levels.very_high) return "veryhigh";
+  if (value >= levels.high) return "high";
   return "normal";
 }
 
-// Health status of one pollutant at replay hour i, from its forecasts for the next 1-3 hours
+// Health status of one pollutant at replay hour i: the highest of its forecasts for the next 1-3 hours
 function statusAt(key, i) {
+  const id = `${key}|${i}`;
+  if (statusCache.has(id)) return statusCache.get(id);
   const f = series[key];
   const now = f.now[i];
   const ahead = [f.f1[i], f.f2[i], f.f3[i]];
   const known = ahead.filter((v) => v != null);
-  if (!known.length) return { level: "unknown", now, ahead, reason: "No forecast for this hour because readings are missing." };
-  const top = Math.max(...known);
-  const at = ahead.indexOf(top) + 1;
-  const change = now > 0 ? (top - now) / now : null;
-  const h = HEALTH[key] || {};
-  const amount = `${plainNum(top)} ${f.unit}`;
-  let level = levelOf(key, top);
-  let reason = "All forecasts for the next 3 hours stay at normal levels.";
-  if (level === "alert") reason = `Forecast reaches ${amount}, above the ${h.alert} ${f.unit} limit (${h.limits}).`;
-  else if (level === "watch" && h.watch != null) reason = `Forecast reaches ${amount}, above the ${h.watch} ${f.unit} watch level (${h.limits}).`;
-  else if (level === "watch") reason = `Forecast reaches ${amount}, higher than 95% of hours at this station (${h.limits}).`;
-  else if (change != null && change >= 0.5 && top >= stats[key].p50) {
-    level = "watch";
-    reason = `Sharp rise expected: from ${plainNum(now)} to ${amount} (+${Math.round(change * 100)}%).`;
+  let result;
+  if (!known.length) {
+    result = { level: "unknown", now, ahead, reason: "No forecast for this hour because the latest reading is missing." };
+  } else {
+    const top = Math.max(...known);
+    const level = levelOf(key, top);
+    const h = HEALTH[key] || {};
+    const amount = `${num(top)} ${f.unit}`;
+    const overLimit = h.limit != null && top >= h.limit ? ` That is above ${h.limitName}.` : "";
+    const reason = level === "veryhigh" ? `The forecast of ${amount} is higher than 99 in 100 earlier hours at this station.${overLimit}`
+      : level === "high" ? `The forecast of ${amount} is higher than 95 in 100 earlier hours at this station.${overLimit}`
+      : `All forecasts for the next 3 hours are in the usual range for this station.${overLimit}`;
+    result = { level, now, ahead, top, at: ahead.indexOf(top) + 1, change: now > 0 ? (top - now) / now : null, reason };
   }
-  return { level, now, ahead, top, at, change, reason };
+  statusCache.set(id, result);
+  return result;
+}
+
+// The last known level before hour i (missing hours don't end or start a warning)
+function levelBefore(key, i) {
+  for (let j = i - 1; j >= 0; j--) { const level = statusAt(key, j).level; if (level !== "unknown") return level; }
+  return "normal";
+}
+const startsWarning = (key, i) => warning(statusAt(key, i).level) && !warning(levelBefore(key, i));
+function warningStart(key, i) {   // the hour the current warning began
+  let j = i;
+  while (j > 0 && !startsWarning(key, j)) j--;
+  return j;
+}
+// Warnings that began in the 7 days up to hour i, newest first. Worked out from the data, so jumping around can't confuse it.
+function recentWarnings(i) {
+  const out = [];
+  for (const key of Object.keys(series)) {
+    for (let j = Math.max(1, i - 167); j <= i; j++) if (startsWarning(key, j)) out.push({ key, j, ...statusAt(key, j) });
+  }
+  return out.sort((a, b) => b.j - a.j).slice(0, 30);
 }
 
 function setReplay(i) {
   const n = replayLength();
   if (!n) return;
   replay.i = Math.max(0, Math.min(n - 1, i));
-  for (const key of Object.keys(series)) {   // log each pollutant the moment it turns to watch or alert
-    const s = statusAt(key, replay.i);
-    if ((s.level === "watch" || s.level === "alert") && s.level !== replay.last[key]) {
-      alertLog.unshift({ time: series[key].times[replay.i], key, level: s.level, top: s.top, at: s.at });
-      alertLog = alertLog.slice(0, 30);
-    }
-    replay.last[key] = s.level;
-  }
   if (replay.listener) replay.listener();
 }
 function playReplay() {
   if (replay.playing || !replayLength()) return;
+  if (replay.i >= replayLength() - 1) setReplay(0);   // at the end: start again
   replay.playing = true;
   replay.timer = setInterval(() => (replay.i >= replayLength() - 1 ? pauseReplay() : setReplay(replay.i + 1)), replay.speed);
   if (replay.listener) replay.listener();
@@ -402,7 +413,7 @@ function replayControls() {
         <button type="button" id="replay-play" class="btn primary small">Play</button>
         <label class="inline">Speed <select id="replay-speed"><option value="1000">1 hour per second</option>
           <option value="250">4 hours per second</option><option value="60">16 hours per second</option></select></label>
-        <button type="button" id="replay-next-alert" class="btn ghost small">Next health alert</button>
+        <button type="button" id="replay-next-alert" class="btn ghost small">Next warning</button>
         <button type="button" id="replay-next-change" class="btn ghost small">Next unusual change</button>
         <span id="replay-msg" class="muted" role="status"></span>
       </div>
@@ -423,11 +434,8 @@ function wireReplay(keys) {   // keys(): the pollutants the "next" buttons look 
   });
   $("replay-slider").addEventListener("input", (event) => setReplay(Number(event.target.value)));
   $("replay-next-alert").addEventListener("click", () => {
-    const warn = (k, i) => ["watch", "alert"].includes(statusAt(k, i).level);
-    for (let i = replay.i + 1; i < replayLength(); i++) {
-      if (keys().some((k) => warn(k, i) && !warn(k, i - 1))) { setReplay(i); return; }
-    }
-    say("No more health alerts after this time.");
+    for (let i = replay.i + 1; i < replayLength(); i++) if (keys().some((k) => startsWarning(k, i))) { setReplay(i); return; }
+    say("No more warnings after this time.");
   });
   $("replay-next-change").addEventListener("click", () => {
     const now = replayTime();
@@ -459,7 +467,8 @@ async function renderLive(view, fresh) {
       <div class="card-head"><h3>${esc(f.pollutant)}: the last 2 days and the next 3 hours</h3>
         <label class="inline"><input type="checkbox" id="show-real"> Show what really happened next</label></div>
       <div id="live-chart" class="chart tall"></div>
-      <p class="muted">Solid: measured. Dashed: the model's forecast for 1, 2 and 3 hours ahead, made only with what was known at that moment.</p>
+      <p class="muted">Solid: measured. Dashed: the model's forecast for 1, 2 and 3 hours ahead, made only with what was known at that moment.
+        Dotted lines: this station's High and Very high levels.</p>
     </section>
     <div class="grid cols-2">
       <section class="card" id="live-health"></section>
@@ -476,7 +485,7 @@ async function renderLive(view, fresh) {
 
   const chart = makeChart($("live-chart"), {
     animation: false,
-    tooltip: { trigger: "axis", valueFormatter: (v) => (v == null ? "no reading" : `${plainNum(v)} ${f.unit}`) },
+    tooltip: { trigger: "axis", valueFormatter: (v) => (v == null ? "no reading" : `${num(v)} ${f.unit}`) },
     legend: { top: 0, data: ["Measured", "Forecast", "What really happened"] },
     grid: { left: 50, right: 16, top: 34, bottom: 28 },
     xAxis: { type: "time" },
@@ -508,20 +517,20 @@ async function renderLive(view, fresh) {
     const forecast = [[f.times[i], f.now[i]], [at(1), f.f1[i]], [at(2), f.f2[i]], [at(3), f.f3[i]]];
     const real = $("show-real").checked ? [[f.times[i], f.now[i]], ...[1, 2, 3].map((k) => [at(k), f.now[i + k] ?? null])] : [];
     const top = Math.max(0, ...[...past, ...forecast, ...real].map((x) => x[1]).filter((v) => v != null));
-    const lines = [["Watch", h.watch, "#d97706"], ["Limit", h.alert, "#dc2626"]].filter(([, v]) => v != null && v <= top * 1.4)
-      .map(([name, v, color]) => ({ yAxis: v, label: { formatter: `${name} ${v}`, color }, lineStyle: { color, type: "dashed" } }));
+    const lines = [["High", f.levels.high, "#d97706"], ["Very high", f.levels.very_high, "#dc2626"]].filter(([, v]) => v <= top * 1.4)
+      .map(([name, v, color]) => ({ yAxis: v, label: { formatter: name, color }, lineStyle: { color, type: "dotted" } }));
     chart.setOption({ series: [{ id: "past", data: past, markLine: { silent: true, symbol: "none", data: lines } }, { id: "fc", data: forecast }, { id: "real", data: real }] });
 
     const [name, cls] = LEVELS[s.level];
-    $("live-health").innerHTML = `<div class="card-head"><h3>Health status</h3><span class="pill ${cls}">${name}</span></div>
-      <p>${esc(s.reason)}</p><p class="muted"><b>Why it matters:</b> ${esc(h.risk || "")}</p>
-      ${s.level === "watch" || s.level === "alert" ? `<p><a href="#/alerts">See the alert for hospitals and doctors</a></p>` : ""}`;
+    $("live-health").innerHTML = `<div class="card-head"><h3>Health status, next 3 hours</h3><span class="pill ${cls}">${name}</span></div>
+      <p>${esc(s.reason)}</p><p class="muted"><b>Why it matters:</b> ${esc(h.risk || "")}</p><p class="muted">${esc(h.reference || "")}</p>
+      ${warning(s.level) ? `<p><a href="#/alerts">See the warning for hospitals and public health organisations</a></p>` : ""}`;
 
     const now = replayTime();
     const dayBefore = plusHours(now, -24);
-    const recent = episodesOf[key].filter((e) => { const t = e.start.slice(0, 16); return t <= now && t > dayBefore; }).pop();
+    const recent = episodesOf[key].filter((e) => { const t = String(e.peak_time || e.start).slice(0, 16); return t <= now && t > dayBefore; }).pop();
     $("live-change").innerHTML = `<div class="card-head"><h3>Unusual change</h3><span class="muted">Last 24 hours</span></div>` + (recent
-      ? `<p><b>${esc(fmtDateTime(recent.start))}</b> <span class="pill ${(KINDS[recent.type] || KINDS.Unclear)[1]}">${esc((KINDS[recent.type] || KINDS.Unclear)[0])}</span></p>${changeLines(recent, u)}`
+      ? `<p><b>${esc(fmtDateTime(recent.peak_time || recent.start))}</b> <span class="pill ${(KINDS[recent.type] || KINDS.Unclear)[1]}">${esc((KINDS[recent.type] || KINDS.Unclear)[0])}</span></p>${changeLines(recent, u)}`
       : `<p class="muted">No unusual change in the last 24 hours.</p>`);
   };
   replay.listener = update;
@@ -537,41 +546,48 @@ async function renderAlerts(view, fresh) {
   const keys = dataset.pollutants.map((x) => x.key);
   view.innerHTML = `
     ${replayControls()}
+    <div class="print-only"><h2>Air quality health advisory</h2>
+      <p>For hospitals, doctors and public health organisations. Station: UCI Air Quality, Italy. <b id="advisory-time"></b></p></div>
     <section class="card">
-      <div class="card-head"><h3>All pollutants: now and the next 3 hours</h3><span class="muted">The status uses the highest forecast</span></div>
+      <div class="card-head"><h3>All pollutants: now and the next 3 hours</h3>
+        <button type="button" id="print-advisory" class="btn ghost small no-print">Print advisory</button></div>
       <div class="table-wrap"><table>
         <thead><tr><th>Pollutant</th><th class="num">Now</th><th class="num">In 1 h</th><th class="num">In 2 h</th><th class="num">In 3 h</th><th>Status</th></tr></thead>
         <tbody id="alert-table"></tbody></table></div>
+      <p class="muted">High: above 95 in 100 earlier hours at this station. Very high: above 99 in 100. ${esc(DISCLAIMER)}</p>
     </section>
     <div id="alert-cards" class="alert-list"></div>
-    <section class="card">
-      <div class="card-head"><h3>Alerts raised during this replay</h3><span class="muted">Newest first</span></div>
+    <section class="card no-print">
+      <div class="card-head"><h3>Warnings in the last 7 days</h3><span class="muted">Newest first</span></div>
       <div id="alert-log"></div>
     </section>`;
+  $("print-advisory").addEventListener("click", () => window.print());
 
-  const card = (k, s) => {
+  const card = (k, s, since) => {
     const h = HEALTH[k] || {};
     const f = series[k];
     const u = esc(f.unit);
     const [name, cls] = LEVELS[s.level];
-    const id = `${k}|${replayTime()}`;
+    const id = `${k}|${f.times[since]}`;   // one send per warning, not per hour
+    const guide = GUIDE[s.level];
     return `<article class="card alert-card ${cls}">
-      <div class="card-head"><h3>${esc(f.pollutant)}: ${s.level === "alert" ? "health alert" : "watch"}</h3><span class="pill ${cls}">${name}</span></div>
-      <p><b>Forecast ${num(s.top)} ${u} in ${esc(s.at)} hour${s.at === 1 ? "" : "s"}</b> (now ${num(s.now)}${s.change != null
+      <div class="card-head"><h3>${esc(f.pollutant)}: ${name.toLowerCase()} expected</h3><span class="pill ${cls}">${name}</span></div>
+      <p><b>${num(s.top)} ${u} forecast in ${esc(s.at)} hour${s.at === 1 ? "" : "s"}</b> (now ${num(s.now)}${s.change != null
         ? `, ${s.change >= 0 ? "+" : "−"}${Math.abs(Math.round(s.change * 100))}%` : ""}). ${esc(s.reason)}</p>
-      <p><b>Health risk:</b> ${esc(h.risk || "")}</p>
-      <p><b>Hospitals and doctors can prepare:</b></p>
-      <ul class="plain">${(h.prepare || []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>
-      <p><b>Advice for the public:</b> ${esc(h.publicAdvice || "")}</p>
-      <p class="muted">Goes to: nearby hospitals · doctors on duty · public health office</p>
-      ${!can("sendAlerts") ? `<p class="muted">Admins and doctors can send this alert.</p>`
-        : sent.has(id) ? `<p class="note">Preview only: nothing was sent. Your team's backend will deliver this to the hospitals, doctors and public health office for this area.</p>`
-        : `<button type="button" class="btn primary small" data-send="${esc(id)}">Send alert to hospitals and doctors</button>`}
+      <p class="muted">Since ${esc(fmtDateTime(f.times[since]))}</p>
+      <p><b>Why it matters:</b> ${esc(h.risk || "")}</p>
+      <div class="advice-grid">${Object.entries(guide).map(([who, text]) => `<div><b>${esc(who)}</b><p>${esc(text)}</p></div>`).join("")}</div>
+      <p class="muted">Goes to: ${esc(RECIPIENTS)}</p>
+      <div class="no-print">${!can("sendAlerts") ? `<p class="muted">Admins and doctors can send this warning.</p>`
+        : sent.has(id) ? `<p class="note">Preview only: nothing was sent. Your team's backend will deliver this to the hospitals, doctors and public health organisations for this area.</p>`
+        : `<button type="button" class="btn primary small" data-send="${esc(id)}">Send warning</button>`}</div>
     </article>`;
   };
 
+  let shown = "";
   const update = () => {
     syncReplayControls();
+    $("advisory-time").textContent = `Issued for ${fmtDateTime(replayTime())}.`;
     const statuses = keys.map((k) => [k, statusAt(k, replay.i)]);
     $("alert-table").innerHTML = statuses.map(([k, s]) => {
       const [name, cls] = LEVELS[s.level];
@@ -579,74 +595,24 @@ async function renderAlerts(view, fresh) {
         ${s.ahead.map((v) => `<td class="num"><span class="dot-inline ${LEVELS[levelOf(k, v)][1]}"></span>${num(v)}</td>`).join("")}
         <td><span class="pill ${cls}">${name}</span></td></tr>`;
     }).join("");
-    const active = statuses.filter(([, s]) => s.level === "watch" || s.level === "alert");
-    $("alert-cards").innerHTML = active.length ? active.map(([k, s]) => card(k, s)).join("")
-      : `<section class="card"><p class="note ok">No health alerts at ${esc(fmtDateTime(replayTime()))}: every forecast for the next 3 hours is at a normal level.</p></section>`;
-    $("alert-cards").querySelectorAll("[data-send]").forEach((b) => b.addEventListener("click", () => { sent.add(b.dataset.send); update(); }));
-    $("alert-log").innerHTML = alertLog.length ? `<div class="table-wrap"><table>
-        <thead><tr><th>Replay time</th><th>Pollutant</th><th>Status</th><th class="num">Forecast</th><th class="num">In</th></tr></thead>
-        <tbody>${alertLog.map((a) => `<tr><td>${esc(fmtDateTime(a.time))}</td><td>${esc(series[a.key].pollutant)}</td>
-          <td><span class="pill ${LEVELS[a.level][1]}">${LEVELS[a.level][0]}</span></td><td class="num">${num(a.top)} ${esc(series[a.key].unit)}</td>
-          <td class="num">${esc(a.at)} h</td></tr>`).join("")}</tbody></table></div>`
-      : `<p class="muted">No alerts yet. Press Play, or use "Next health alert".</p>`;
+    const active = statuses.filter(([, s]) => warning(s.level)).map(([k, s]) => [k, s, warningStart(k, replay.i)]);
+    const signature = active.map(([k, s, since]) => `${k}:${s.level}:${since}:${s.top}:${sent.has(`${k}|${series[k].times[since]}`)}`).join("|");
+    if (signature !== shown) {   // rebuild the cards only when something changed, so a click never lands on a replaced button
+      shown = signature;
+      $("alert-cards").innerHTML = active.length ? active.map(([k, s, since]) => card(k, s, since)).join("")
+        : `<section class="card"><p class="note ok">No warnings for ${esc(fmtDateTime(replayTime()))}: every forecast for the next 3 hours is in the usual range.</p></section>`;
+      $("alert-cards").querySelectorAll("[data-send]").forEach((b) => b.addEventListener("click", () => { sent.add(b.dataset.send); update(); }));
+    }
+    const log = recentWarnings(replay.i);
+    $("alert-log").innerHTML = log.length ? `<div class="table-wrap"><table>
+        <thead><tr><th>Began</th><th>Pollutant</th><th>Level</th><th class="num">Forecast</th></tr></thead>
+        <tbody>${log.map((a) => `<tr><td>${esc(fmtDateTime(series[a.key].times[a.j]))}</td><td>${esc(series[a.key].pollutant)}</td>
+          <td><span class="pill ${LEVELS[a.level][1]}">${LEVELS[a.level][0]}</span></td><td class="num">${num(a.top)} ${esc(series[a.key].unit)}</td></tr>`).join("")}</tbody></table></div>`
+      : `<p class="muted">No warnings in the 7 days up to this time.</p>`;
   };
   replay.listener = update;
   wireReplay(() => keys);
   update();
-}
-
-// ---------- 1. Overview ----------
-async function renderOverview(view, fresh) {
-  const all = await Promise.all(dataset.pollutants.map((p) => api.results(p.key)));
-  if (!fresh()) return;
-  const r = all[dataset.pollutants.findIndex((p) => p.key === pollutant)];
-  const best = bestOf(r);
-  view.innerHTML = `
-    <p class="note">Hourly readings from an air quality station on a busy road in an Italian city, ${esc(fmtDate(dataset.start))}
-      to ${esc(fmtDate(dataset.end))} (${num(dataset.rows, 0)} hours, UCI Machine Learning Repository). The models learned from
-      the earlier part and were tested on the last part, from ${esc(fmtDate(r.periods.test[0]))}, which they never saw.</p>
-    <div class="grid cols-4">
-      <section class="card kpi"><span class="label">Best model for ${esc(r.pollutant)}</span><span class="value">${esc(r.model)}</span>
-        <span class="sub">Picked on the validation period</span></section>
-      <section class="card kpi"><span class="label">Typical miss per hour</span><span class="value">± ${num(best.test.MAE)} <small>${unit()}</small></span>
-        <span class="sub">On the future test period</span></section>
-      <section class="card kpi"><span class="label">Accuracy</span><span class="value">${pct(r.accuracy_within_20pct)}</span>
-        <span class="sub">of test hours within 20% of the real value</span></section>
-      <section class="card kpi"><span class="label">Better than a simple guess</span>
-        <span class="value ${r.improvement_vs_persistence_pct >= 1 ? "good" : ""}">${r.improvement_vs_persistence_pct >= 0 ? "+" : "−"}${pct(Math.abs(r.improvement_vs_persistence_pct), 1)}</span>
-        <span class="sub">vs. assuming next hour = this hour</span></section>
-    </div>
-    <section class="card">
-      <div class="card-head"><h3>${esc(r.pollutant)}: daily average over the whole dataset</h3><span class="muted">Shaded: learning · choosing the model · future test</span></div>
-      <div id="daily-chart" class="chart"></div>
-    </section>
-    <section class="card">
-      <div class="card-head"><h3>All four pollutants</h3><span class="muted">Click a row to see that pollutant</span></div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Pollutant</th><th>Best model</th><th class="num">Typical miss</th><th class="num">R²</th><th class="num">Within 20%</th>
-          <th class="num">Better than simple guess</th><th class="num">Unusual periods</th><th>Overfitting check</th></tr></thead>
-        <tbody>${all.map((x, i) => { const p = dataset.pollutants[i]; const b = bestOf(x); return `
-          <tr class="pick ${p.key === pollutant ? "on" : ""}" data-key="${esc(p.key)}" tabindex="0">
-            <td><b>${esc(x.pollutant)}</b> <span class="muted">${esc(x.unit)}</span></td><td>${esc(x.model)}</td>
-            <td class="num">${num(b.test.MAE)}</td><td class="num">${num(b.test.R2, 2)}</td><td class="num">${pct(x.accuracy_within_20pct)}</td>
-            <td class="num">${x.improvement_vs_persistence_pct >= 0 ? "+" : "−"}${pct(Math.abs(x.improvement_vs_persistence_pct), 1)}</td>
-            <td class="num">${num(x.episode_counts.total, 0)}</td><td>${esc(x.overfitting_check ? x.overfitting_check.verdict : "–")}</td></tr>`; }).join("")}</tbody>
-      </table></div>
-    </section>`;
-  view.querySelectorAll("tr.pick").forEach((row) => {
-    const pick = () => choosePollutant(row.dataset.key);
-    row.addEventListener("click", pick);
-    row.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pick(); } });
-  });
-  makeChart($("daily-chart"), {
-    tooltip: { trigger: "axis", valueFormatter: (v) => (v == null ? "no readings" : `${Number(v).toFixed(2)} ${info().unit}`) },
-    grid: { left: 44, right: 14, top: 16, bottom: 56 },
-    xAxis: { type: "time" },
-    yAxis: { type: "value", name: info().unit, splitLine: grid },
-    dataZoom: [{ type: "inside" }, { type: "slider", height: 18 }],
-    series: [{ name: "Daily average", type: "line", showSymbol: false, connectNulls: false, color: "#1d4ed8", lineStyle: { width: 1.5 },
-      data: r.data.daily.map(([day, v]) => [day, v]), markArea: { silent: true, label: { color: "#475569", fontSize: 11 }, data: splitBands(r.periods) } }],
-  });
 }
 
 function choosePollutant(key, keep) {
@@ -657,7 +623,7 @@ function choosePollutant(key, keep) {
   show(keep);
 }
 
-// ---------- 2. Dataset ----------
+// ---------- Dataset ----------
 async function renderDataset(view, fresh) {
   const all = await Promise.all(dataset.pollutants.map((p) => api.results(p.key)));
   if (!fresh()) return;
@@ -668,6 +634,13 @@ async function renderDataset(view, fresh) {
   const months = Object.keys(monthly).sort();
   const weather = Object.keys(dataset.weather || {});
   view.innerHTML = `
+    <p class="note">Hourly readings from an air quality station on a busy road in an Italian city, ${esc(fmtDate(dataset.start))}
+      to ${esc(fmtDate(dataset.end))} (${num(dataset.rows, 0)} hours, UCI Machine Learning Repository). The models learned from
+      the earlier part and were tested on the last part, from ${esc(fmtDate(r.periods.test[0]))}, which they never saw.</p>
+    <section class="card">
+      <div class="card-head"><h3>${esc(r.pollutant)}: daily average over the whole dataset</h3><span class="muted">Shaded: learning · choosing the model · future test</span></div>
+      <div id="daily-chart" class="chart"></div>
+    </section>
     <div class="grid cols-2">
       <section class="card">
         <div class="card-head"><h3>About the dataset</h3></div>
@@ -697,6 +670,15 @@ async function renderDataset(view, fresh) {
         <div id="monthly-chart" class="chart"></div>
       </section>
     </div>`;
+  makeChart($("daily-chart"), {
+    tooltip: { trigger: "axis", valueFormatter: (v) => (v == null ? "no readings" : `${Number(v).toFixed(2)} ${info().unit}`) },
+    grid: { left: 44, right: 14, top: 16, bottom: 56 },
+    xAxis: { type: "time" },
+    yAxis: { type: "value", name: info().unit, splitLine: grid },
+    dataZoom: [{ type: "inside" }, { type: "slider", height: 18 }],
+    series: [{ name: "Daily average", type: "line", showSymbol: false, connectNulls: false, color: "#1d4ed8", lineStyle: { width: 1.5 },
+      data: r.data.daily.map(([day, v]) => [day, v]), markArea: { silent: true, label: { color: "#475569", fontSize: 11 }, data: splitBands(r.periods) } }],
+  });
   makeChart($("complete-chart"), {
     tooltip: { trigger: "axis", valueFormatter: (v) => `${Number(v).toFixed(1)}%` },
     grid: { left: 60, right: 30, top: 8, bottom: 24 },
@@ -723,10 +705,11 @@ async function renderDataset(view, fresh) {
   });
 }
 
-// ---------- 3. Model results ----------
+// ---------- Model results ----------
 async function renderModel(view, fresh) {
-  const r = await api.results(pollutant);
+  const all = await Promise.all(dataset.pollutants.map((x) => api.results(x.key)));
   if (!fresh()) return;
+  const r = all[dataset.pollutants.findIndex((x) => x.key === pollutant)];
   const best = bestOf(r);
   const base = persistenceOf(r);
   const o = r.overfitting_check;
@@ -744,6 +727,22 @@ async function renderModel(view, fresh) {
       <section class="card kpi"><span class="label">Overfitting check</span><span class="value small-value">${esc(o ? o.verdict : "–")}</span>
         <span class="sub">${o ? `Miss on learned hours ${num(o.mae_on_learned_data)} vs new hours ${num(o.mae_on_test)}` : ""}</span></section>
     </div>
+    <section class="card">
+      <div class="card-head"><h3>All four pollutants</h3>
+        <span class="downloads no-print"><a class="btn ghost small" href="${esc(api.reportUrl(pollutant))}">Report for ${esc(r.pollutant)} (JSON)</a>
+          <button type="button" id="print-page" class="btn ghost small">Print / save as PDF</button></span></div>
+      <p class="muted">Click a row to see that pollutant.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Pollutant</th><th>Best model</th><th class="num">Typical miss</th><th class="num">R²</th><th class="num">Within 20%</th>
+          <th class="num">Better than simple guess</th><th class="num">Unusual changes</th><th>Overfitting check</th></tr></thead>
+        <tbody>${all.map((x, i) => { const key = dataset.pollutants[i].key; const b = bestOf(x); return `
+          <tr class="pick ${key === pollutant ? "on" : ""}" data-key="${esc(key)}" tabindex="0">
+            <td><b>${esc(x.pollutant)}</b> <span class="muted">${esc(x.unit)}</span></td><td>${esc(x.model)}</td>
+            <td class="num">${num(b.test.MAE)}</td><td class="num">${num(b.test.R2, 2)}</td><td class="num">${pct(x.accuracy_within_20pct)}</td>
+            <td class="num">${x.improvement_vs_persistence_pct >= 0 ? "+" : "−"}${pct(Math.abs(x.improvement_vs_persistence_pct), 1)}</td>
+            <td class="num">${num(x.episode_counts.total, 0)}</td><td>${esc(x.overfitting_check ? x.overfitting_check.verdict : "–")}</td></tr>`; }).join("")}</tbody>
+      </table></div>
+    </section>
     <section class="card">
       <div class="card-head"><h3>How the data was split by time</h3><span class="muted">The test period comes after everything the model learned from</span></div>
       <div class="timeline">${parts.map(([name, p, color]) => `<div style="flex:${days(...p) / total};--c:${color}">
@@ -765,6 +764,12 @@ async function renderModel(view, fresh) {
     </div>
     ${o ? `<p class="note">${esc(o.explanation)}</p>` : ""}`;
 
+  view.querySelectorAll("tr.pick").forEach((row) => {
+    const pick = () => choosePollutant(row.dataset.key);
+    row.addEventListener("click", pick);
+    row.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); pick(); } });
+  });
+  $("print-page").addEventListener("click", () => window.print());
   const points = r.test_predictions;
   const end = Math.min(100, Math.round(((24 * 14) / points.length) * 100)) || 100;
   makeChart($("test-chart"), {
@@ -802,7 +807,7 @@ async function renderModel(view, fresh) {
   });
 }
 
-// ---------- 4. Unusual periods ----------
+// ---------- Unusual changes ----------
 async function renderUnusual(view, fresh) {
   const r = await api.results(pollutant);
   if (!fresh()) return;
@@ -874,124 +879,6 @@ async function renderUnusual(view, fresh) {
     series: [{ type: "pie", radius: ["45%", "70%"], label: { formatter: "{c}" },
       data: Object.entries(KINDS).map(([k, [name, , color]]) => ({ name, value: counts[k] || 0, itemStyle: { color } })).filter((x) => x.value) }],
   });
-}
-
-// ---------- 5. Try a prediction ----------
-async function renderPredict(view, fresh) {
-  const r = await api.results(pollutant);
-  if (!fresh()) return;
-  view.innerHTML = `
-    <section class="card">
-      <div class="card-head"><h3>Predict the next hour of ${esc(r.pollutant)}</h3><span class="muted">Model: ${esc(r.model)}</span></div>
-      <p class="muted">Fill in what you know about the hour before, or load a real hour from the test period. This sends the same
-        request as Postman: <code>POST /predict</code>.</p>
-      <form id="predict-form" class="form-grid">
-        ${r.features.map((f) => `<label>${esc(FEATURES[f] || f)}<input name="${esc(f)}" type="number" step="any" ${["hour", "weekday", "lag_1"].includes(f) ? "required" : ""}></label>`).join("")}
-        <label>Real value (optional, to check it)<input name="observed" type="number" step="any" min="0"></label>
-      </form>
-      <p style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-        <button type="button" id="load-sample" class="btn ghost">Load a real hour</button>
-        <button type="submit" form="predict-form" class="btn primary">Predict</button>
-      </p>
-      <div id="predict-result" role="status"></div>
-    </section>`;
-  const form = $("predict-form");
-  $("load-sample").addEventListener("click", async () => {
-    try {
-      const s = await api.sample(pollutant);
-      if (!fresh()) return;
-      for (const input of form.elements) input.value = input.name === "observed" ? s.observed ?? "" : s.features[input.name] ?? "";
-      $("predict-result").innerHTML = `<p class="muted">Loaded ${esc(fmtDateTime(s.time))}.</p>`;
-    } catch (err) {
-      if (fresh()) $("predict-result").innerHTML = `<p class="form-error">${esc(err.message)}</p>`;
-    }
-  });
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const box = $("predict-result");
-    const features = {};
-    let observed = null;
-    for (const input of form.elements) {
-      if (!input.name) continue;
-      const value = input.value === "" ? null : Number(input.value);
-      if (input.name === "observed") observed = value; else features[input.name] = value;
-    }
-    try {
-      const answer = await api.predict({ pollutant, features, observed });
-      if (!fresh()) return;
-      const c = answer.episode_check;
-      box.innerHTML = `<div class="answer">
-        <span class="kpi-label">Predicted ${esc(answer.pollutant)} for the next hour</span>
-        <b>${num(answer.prediction)} <small>${esc(answer.unit)}</small></b>
-        ${c ? `<p class="${c.flagged ? "form-error" : "note ok"}" style="margin-top:8px">Real value ${num(c.observed)}, a difference of
-          ${num(Math.abs(c.deviation))}. ${c.flagged ? `That is more than the ${num(c.threshold)} limit, so this hour would be flagged as unusual.`
-          : `That is within the ${num(c.threshold)} limit, so this hour looks normal.`}</p>` : ""}</div>`;
-    } catch (err) {
-      if (fresh()) box.innerHTML = `<p class="form-error">${esc(err.message)}</p>`;
-    }
-  });
-}
-
-// ---------- 6. Reports ----------
-async function renderReports(view, fresh) {
-  const all = await Promise.all(dataset.pollutants.map((p) => api.results(p.key)));
-  if (!fresh()) return;
-  const r = all[dataset.pollutants.findIndex((p) => p.key === pollutant)];
-  const best = bestOf(r);
-  view.innerHTML = `
-    <section class="card no-print">
-      <div class="card-head" style="margin:0"><h3>Download or print</h3>
-        <span style="display:flex;gap:8px;flex-wrap:wrap">
-          <a class="btn ghost small" href="${esc(api.reportUrl(pollutant))}">Full report for ${esc(r.pollutant)} (JSON)</a>
-          <a class="btn ghost small" href="${esc(api.episodesCsvUrl(pollutant))}">Unusual periods (CSV)</a>
-          <button type="button" id="report-print" class="btn ghost small">Print / save as PDF</button>
-        </span></div>
-    </section>
-    <section class="card">
-      <h3>Air quality model report: ${esc(r.pollutant)}</h3>
-      <p class="muted" style="margin-top:4px">UCI Air Quality dataset (Italy), ${esc(fmtDate(dataset.start))} – ${esc(fmtDate(dataset.end))}</p>
-      <p style="margin-top:10px">The best model, <b>${esc(r.model)}</b>, predicts next hour's ${esc(r.pollutant)} with a typical miss of
-        <b>${num(best.test.MAE)} ${unit()}</b> on the future test period (${esc(fmtDate(r.periods.test[0]))} – ${esc(fmtDate(r.periods.test[1]))}).
-        That is ${pct(Math.abs(r.improvement_vs_persistence_pct), 1)} ${r.improvement_vs_persistence_pct >= 0 ? "better" : "worse"} than assuming the next hour
-        equals this hour, and ${pct(r.accuracy_within_20pct)} of test hours were within 20% of the real value.
-        ${r.overfitting_check ? esc(r.overfitting_check.verdict) + "." : ""} It flagged ${num(r.episode_counts.total, 0)} unusual periods:
-        ${num(r.episode_counts["Unusual pollution"] || 0, 0)} real pollution events, ${num(r.episode_counts["Data limitation"] || 0, 0)} likely data problems
-        and ${num(r.episode_counts.Unclear || 0, 0)} not sure.</p>
-    </section>
-    <section class="card">
-      <div class="card-head"><h3>All pollutants</h3></div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Pollutant</th><th>Best model</th><th class="num">Typical miss</th><th class="num">R²</th><th class="num">Within 20%</th>
-          <th class="num">Better than simple guess</th><th class="num">Unusual periods</th></tr></thead>
-        <tbody>${all.map((x) => { const b = bestOf(x); return `<tr><td><b>${esc(x.pollutant)}</b> <span class="muted">${esc(x.unit)}</span></td>
-          <td>${esc(x.model)}</td><td class="num">${num(b.test.MAE)}</td><td class="num">${num(b.test.R2, 2)}</td><td class="num">${pct(x.accuracy_within_20pct)}</td>
-          <td class="num">${x.improvement_vs_persistence_pct >= 0 ? "+" : "−"}${pct(Math.abs(x.improvement_vs_persistence_pct), 1)}</td>
-          <td class="num">${num(x.episode_counts.total, 0)}</td></tr>`; }).join("")}</tbody>
-      </table></div>
-    </section>`;
-  $("report-print").addEventListener("click", () => window.print());
-}
-
-// ---------- 7. Settings ----------
-async function renderSettings(view) {
-  view.innerHTML = `
-    <section class="card">
-      <div class="card-head"><h3>Data and models</h3></div>
-      <div class="table-wrap"><table><tbody>
-        <tr><th>Dataset</th><td>UCI Air Quality (Italy), ${num(dataset.rows, 0)} hourly rows</td></tr>
-        <tr><th>Models</th><td>${dataset.pollutants.map((p) => `${esc(p.pollutant)}: ${esc(p.model)}`).join(" · ")}</td></tr>
-        <tr><th>How they were trained</th><td>train_model.py and the Kaggle notebook, on the same data</td></tr>
-        <tr><th>Served by</th><td>main.py: /api/datasets, /api/results, /api/report, /api/episodes, /api/sample, /predict</td></tr>
-      </tbody></table></div>
-    </section>
-    <section class="card">
-      <div class="card-head"><h3>Users and roles</h3></div>
-      ${can("manageUsers") ? `<div class="table-wrap"><table>
-        <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
-        <tbody>${ACCOUNTS.map((u) => `<tr><td>${esc(u.name)}</td><td>${esc(u.email)}</td><td>${esc(ROLE_NAMES[u.role])}</td></tr>`).join("")}</tbody>
-      </table></div><p class="muted" style="margin-top:10px">Accounts will be managed by the backend.</p>`
-      : `<p class="muted">Only admins can see users. You are signed in as <b>${esc(ROLE_NAMES[session.user.role])}</b>.</p>`}
-    </section>`;
 }
 
 // ---------- start ----------
