@@ -574,8 +574,6 @@ def train_dataset(path, dataset_id, title, out_root=".", light=False):
         key = re.sub(r"[^A-Za-z0-9]", "", name)                    # PM2.5 -> PM25 for file names
         joblib.dump(model, model_dir / f"{key}.pkl", compress=3)
         (art_dir / f"{key}.json").write_text(json.dumps(info, allow_nan=False), encoding="utf-8")
-        (art_dir / f"{key}_report.json").write_text(json.dumps(build_report(info, title), indent=2, ensure_ascii=False),
-                                                     encoding="utf-8")
         best = next(m for m in info["models"] if m["model"] == info["model"])
         summary.append({"pollutant": name, "key": key, "unit": info["unit"], "model": info["model"],
                         "test_MAE": round(best["test"]["MAE"], 3), "test_R2": round(best["test"]["R2"], 3),
