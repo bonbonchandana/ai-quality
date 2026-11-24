@@ -13,15 +13,12 @@ password `demo123`.
 
 ## Screens
 
-- **Forecast**: pick a pollutant with the buttons at the top. See the value now and after 1, 2 and 3 hours, actual vs
-  predicted on a chart, and what each warning level means for health (including what happens if it keeps rising).
-- **Alerts**: every pollutant now and over the next 3 hours. Active warnings show the health effects and what hospitals,
-  doctors, sensitive groups, schools and the public should do. Warnings can be sent (a preview for now) or printed as an advisory.
-- **Public health actions**: today's briefing, the action plan for each level and team, a day-to-day routine for a public
-  health organisation, and how the predictions help.
-- **Unusual changes**: which gas jumped, by how much, which others moved with it, and the likely reason (real pollution or a
-  sensor problem). Downloadable as CSV.
-- **Model and data**: the best model for each pollutant, its accuracy on data it never saw, and graphs of the dataset.
+- **Dashboard**: pick a pollutant. See one big status (Good, Watch or Warning) with what it means, the value now, in 1 hour
+  and in 2 hours, a chart of actual vs predicted, and what to do now.
+- **Alerts**: all pollutants for the next 2 hours, active alerts with what to do (send or print), recent alerts and a daily
+  checklist for public health teams.
+- **Unusual changes**: when a pollutant jumped or dropped, by how much, and the likely cause (real pollution or a sensor problem).
+- **Model**: how the model works and how accurate it is, with a chart of actual vs predicted on the test period.
 
 ## How the forecast works
 
@@ -35,9 +32,9 @@ held at the last known hour, because the future weather is not known. For CO on 
 
 ## Warning levels
 
-The app looks at the highest forecast for the next 3 hours and places it on a simple ladder:
+The app looks at the highest forecast for the next 2 hours and places it on a simple ladder:
 
-| Pollutant | Level 1 · Watch | Level 2 · Warning | Based on |
+| Pollutant | Watch | Warning | Based on |
 |---|---|---|---|
 | CO | 4 mg/m³ | 10 mg/m³ | WHO guidelines (24-hour and 8-hour) |
 | NO2 | 200 µg/m³ | 400 µg/m³ | EU 1-hour limit and EU alert threshold |
