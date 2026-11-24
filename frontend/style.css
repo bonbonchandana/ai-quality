@@ -119,8 +119,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); outlin
 .kpi .value small { font-size: 0.9rem; font-weight: 500; color: var(--muted); }
 .kpi .sub { font-size: 0.85rem; color: var(--text-2); }
 .pill { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600; color: #fff; white-space: nowrap; }
-.level-low { background: var(--good); }
-.level-medium { background: var(--warn); }
+.level-low { background: var(--good); color: #0f172a; }
+.level-medium { background: var(--warn); color: #0f172a; }
+.kpi .pill { white-space: normal; }   /* long labels wrap instead of pushing the page sideways */
 .level-high { background: var(--bad); }
 
 /* AQI */
@@ -129,6 +130,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); outlin
   background: radial-gradient(closest-side, #fff 76%, transparent 77%), conic-gradient(var(--c) var(--p), #edf1f7 0); }
 .aqi-dial b { font-size: 2rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .aqi-dial span { font-size: 0.72rem; color: var(--muted); font-weight: 600; letter-spacing: 0.05em; }
+.category { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.15rem; margin: 0; }
+.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
 .aqi-scale { display: flex; gap: 3px; margin-top: 12px; }
 .aqi-scale span { flex: 1; height: 8px; border-radius: 4px; opacity: 0.35; }
 .aqi-scale span.on { opacity: 1; }
@@ -169,7 +172,7 @@ td.wrap { white-space: normal; min-width: 240px; }
 .tag-real { --c: #ea580c; }
 .tag-sensor { --c: #7c3aed; }
 .tag-unsure { --c: #64748b; }
-.tag-real .pill { background: #ea580c; }
+.tag-real .pill { background: #c2410c; }
 .tag-sensor .pill { background: #7c3aed; }
 .tag-unsure .pill { background: #64748b; }
 
