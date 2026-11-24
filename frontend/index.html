@@ -1,22 +1,72 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>UCI Air Quality Model</title>
-  <link rel="stylesheet" href="style.css?v=4"><script src="vendor/echarts.min.js?v=3"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Air Health Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
-  <header><p class="eyebrow">UCI AIR QUALITY · ITALY</p><h1>Pollution prediction</h1><p>One dataset, one clear workflow: choose a pollutant, inspect its test results, or predict the next hour.</p></header>
-  <main>
-    <section class="toolbar"><label>Pollutant<select id="pollutant"></select></label><a id="download-json" class="button" href="#">Download JSON report</a><a id="download-csv" class="button secondary" href="#">Download episodes CSV</a></section>
-    <p id="error" class="result error" hidden></p>
-    <section class="cards"><article><span>Chosen model</span><strong id="model">—</strong></article><article><span>Test MAE</span><strong id="mae">—</strong></article><article><span>Test R²</span><strong id="r2">—</strong></article><article><span>Within 20%</span><strong id="within">—</strong></article></section>
-    <section class="panel"><div class="heading"><div><p class="eyebrow">TEST PERIOD</p><h2>Actual vs predicted</h2></div><span id="period" class="muted"></span></div><div id="chart"></div></section>
-    <div class="columns"><section class="panel"><div class="heading"><div><p class="eyebrow">MODEL CHECK</p><h2>Performance</h2></div></div><p id="fit" class="muted"></p><div class="table-wrap"><table><thead><tr><th>Model</th><th>MAE</th><th>RMSE</th><th>R²</th></tr></thead><tbody id="performance"></tbody></table></div></section>
-    <section class="panel"><div class="heading"><div><p class="eyebrow">EPISODES</p><h2>Unusual periods</h2></div><select id="episode-filter"><option value="all">All</option><option value="Unusual pollution">Unusual pollution</option><option value="Data limitation">Data limitation</option><option value="Unclear">Unclear</option></select></div><p id="counts" class="muted"></p><div id="episodes"></div></section></div>
-    <section class="panel"><div class="heading"><div><p class="eyebrow">JSON API</p><h2>Named features → pollutant prediction</h2></div><button id="load-sample" class="secondary">Load example</button></div><p class="muted">Enter the feature names and values used by the selected pollutant model. The API returns the resultant pollutant prediction.</p><form id="predict-form" class="form"></form><button type="submit" form="predict-form">Predict</button><p id="predict-result" class="result" hidden></p></section>
-  </main>
-  <footer>Data source: UCI Machine Learning Repository · JSON-backed FastAPI application</footer>
-  <script src="app.js?v=4"></script>
+  <!-- Sign-in. The real check happens on the backend; this screen only collects the details. -->
+  <section id="signin" class="signin" hidden>
+    <div class="signin-card">
+      <div class="brand big">
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/><path d="M3 12h4l2-3 3 6 2-3h7"/></svg></span>
+        <div><h1>Air Health Portal</h1><p>Air quality planning for healthcare centers</p></div>
+      </div>
+      <form id="signin-form" novalidate>
+        <label>Healthcare center<select id="signin-center" required></select></label>
+        <label>Work email<input id="signin-email" type="email" autocomplete="username" required placeholder="name@yourcenter.org"></label>
+        <label>Password<input id="signin-password" type="password" autocomplete="current-password" required></label>
+        <p id="signin-error" class="form-error" role="alert" hidden></p>
+        <button type="submit" class="btn primary wide">Sign in</button>
+      </form>
+      <details class="demo-accounts">
+        <summary>Sample accounts for this preview</summary>
+        <p>Password for all: <code>demo123</code></p>
+        <ul>
+          <li><code>admin@demo.health</code>: everything, including users</li>
+          <li><code>doctor@demo.health</code>: can send alerts and change alert levels</li>
+          <li><code>viewer@demo.health</code>: can only view</li>
+        </ul>
+      </details>
+      <p class="fine">Only staff of registered healthcare centers can sign in. Access is checked by the center's server.
+        This preview shows sample data and no patient names.</p>
+    </div>
+  </section>
+
+  <!-- The portal, shown after sign-in -->
+  <div id="shell" class="shell" hidden>
+    <aside id="sidebar" class="sidebar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/><path d="M3 12h4l2-3 3 6 2-3h7"/></svg></span>
+        <strong>Air Health Portal</strong>
+      </div>
+      <nav id="nav" aria-label="Main"></nav>
+      <div class="me">
+        <div><b id="me-name"></b><span id="me-role" class="role"></span></div>
+        <button type="button" id="signout" class="btn ghost small">Sign out</button>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="topbar">
+        <button type="button" id="menu-toggle" class="icon-btn" aria-label="Open menu" aria-expanded="false" aria-controls="sidebar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <h2 id="page-title"></h2>
+        <div class="topbar-right">
+          <span class="sample-badge" title="Numbers on this preview are sample data until the backend is connected">Sample data</span>
+          <label class="center-pick"><span class="sr-only">Healthcare center</span><select id="center-switch"></select></label>
+        </div>
+      </header>
+      <main id="view" class="view" tabindex="-1"></main>
+    </div>
+    <div id="scrim" class="scrim" hidden></div>
+  </div>
+
+  <script src="vendor/echarts.min.js"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

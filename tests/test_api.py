@@ -57,7 +57,9 @@ def test_episode_csv_is_available():
 
 
 def test_dashboard_is_served():
-    assert client.get("/dashboard/").status_code == 200
+    page = client.get("/dashboard/")
+    assert page.status_code == 200
+    assert "Air Health Portal" in page.text
 
 
 def test_postman_request_from_the_pdf_works():
