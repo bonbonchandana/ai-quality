@@ -1,0 +1,144 @@
+{
+  "source": "AirQualityUCI.csv",
+  "hours": 9357,
+  "test_start": "2005-01-16 16:00:00",
+  "gases": {
+    "CO": {
+      "name": "Carbon monoxide",
+      "unit": "mg/m³",
+      "model": "Random forest",
+      "scores": {
+        "Random forest": 0.562,
+        "XGBoost": 0.569,
+        "Same as last hour": 0.607,
+        "Linear regression": 0.61
+      },
+      "test": {
+        "in_1_hour": 0.396,
+        "in_2_hours": 0.566,
+        "guess_1_hour": 0.523,
+        "guess_2_hours": 0.862
+      },
+      "limits": [
+        4,
+        10
+      ],
+      "limit_source": "WHO guideline: 4 mg/m³ over a day, 10 mg/m³ over 8 hours",
+      "unusual_miss": 2.76,
+      "typical_change": 0.538,
+      "missing": 18.0,
+      "top_inputs": [
+        "hour",
+        "lag_2",
+        "lag_1"
+      ]
+    },
+    "NO2": {
+      "name": "Nitrogen dioxide",
+      "unit": "µg/m³",
+      "model": "Random forest",
+      "scores": {
+        "Random forest": 13.98,
+        "Linear regression": 14.549,
+        "XGBoost": 14.564,
+        "Same as last hour": 15.213
+      },
+      "test": {
+        "in_1_hour": 16.146,
+        "in_2_hours": 23.043,
+        "guess_1_hour": 19.672,
+        "guess_2_hours": 32.896
+      },
+      "limits": [
+        200,
+        400
+      ],
+      "limit_source": "EU limit: 200 µg/m³ for one hour, 400 µg/m³ alert level",
+      "unusual_miss": 60.742,
+      "typical_change": 14.599,
+      "missing": 17.5,
+      "top_inputs": [
+        "hour",
+        "lag_2",
+        "lag_24"
+      ]
+    },
+    "NOx": {
+      "name": "Nitrogen oxides",
+      "unit": "ppb",
+      "model": "Random forest",
+      "scores": {
+        "Random forest": 89.898,
+        "Linear regression": 90.858,
+        "Same as last hour": 91.337,
+        "XGBoost": 94.6
+      },
+      "test": {
+        "in_1_hour": 57.586,
+        "in_2_hours": 84.804,
+        "guess_1_hour": 73.293,
+        "guess_2_hours": 123.276
+      },
+      "limits": [
+        677.8,
+        1001.0
+      ],
+      "limit_source": "No short-term health limit: higher than 95 and 99 of 100 earlier hours at this station",
+      "unusual_miss": 406.835,
+      "typical_change": 41.45,
+      "missing": 17.5,
+      "top_inputs": [
+        "hour",
+        "lag_2",
+        "lag_1"
+      ]
+    },
+    "C6H6": {
+      "name": "Benzene",
+      "unit": "µg/m³",
+      "model": "Random forest",
+      "scores": {
+        "Random forest": 2.325,
+        "XGBoost": 2.391,
+        "Same as last hour": 2.712,
+        "Linear regression": 2.795
+      },
+      "test": {
+        "in_1_hour": 1.73,
+        "in_2_hours": 2.483,
+        "guess_1_hour": 2.294,
+        "guess_2_hours": 3.699
+      },
+      "limits": [
+        25.2,
+        35.6
+      ],
+      "limit_source": "No short-term health limit: higher than 95 and 99 of 100 earlier hours at this station",
+      "unusual_miss": 13.775,
+      "typical_change": 2.834,
+      "missing": 3.9,
+      "top_inputs": [
+        "hour",
+        "lag_2",
+        "lag_1"
+      ]
+    }
+  },
+  "periods": {
+    "train": [
+      "2004-03-10",
+      "2004-10-30",
+      5615
+    ],
+    "check": [
+      "2004-10-30",
+      "2005-01-16",
+      1871
+    ],
+    "test": [
+      "2005-01-16",
+      "2005-04-04",
+      1871
+    ]
+  }
+}

@@ -2,10 +2,4 @@
 __pycache__/
 .pytest_cache/
 .claude/
-tools/
-ml_code_for_team.zip
-*.log.tmp
-uploads/
-models/upload-*/
-artifacts/upload-*/
-report_*.json
+live/

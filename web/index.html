@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Air Health</title>
+  <meta name="description" content="Air pollution forecasts and health alerts for health organisations.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="style.css?v=1">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap top-row">
+      <a class="brand" href="#today">
+        <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15"/><path d="M7 13c3-3 6 3 9 0s6 3 9 0M7 19c3-3 6 3 9 0s6 3 9 0"/></svg>
+        Air Health
+      </a>
+      <nav aria-label="Main">
+        <a href="#today">Today</a>
+        <a href="#history">History</a>
+        <a href="#check">Check</a>
+      </nav>
+    </div>
+  </header>
+  <p id="mode" class="mode"></p>
+  <main id="page" class="wrap" tabindex="-1"></main>
+  <footer class="wrap foot">
+    <span>For the data team:</span>
+    <a href="#model">How the model works</a>
+    <a href="#tv">TV screen</a>
+    <a href="/docs">API</a>
+  </footer>
+  <script src="echarts.min.js"></script>
+  <script src="app.js?v=1"></script>
+</body>
+</html>

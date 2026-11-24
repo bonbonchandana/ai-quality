@@ -1,4 +1,4 @@
-# Render blueprint: New + -> Blueprint -> pick this repo -> Apply.
+# Render: New + -> Blueprint -> pick this repo -> Apply. The trained models are in models/, so nothing trains on the server.
 services:
   - type: web
     name: ai-quality
@@ -10,9 +10,11 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.8
-      - key: ALLOW_UPLOAD
-        value: "false"
-      - key: LIGHT_TRAINING        # smaller models and the last 2 years only, to fit the free server
-        value: "true"
-      - key: MAX_UPLOAD_MB
-        value: "10"
+      - key: ADMIN_KEY             # lets the station send readings (set it in the Render dashboard)
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN    # optional: sends the alerts by Telegram
+        sync: false
+      - key: TELEGRAM_CHAT_ID      # optional: health partners' chat
+        sync: false
+      - key: TELEGRAM_DATA_CHAT_ID # optional: data team's chat
+        sync: false
