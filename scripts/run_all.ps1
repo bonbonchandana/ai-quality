@@ -21,7 +21,6 @@ if (-not (Test-Path $python)) {
 if (-not $SkipTraining) {
     Write-Host "`n=== 1. Training ===" -ForegroundColor Cyan
     & $python train_model.py data\AirQualityUCI.csv
-    & $python train_model.py data\Beijing_Aotizhongxin.csv
 }
 
 # 2. Start the server in the background

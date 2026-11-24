@@ -13,6 +13,5 @@ Write-Host ""
 Write-Host "  Local URL     : http://127.0.0.1:$port/dashboard/" -ForegroundColor Cyan
 Write-Host "  API docs      : http://127.0.0.1:$port/docs" -ForegroundColor Cyan
 if ($lan) { Write-Host "  Network URL   : http://${lan}:$port/dashboard/  (same Wi-Fi devices)" -ForegroundColor Cyan }
-Write-Host "  Public URL    : run scripts\public_url.ps1 in a second terminal" -ForegroundColor DarkGray
 Write-Host ""
 & $python -m uvicorn main:app --host 0.0.0.0 --port $port
