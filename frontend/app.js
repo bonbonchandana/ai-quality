@@ -311,8 +311,8 @@ const LEVELS = ["Low", "Medium", "High"];
 
 // What each role may do. The backend must enforce the same rules; hiding a button is not security.
 const RIGHTS = {
-  admin: ["sendAlerts", "editThresholds", "manageUsers", "switchCenter"],
-  doctor: ["sendAlerts", "editThresholds"],
+  admin: ["sendAlerts", "editThresholds", "tickActions", "manageUsers", "switchCenter"],
+  doctor: ["sendAlerts", "editThresholds", "tickActions"],
   viewer: [],
 };
 
@@ -400,6 +400,7 @@ async function startSignIn() {
 }
 
 function signOut() {
+  renderToken++;
   session = null;
   store.remove("ahp-session");
   clearCharts();
@@ -421,15 +422,18 @@ async function setupShell() {
   pick.title = can("switchCenter") ? "Switch center" : "Your center";
 }
 
+const NARROW = window.matchMedia("(max-width: 860px)");   // the width where the menu becomes a slide-out
 function openMenu(open) {
   $("shell").classList.toggle("menu-open", open);
   $("scrim").hidden = !open;
   $("menu-toggle").setAttribute("aria-expanded", String(open));
+  $("sidebar").inert = NARROW.matches && !open;   // a hidden menu shouldn't take keyboard focus
 }
 
 function currentPage() { const name = location.hash.replace(/^#\/?/, ""); return PAGES[name] ? name : "overview"; }
 
-async function show() {
+// keep: id of a control to keep focus on after the screen redraws (e.g. a dropdown being changed)
+async function show(keep) {
   if (!session) {
     $("shell").hidden = true;
     $("signin").hidden = false;
@@ -456,7 +460,7 @@ async function show() {
   } catch (err) {
     if (fresh()) $("view").innerHTML = `<div class="card"><p class="form-error">Couldn't load this screen: ${esc(err.message)}</p></div>`;
   }
-  if (fresh()) $("view").focus({ preventScroll: true });
+  if (fresh()) ($(keep) || $("view")).focus({ preventScroll: true });
 }
 
 // ---------- 1. Overview ----------
@@ -467,6 +471,7 @@ async function renderOverview(view, fresh) {
   const nowBand = bandFor(o.now.aqi);
   const nextBand = bandFor(aqiOf(load.next24Pm25).aqi);
   const doneKey = `ahp-done-${session.center.id}-${dateKey(new Date())}`;
+  const tickable = can("tickActions");
   const done = store.get(doneKey, []);
   const reason = load.level === "Low"
     ? `Fine dust is expected to average ${esc(load.next24Pm25)} µg/m³, close to normal.`
@@ -504,8 +509,9 @@ async function renderOverview(view, fresh) {
       <section class="card">
         <div class="card-head"><h3>Suggested actions</h3><span class="muted">Planning ideas for staff</span></div>
         <ul class="checklist">${o.actions.map((a) => `
-          <li class="${done.includes(a.id) ? "done" : ""}"><label><input type="checkbox" data-id="${esc(a.id)}" ${done.includes(a.id) ? "checked" : ""}>
+          <li class="${done.includes(a.id) ? "done" : ""}"><label><input type="checkbox" data-id="${esc(a.id)}" ${done.includes(a.id) ? "checked" : ""} ${tickable ? "" : "disabled"}>
             <span>${esc(a.text)}<small>${esc(a.why)}</small></span></label></li>`).join("")}</ul>
+        ${tickable ? "" : `<p class="muted" style="margin-top:10px">Admins and doctors tick these off.</p>`}
       </section>
     </div>`;
   view.querySelectorAll(".checklist input").forEach((box) => box.addEventListener("change", () => {
@@ -701,11 +707,11 @@ async function renderUnusual(view, fresh) {
   const periods = await api.unusualPeriods(session.center.id);
   if (!fresh()) return;
   let filter = "all";
+  const options = [["all", `All (${periods.length})`], ...Object.entries(LABELS).map(([k, [name]]) =>
+    [k, `${name} (${periods.filter((p) => p.label === k).length})`])];
   const draw = () => {
     const shown = periods.filter((p) => filter === "all" || p.label === filter);
-    $("filters").innerHTML = [["all", `All (${periods.length})`], ...Object.entries(LABELS).map(([k, [name]]) =>
-      [k, `${name} (${periods.filter((p) => p.label === k).length})`])]
-      .map(([k, text]) => `<button type="button" data-k="${k}" aria-pressed="${k === filter}">${esc(text)}</button>`).join("");
+    $("filters").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.k === filter)));
     $("events").innerHTML = shown.map((p) => {
       const [name, cls] = LABELS[p.label] || LABELS.unsure;
       const peak = Number(p.peak);
@@ -723,7 +729,8 @@ async function renderUnusual(view, fresh) {
       their own, it was probably <b>a sensor problem</b> (worth a call to the data team); otherwise we say <b>not sure</b>.</p>
     <section class="card">
       <div class="card-head"><h3>Last 30 days</h3></div>
-      <div id="filters" class="filters" role="group" aria-label="Filter by type"></div>
+      <div id="filters" class="filters" role="group" aria-label="Filter by type">${options.map(([k, text]) =>
+        `<button type="button" data-k="${k}" aria-pressed="${k === "all"}">${esc(text)}</button>`).join("")}</div>
       <div id="events" class="events" style="margin-top:14px"></div>
     </section>`;
   $("filters").addEventListener("click", (event) => {
@@ -771,7 +778,7 @@ async function renderReports(view, fresh) {
         <div id="daily-chart" class="chart"></div></section>
       <section class="card"><div class="card-head"><h3>Days at each level</h3></div><div id="level-chart" class="chart"></div></section>
     </div>` : `<p class="note">No data for this month yet.</p>`}`;
-  $("report-month").addEventListener("change", (event) => { store.set("ahp-report-month", event.target.value); show(); });
+  $("report-month").addEventListener("change", (event) => { store.set("ahp-report-month", event.target.value); show("report-month"); });
   $("report-print").addEventListener("click", () => window.print());
   if (!report.days.length) return;
   $("report-csv").addEventListener("click", () => {
@@ -798,7 +805,11 @@ async function renderReports(view, fresh) {
 }
 
 function downloadCsv(name, rows) {
-  const cell = (v) => { const t = String(v ?? ""); return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+  const cell = (v) => {
+    let t = String(v ?? "");
+    if (typeof v === "string" && /^[=+\-@\t\r]/.test(t)) t = "'" + t;   // Excel would run text starting with = + - @ as a formula
+    return /[",\r\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
+  };
   const cols = Object.keys(rows[0]);
   const text = [cols.join(","), ...rows.map((r) => cols.map((c) => cell(r[c])).join(","))].join("\r\n");
   const link = document.createElement("a");
@@ -859,9 +870,14 @@ async function start() {
     if (!c) return;
     session.center = c;
     store.set("ahp-session", session);
-    show();
+    show("center-switch");
   });
-  window.addEventListener("hashchange", show);
+  window.addEventListener("hashchange", () => show());
+  $("nav").addEventListener("click", (event) => { if (event.target.closest("a")) openMenu(false); });   // also when tapping the screen you're on
+  NARROW.addEventListener("change", () => openMenu(false));
+  // charts keep their screen size when printing unless told to resize
+  window.addEventListener("beforeprint", () => charts.forEach((c) => c.resize()));
+  window.addEventListener("afterprint", () => charts.forEach((c) => c.resize()));
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") openMenu(false); });
   if (session) await setupShell();
   show();
