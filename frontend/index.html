@@ -6,7 +6,7 @@
   <title>Air Health Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="style.css?v=12">
+  <link rel="stylesheet" href="style.css?v=13">
 </head>
 <body>
   <!-- Sign-in. The real check will happen on the backend; this screen only collects the details. -->
@@ -57,7 +57,7 @@
         <h2 id="page-title"></h2>
         <div class="topbar-right">
           <span class="data-badge" title="Every number here comes from the UCI Air Quality dataset and the models trained on it">UCI Italy dataset</span>
-          <label class="pollutant-pick">Pollutant<select id="pollutant"></select></label>
+          <div id="pollutant" class="pills" role="group" aria-label="Pollutant"></div>
         </div>
       </header>
       <main id="view" class="view" tabindex="-1"></main>
@@ -66,6 +66,6 @@
   </div>
 
   <script src="vendor/echarts.min.js"></script>
-  <script src="app.js?v=12"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

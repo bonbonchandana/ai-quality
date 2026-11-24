@@ -13,13 +13,15 @@ password `demo123`.
 
 ## Screens
 
-- **Live forecast**: replays the test period as if it were live, with the forecast 1, 2 and 3 hours ahead.
-- **Health alerts**: for nearby hospitals, doctors and public health organisations: the health risk, what to prepare,
-  and advice for the public. Sending is a preview for now.
-- **Unusual changes**: which gas jumped, by how much, which others moved with it, and a possible reason (real
-  pollution or a sensor problem). Downloadable as CSV.
-- **Model results**: the best model for each pollutant, how well it does on data it never saw, and the report download.
-- **Dataset**: graphs of the data itself, with the learning / choosing / test split.
+- **Forecast**: pick a pollutant with the buttons at the top. See the value now and after 1, 2 and 3 hours, actual vs
+  predicted on a chart, and what each warning level means for health (including what happens if it keeps rising).
+- **Alerts**: every pollutant now and over the next 3 hours. Active warnings show the health effects and what hospitals,
+  doctors, sensitive groups, schools and the public should do. Warnings can be sent (a preview for now) or printed as an advisory.
+- **Public health actions**: today's briefing, the action plan for each level and team, a day-to-day routine for a public
+  health organisation, and how the predictions help.
+- **Unusual changes**: which gas jumped, by how much, which others moved with it, and the likely reason (real pollution or a
+  sensor problem). Downloadable as CSV.
+- **Model and data**: the best model for each pollutant, its accuracy on data it never saw, and graphs of the dataset.
 
 ## How the forecast works
 
@@ -31,18 +33,20 @@ To look 2 and 3 hours ahead, the model's own forecast is fed back in as the "pre
 held at the last known hour, because the future weather is not known. For CO on the test period the typical miss is
 0.39, 0.55 and 0.63 mg/m³ at 1, 2 and 3 hours, against 0.52, 0.86 and 1.08 for simply guessing "no change".
 
-## Warnings
+## Warning levels
 
-For each pollutant the app looks at the worst forecast for the next 3 hours:
+The app looks at the highest forecast for the next 3 hours and places it on a simple ladder:
 
-- **High**: above 95 in 100 of the earlier hours at this station.
-- **Very high**: above 99 in 100.
+| Pollutant | Level 1 · Watch | Level 2 · Warning | Based on |
+|---|---|---|---|
+| CO | 4 mg/m³ | 10 mg/m³ | WHO guidelines (24-hour and 8-hour) |
+| NO2 | 200 µg/m³ | 400 µg/m³ | EU 1-hour limit and EU alert threshold |
+| NOx | above 95 in 100 earlier hours | above 99 in 100 | this station (no official health limit) |
+| C6H6 | above 95 in 100 earlier hours | above 99 in 100 | this station (no short-term health limit) |
 
-Both levels come from the data before the test period, so they use nothing the model couldn't have known. Where an
-official value applies it is mentioned too (for NO2, the EU 1-hour limit of 200 µg/m³). Each warning explains the health
-risk in plain words and gives planning guidance for four audiences: hospitals and doctors (readiness level 1 or 2),
-sensitive groups, schools and sports, and the public. It can be printed as an advisory. It's a planning aid, not a
-replacement for official warnings or clinical judgement.
+Each level explains the health effects, what happens if the level keeps rising, and what each team should do. Over the
+test period a warning is active in about 18% of hours (about 1.4 new warnings a day, mostly at rush hour). It's a planning
+aid, not a replacement for official warnings or clinical judgement.
 
 ## API
 

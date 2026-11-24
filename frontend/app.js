@@ -75,60 +75,121 @@ const FEATURES = {
   lag_3: "Value 3 hours before", lag_24: "Same hour yesterday", temperature: "Temperature, previous hour (°C)",
   relative_humidity: "Humidity, previous hour (%)", absolute_humidity: "Absolute humidity, previous hour",
 };
-// What each gas means for health, in plain words. Alert levels themselves come from the server ("levels"):
-// High = above 95 in 100 earlier hours at this station, Very high = above 99 in 100.
+// What each gas does to health, in one line
 const HEALTH = {
+  CO: { risk: "Carbon monoxide lowers how much oxygen the blood can carry. It matters most for people with heart disease." },
+  NO2: { risk: "Nitrogen dioxide irritates the airways. It brings more asthma attacks and more hospital visits for breathing problems, especially in children and older people." },
+  NOx: { risk: "Nitrogen oxides come mostly from traffic exhaust. They irritate the airways and rise together with nitrogen dioxide." },
+  C6H6: { risk: "Benzene comes from petrol and exhaust. The concern is long-term exposure, which raises the risk of leukaemia." },
+};
+
+// The warning ladder for each pollutant: what each level means, its health effects, and what happens if it keeps rising.
+// CO and NO2 use official health values; NOx and benzene have no short-term health limit, so their levels are
+// "unusually high for this station" (above 95 and 99 in 100 earlier hours, sent by the server).
+const LADDER = {
   CO: {
-    risk: "Carbon monoxide lowers how much oxygen the blood can carry. At roadside levels like these it mainly matters for people with heart disease.",
-    reference: "WHO guideline: 4 mg/m³ averaged over 24 hours (35 mg/m³ over 1 hour).",
+    limits: [4, 10], basis: "WHO air quality guidelines",
+    normal: "Below the WHO daily guideline. Outdoor carbon monoxide at this level is not expected to harm health.",
+    l1: { what: "Above 4 mg/m³, the WHO guideline for a 24-hour average, which is set to protect people with heart disease.",
+          effect: "If it stays this high for most of the day, people with heart disease are at somewhat higher risk.",
+          rising: "Towards 10 mg/m³ (the WHO 8-hour guideline), people with heart disease may get chest pain sooner when active." },
+    l2: { what: "Above 10 mg/m³, the WHO guideline for an 8-hour average.",
+          effect: "People with heart disease may get chest pain sooner and need more rest; others may tire faster during exercise.",
+          rising: "Towards 35 mg/m³ (the WHO 1-hour guideline), headaches and dizziness become possible near the source; far higher levels mean carbon monoxide poisoning." },
   },
   NO2: {
-    limit: 200, limitName: "the EU 1-hour limit of 200 µg/m³",
-    risk: "Nitrogen dioxide irritates the airways. Higher levels are linked to more asthma attacks and more hospital visits for breathing problems, especially in children and older people.",
-    reference: "EU 1-hour limit: 200 µg/m³. WHO 24-hour guideline: 25 µg/m³.",
+    limits: [200, 400], basis: "EU air quality limits",
+    normal: "Below the EU 1-hour limit, so little short-term risk. Long exposure above 25 µg/m³ (the WHO daily guideline) still harms airways over the years.",
+    l1: { what: "Above 200 µg/m³, the EU limit for a 1-hour average.",
+          effect: "Airways get irritated: people with asthma cough and wheeze more, and asthma attacks become more likely, especially in children.",
+          rising: "Towards 400 µg/m³ (the EU alert threshold), breathing problems spread to more people and hospital visits rise." },
+    l2: { what: "Above 400 µg/m³, the EU alert threshold (official when it lasts 3 hours in a row).",
+          effect: "The public must be informed. Asthma attacks and breathing problems rise sharply and hospital visits go up.",
+          rising: "Higher still, even healthy people get irritated airways and weaker lung function." },
   },
   NOx: {
-    risk: "Nitrogen oxides come mostly from traffic exhaust. They irritate the airways and rise together with nitrogen dioxide.",
-    reference: "No separate health limit; used as a sign of traffic pollution.",
+    station: true, basis: "this station's usual levels (there is no official health limit for NOx)",
+    normal: "In the usual range for this station.",
+    l1: { what: "Higher than 95 in 100 earlier hours at this station: unusually heavy traffic exhaust.",
+          effect: "NOx includes nitrogen dioxide, so airway irritation and asthma symptoms become more likely near busy roads.",
+          rising: "Towards Level 2, the same effects get stronger and reach more people." },
+    l2: { what: "Higher than 99 in 100 earlier hours at this station: very heavy traffic exhaust.",
+          effect: "Expect more breathing complaints, especially from people living or working next to main roads.",
+          rising: "Higher still: treat it like a nitrogen dioxide warning and look at traffic measures." },
   },
   C6H6: {
-    risk: "Benzene comes from petrol and exhaust. The concern is long-term exposure, which raises the risk of leukaemia; short rises at these levels don't cause symptoms.",
-    reference: "EU limit: 5 µg/m³ as a yearly average.",
+    station: true, basis: "this station's usual levels (benzene has no short-term health limit; the EU limit is 5 µg/m³ as a yearly average)",
+    normal: "In the usual range for this station. Benzene has no completely safe level, so lower is always better.",
+    l1: { what: "Higher than 95 in 100 earlier hours at this station.",
+          effect: "Short peaks like this cause no symptoms, but if high levels keep coming back for months, the long-term risk of leukaemia goes up.",
+          rising: "Rising further points to a strong local source (traffic jams, fuel stations, industry) that should be found." },
+    l2: { what: "Higher than 99 in 100 earlier hours at this station.",
+          effect: "Still no immediate symptoms, but it points to a strong local source that should be investigated and reported.",
+          rising: "Only at around 1,000 times these levels (workplace accidents) does benzene cause dizziness and headaches." },
   },
 };
+
 // Planning guidance for each audience (adapted from the team's action protocol)
 const GUIDE = {
-  high: {
+  l1: {
     "Hospitals and doctors": "Readiness level 1: let the emergency and respiratory teams know, and check inhaler and nebuliser stock.",
     "Sensitive groups": "People with asthma, lung or heart disease, older people, children and pregnant women: keep usual medicines handy and avoid long exercise near traffic.",
     "Schools and sports": "Move hard outdoor sports away from busy roads.",
     "Public": "Avoid busy roads at rush hour and keep windows on the traffic side closed.",
   },
-  veryhigh: {
+  l2: {
     "Hospitals and doctors": "Readiness level 2: consider extra staff for the emergency room and respiratory clinic, and check beds and oxygen supply.",
     "Sensitive groups": "Limit time outdoors near busy roads, especially at rush hour, and follow your care plan.",
     "Schools and sports": "Hold sports and break time indoors where possible.",
     "Public": "Limit time near traffic. Local authorities can consider traffic and anti-idling measures.",
   },
 };
-const LEVELS = { normal: ["Normal", "st-normal"], high: ["High", "st-watch"], veryhigh: ["Very high", "st-alert"], unknown: ["No data", "st-unknown"] };
+
+// How a public health organisation uses the portal day to day
+const PLAYBOOK = [
+  ["normal", { "Public health organisation": "Routine monitoring: check the forecast every morning.", "Hospitals and doctors": "Normal service.",
+    "Schools and sports": "Normal activities.", "Public": "No action needed.", "City services": "Routine work." }],
+  ["l1", { "Public health organisation": "Send an advisory for sensitive groups, tell hospitals and clinics, and check again every hour.",
+    "Hospitals and doctors": "Readiness level 1: inform the emergency and respiratory teams; check inhalers and nebulisers.",
+    "Schools and sports": "Move hard outdoor sports away from busy roads.", "Public": "Sensitive groups keep medicines handy and avoid long exercise near traffic.",
+    "City services": "Be ready for traffic measures." }],
+  ["l2", { "Public health organisation": "Start the response plan: public alert through media and SMS, coordinate hospitals and the city, review every hour.",
+    "Hospitals and doctors": "Readiness level 2: consider extra staff for emergency and respiratory care; check beds and oxygen.",
+    "Schools and sports": "Hold sports and breaks indoors where possible.", "Public": "Limit time near traffic; sensitive groups stay indoors where possible.",
+    "City services": "Consider traffic limits, anti-idling checks and rerouting heavy vehicles." }],
+];
+const ROUTINE = [
+  ["Every morning", "Open Forecast and Alerts, check each pollutant for the hours ahead, and decide the day's level."],
+  ["When a warning appears", "Read what the level means for health, then follow the action plan: advise sensitive groups, tell hospitals and doctors, inform schools. Use “Send warning” and “Print advisory”."],
+  ["During the day", "Watch Unusual changes. A real pollution event (several gases rising together) needs a source check; a likely sensor problem goes to the data team."],
+  ["End of the day", "Compare the forecast with what really happened, note the actions taken, and plan for tomorrow."],
+  ["Every week or month", "Download the reports to count hours over the limits and support decisions on traffic and clean-air policy."],
+];
+const USES = [
+  ["Early warning", "Forecasts 1 to 3 hours ahead give time to warn people before the air gets bad, not after."],
+  ["Staff and supplies", "Hospitals can add staff and check medicines when breathing-related visits are likely to rise."],
+  ["Targeted messages", "Warnings go to the people most at risk: asthma, lung or heart disease, children, older people and pregnant women."],
+  ["Finding the cause", "Unusual changes show whether a spike is real pollution (traffic, heating, industry) or a faulty sensor."],
+  ["Evidence for policy", "Counts of hours over the limits support decisions on traffic, low-emission zones and monitoring."],
+];
+const LEVELS = { normal: ["Normal", "st-normal"], l1: ["Level 1 · Watch", "st-watch"], l2: ["Level 2 · Warning", "st-alert"], unknown: ["No data", "st-unknown"] };
 const RECIPIENTS = "nearby hospitals · doctors · public health organisations";
 const DISCLAIMER = "Planning aid based on a research forecast. It doesn't replace official warnings or clinical judgement.";
 const SETTING_NAMES = { n_estimators: "trees", max_depth: "depth", min_samples_leaf: "hours per leaf", learning_rate: "learning rate" };
 
 const ICONS = {
-  live: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  forecast: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
   alerts: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
-  dataset: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
-  model: '<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>',
+  actions: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 13l2 2 4-4"/>',
   unusual: '<path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  model: '<polyline points="3 17 9 11 13 15 21 7"/><polyline points="15 7 21 7 21 13"/>',
 };
 const PAGES = {
-  live: { title: "Live forecast", render: renderLive },
-  alerts: { title: "Health alerts", render: renderAlerts },
+  forecast: { title: "Forecast", render: renderForecast },
+  alerts: { title: "Alerts", render: renderAlerts },
+  actions: { title: "Public health actions", render: renderActions },
   unusual: { title: "Unusual changes", render: renderUnusual },
-  model: { title: "Model results", render: renderModel },
-  dataset: { title: "Dataset", render: renderDataset },
+  model: { title: "Model and data", render: renderModelData },
 };
 
 const store = {
@@ -233,8 +294,8 @@ async function setupShell() {
   $("me-role").textContent = ROLE_NAMES[session.user.role] || session.user.role;
   dataset = dataset || await api.datasets();
   if (!dataset.pollutants.some((p) => p.key === pollutant)) pollutant = dataset.pollutants[0].key;
-  $("pollutant").innerHTML = dataset.pollutants.map((p) => `<option value="${esc(p.key)}">${esc(p.pollutant)} (${esc(p.unit)})</option>`).join("");
-  $("pollutant").value = pollutant;
+  $("pollutant").innerHTML = dataset.pollutants.map((p) => `<button type="button" id="pill-${esc(p.key)}" data-key="${esc(p.key)}"
+    aria-pressed="${p.key === pollutant}" title="${esc(p.pollutant)} in ${esc(p.unit)}">${esc(p.pollutant)}</button>`).join("");
 }
 
 function openMenu(open) {
@@ -244,7 +305,7 @@ function openMenu(open) {
   $("sidebar").inert = NARROW.matches && !open;   // a hidden menu shouldn't take keyboard focus
 }
 
-function currentPage() { const name = location.hash.replace(/^#\/?/, ""); return PAGES[name] ? name : "live"; }
+function currentPage() { const name = location.hash.replace(/^#\/?/, ""); return PAGES[name] ? name : "forecast"; }
 
 // keep: id of a control to keep focus on after the screen redraws (e.g. the pollutant menu being changed)
 async function show(keep) {
@@ -267,7 +328,7 @@ async function show(keep) {
   openMenu(false);
   clearCharts();
   replay.listener = null;
-  if (name !== "live" && name !== "alerts") pauseReplay();   // the replay only runs while someone is watching it
+  if (!["forecast", "alerts", "actions"].includes(name)) pauseReplay();   // the replay only runs while someone is watching it
   const token = ++renderToken;
   const fresh = () => token === renderToken;   // false once the user has moved on to another screen
   $("view").innerHTML = `<div class="card"><p class="muted">Loading…</p></div>`;
@@ -314,7 +375,7 @@ const episodesOf = {};    // pollutant -> unusual changes found by the model
 const replay = { i: START_HOUR, playing: false, speed: 1000, timer: null, listener: null };
 const sent = new Set();
 const statusCache = new Map();
-const warning = (level) => level === "high" || level === "veryhigh";
+const warning = (level) => level === "l1" || level === "l2";
 
 async function loadReplayData() {
   const keys = dataset.pollutants.map((x) => x.key);
@@ -332,15 +393,18 @@ function plusHours(s, k) {
   return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:00`;
 }
 
+// Where Level 1 and Level 2 start for a pollutant
+function thresholds(key) {
+  const ladder = LADDER[key];
+  return ladder.station ? [series[key].levels.high, series[key].levels.very_high] : ladder.limits;
+}
 function levelOf(key, value) {
   if (value == null) return "unknown";
-  const levels = series[key].levels;
-  if (value >= levels.very_high) return "veryhigh";
-  if (value >= levels.high) return "high";
-  return "normal";
+  const [l1, l2] = thresholds(key);
+  return value >= l2 ? "l2" : value >= l1 ? "l1" : "normal";
 }
 
-// Health status of one pollutant at replay hour i: the highest of its forecasts for the next 1-3 hours
+// The warning level of one pollutant at replay hour i: the highest of its forecasts for the next 1-3 hours
 function statusAt(key, i) {
   const id = `${key}|${i}`;
   if (statusCache.has(id)) return statusCache.get(id);
@@ -354,12 +418,7 @@ function statusAt(key, i) {
   } else {
     const top = Math.max(...known);
     const level = levelOf(key, top);
-    const h = HEALTH[key] || {};
-    const amount = `${num(top)} ${f.unit}`;
-    const overLimit = h.limit != null && top >= h.limit ? ` That is above ${h.limitName}.` : "";
-    const reason = level === "veryhigh" ? `The forecast of ${amount} is higher than 99 in 100 earlier hours at this station.${overLimit}`
-      : level === "high" ? `The forecast of ${amount} is higher than 95 in 100 earlier hours at this station.${overLimit}`
-      : `All forecasts for the next 3 hours are in the usual range for this station.${overLimit}`;
+    const reason = level === "normal" ? LADDER[key].normal : LADDER[key][level].what;
     result = { level, now, ahead, top, at: ahead.indexOf(top) + 1, change: now > 0 ? (top - now) / now : null, reason };
   }
   statusCache.set(id, result);
@@ -417,7 +476,7 @@ function replayControls() {
         <button type="button" id="replay-next-change" class="btn ghost small">Next unusual change</button>
         <span id="replay-msg" class="muted" role="status"></span>
       </div>
-      <label class="replay-time"><span>Replay time: <b id="replay-now"></b></span>
+      <label class="replay-time"><span>Time: <b id="replay-now"></b></span>
         <input type="range" id="replay-slider" min="0" max="${f.times.length - 1}" step="1"></label>
       <p class="muted">Plays back the test period (${esc(fmtDate(f.times[0]))} to ${esc(fmtDate(f.times[f.times.length - 1]))}) hour by
         hour, as if it were live. The model never saw these hours.</p>
@@ -451,50 +510,73 @@ function syncReplayControls() {
   $("replay-play").textContent = replay.playing ? "Pause" : "Play";
 }
 
-// ---------- Live forecast ----------
-async function renderLive(view, fresh) {
+// The ladder for one pollutant: Normal, Level 1, Level 2, with the current forecast level marked
+function ladderHtml(key, current) {
+  const ladder = LADDER[key];
+  const unitText = esc(series[key].unit);
+  const [l1, l2] = thresholds(key);
+  const step = (level, range, body) => {
+    const [name, cls] = LEVELS[level];
+    return `<div class="step ${cls} ${level === current ? "here" : ""}">
+      <div class="step-head"><span class="pill ${cls}">${name}</span><b>${range}</b>${level === current ? `<span class="here-tag">Forecast is here</span>` : ""}</div>
+      ${body}</div>`;
+  };
+  return `<p class="muted">Levels based on ${esc(ladder.basis)}.</p>
+    <div class="ladder">
+      ${step("normal", `below ${num(l1)} ${unitText}`, `<p>${esc(ladder.normal)}</p>`)}
+      ${step("l1", `from ${num(l1)} ${unitText}`, `<p>${esc(ladder.l1.what)}</p><p><b>Effects:</b> ${esc(ladder.l1.effect)}</p><p><b>If it keeps rising:</b> ${esc(ladder.l1.rising)}</p>`)}
+      ${step("l2", `from ${num(l2)} ${unitText}`, `<p>${esc(ladder.l2.what)}</p><p><b>Effects:</b> ${esc(ladder.l2.effect)}</p><p><b>If it keeps rising:</b> ${esc(ladder.l2.rising)}</p>`)}
+    </div>`;
+}
+
+// ---------- Forecast ----------
+async function renderForecast(view, fresh) {
   await loadReplayData();
   if (!fresh()) return;
   const key = pollutant;
   const f = series[key];
-  const h = HEALTH[key] || {};
   const u = esc(f.unit);
   const better = (s) => Math.round((1 - f.mae[s] / f.simple_guess_mae[s]) * 100);
   view.innerHTML = `
+    <div id="forecast-banner"></div>
     ${replayControls()}
-    <div id="live-cards" class="grid cols-4"></div>
+    <div id="forecast-cards" class="grid cols-4"></div>
     <section class="card">
-      <div class="card-head"><h3>${esc(f.pollutant)}: the last 2 days and the next 3 hours</h3>
-        <label class="inline"><input type="checkbox" id="show-real"> Show what really happened next</label></div>
-      <div id="live-chart" class="chart tall"></div>
-      <p class="muted">Solid: measured. Dashed: the model's forecast for 1, 2 and 3 hours ahead, made only with what was known at that moment.
-        Dotted lines: this station's High and Very high levels.</p>
+      <div class="card-head"><h3>${esc(f.pollutant)}: actual vs predicted, and the next 3 hours</h3>
+        <span class="muted">Last 2 days and the forecast · dotted lines: Level 1 and Level 2</span></div>
+      <div id="forecast-chart" class="chart tall"></div>
+      <p class="muted">Blue: what was measured. Green dashed: what the model predicted one hour earlier. Red dashed: the forecast
+        for the next 1, 2 and 3 hours, made only with what is known now.</p>
+    </section>
+    <section class="card">
+      <div class="card-head"><h3>What the levels mean for ${esc(f.pollutant)}</h3></div>
+      <p class="muted">${esc((HEALTH[key] || {}).risk || "")}</p>
+      <div id="forecast-ladder"></div>
     </section>
     <div class="grid cols-2">
-      <section class="card" id="live-health"></section>
-      <section class="card" id="live-change"></section>
-    </div>
-    <section class="card">
-      <div class="card-head"><h3>How accurate are these forecasts?</h3><span class="muted">Typical miss over the whole test period</span></div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>Forecast for</th><th class="num">Our model</th><th class="num">Simple guess (no change)</th><th class="num">Better by</th></tr></thead>
-        <tbody>${["1", "2", "3"].map((s) => `<tr><td>${s} hour${s === "1" ? "" : "s"} ahead</td><td class="num">± ${num(f.mae[s])} ${u}</td>
-          <td class="num">± ${num(f.simple_guess_mae[s])} ${u}</td><td class="num">${esc(better(s))}%</td></tr>`).join("")}</tbody>
-      </table></div>
-    </section>`;
+      <section class="card" id="forecast-change"></section>
+      <section class="card">
+        <div class="card-head"><h3>How accurate are the forecasts?</h3><span class="muted">Whole test period</span></div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Forecast for</th><th class="num">Typical miss</th><th class="num">Better than "no change"</th></tr></thead>
+          <tbody>${["1", "2", "3"].map((s) => `<tr><td>${s} hour${s === "1" ? "" : "s"} ahead</td><td class="num">± ${num(f.mae[s])} ${u}</td>
+            <td class="num">${esc(better(s))}%</td></tr>`).join("")}</tbody>
+        </table></div>
+      </section>
+    </div>`;
 
-  const chart = makeChart($("live-chart"), {
+  const chart = makeChart($("forecast-chart"), {
     animation: false,
     tooltip: { trigger: "axis", valueFormatter: (v) => (v == null ? "no reading" : `${num(v)} ${f.unit}`) },
-    legend: { top: 0, data: ["Measured", "Forecast", "What really happened"] },
+    legend: { top: 0, data: ["Actual", "Predicted", "Forecast"] },
     grid: { left: 50, right: 16, top: 34, bottom: 28 },
     xAxis: { type: "time" },
     yAxis: { type: "value", name: f.unit, splitLine: grid },
     series: [
-      { id: "past", name: "Measured", type: "line", showSymbol: false, connectNulls: false, color: "#1d4ed8", lineStyle: { width: 2 }, data: [] },
-      { id: "fc", name: "Forecast", type: "line", color: "#dc2626", symbolSize: 7, lineStyle: { width: 2, type: "dashed" }, data: [],
+      { id: "actual", name: "Actual", type: "line", showSymbol: false, connectNulls: false, color: "#1d4ed8", lineStyle: { width: 2 }, data: [] },
+      { id: "predicted", name: "Predicted", type: "line", showSymbol: false, connectNulls: false, color: "#0f766e", lineStyle: { width: 1.6, type: "dashed" }, data: [] },
+      { id: "forecast", name: "Forecast", type: "line", color: "#dc2626", symbolSize: 7, lineStyle: { width: 2, type: "dashed" }, data: [],
         label: { show: true, position: "top", fontSize: 10, formatter: (x) => (x.dataIndex ? `+${x.dataIndex} h` : "") } },
-      { id: "real", name: "What really happened", type: "line", color: "#64748b", symbolSize: 5, lineStyle: { width: 1.5, type: "dotted" }, data: [] },
     ],
   });
 
@@ -502,44 +584,52 @@ async function renderLive(view, fresh) {
     syncReplayControls();
     const i = replay.i;
     const s = statusAt(key, i);
-    const cards = [["Now (measured)", s.now, 0], ["In 1 hour", s.ahead[0], 1], ["In 2 hours", s.ahead[1], 2], ["In 3 hours", s.ahead[2], 3]];
-    $("live-cards").innerHTML = cards.map(([label, v, k]) => {
-      const [name, cls] = LEVELS[levelOf(key, v)];
-      const ch = k && v != null && s.now > 0 ? Math.round(((v - s.now) / s.now) * 100) : null;
-      return `<section class="card kpi lvl ${cls}"><span class="label">${label}</span><span class="value">${num(v)} <small>${u}</small></span>
-        <span class="sub"><span class="pill ${cls}">${name}</span>${ch != null ? ` ${ch >= 0 ? "+" : "−"}${Math.abs(ch)}% vs now` : ""}</span></section>`;
-    }).join("");
-
-    const from = Math.max(0, i - 47);
-    const past = [];
-    for (let j = from; j <= i; j++) past.push([f.times[j], f.now[j]]);
-    const at = (k) => f.times[i + k] || plusHours(f.times[i], k);
-    const forecast = [[f.times[i], f.now[i]], [at(1), f.f1[i]], [at(2), f.f2[i]], [at(3), f.f3[i]]];
-    const real = $("show-real").checked ? [[f.times[i], f.now[i]], ...[1, 2, 3].map((k) => [at(k), f.now[i + k] ?? null])] : [];
-    const top = Math.max(0, ...[...past, ...forecast, ...real].map((x) => x[1]).filter((v) => v != null));
-    const lines = [["High", f.levels.high, "#d97706"], ["Very high", f.levels.very_high, "#dc2626"]].filter(([, v]) => v <= top * 1.4)
-      .map(([name, v, color]) => ({ yAxis: v, label: { formatter: name, color }, lineStyle: { color, type: "dotted" } }));
-    chart.setOption({ series: [{ id: "past", data: past, markLine: { silent: true, symbol: "none", data: lines } }, { id: "fc", data: forecast }, { id: "real", data: real }] });
+    const [l1, l2] = thresholds(key);
 
     const [name, cls] = LEVELS[s.level];
-    $("live-health").innerHTML = `<div class="card-head"><h3>Health status, next 3 hours</h3><span class="pill ${cls}">${name}</span></div>
-      <p>${esc(s.reason)}</p><p class="muted"><b>Why it matters:</b> ${esc(h.risk || "")}</p><p class="muted">${esc(h.reference || "")}</p>
-      ${warning(s.level) ? `<p><a href="#/alerts">See the warning for hospitals and public health organisations</a></p>` : ""}`;
+    $("forecast-banner").innerHTML = warning(s.level)
+      ? `<div class="banner ${cls}"><span class="pill ${cls}">${name}</span>
+          <span>${esc(f.pollutant)} is forecast to reach <b>${num(s.top)} ${u}</b> in ${esc(s.at)} hour${s.at === 1 ? "" : "s"}. ${esc(s.reason)}</span>
+          <a href="#/alerts">See the alert and actions</a></div>` : "";
+
+    const cards = [["Now (measured)", s.now, 0], ["After 1 hour", s.ahead[0], 1], ["After 2 hours", s.ahead[1], 2], ["After 3 hours", s.ahead[2], 3]];
+    $("forecast-cards").innerHTML = cards.map(([label, v, k]) => {
+      const [lname, lcls] = LEVELS[levelOf(key, v)];
+      const ch = k && v != null && s.now > 0 ? Math.round(((v - s.now) / s.now) * 100) : null;
+      return `<section class="card kpi lvl ${lcls}"><span class="label">${label}</span><span class="value">${num(v)} <small>${u}</small></span>
+        <span class="sub"><span class="pill ${lcls}">${lname}</span>${ch != null ? ` ${ch >= 0 ? "+" : "−"}${Math.abs(ch)}% vs now` : ""}</span></section>`;
+    }).join("");
+
+    const from = Math.max(1, i - 47);
+    const actual = [];
+    const predicted = [];
+    for (let j = from; j <= i; j++) {
+      actual.push([f.times[j], f.now[j]]);
+      predicted.push([f.times[j], f.f1[j - 1]]);   // the model's prediction for hour j, made one hour earlier
+    }
+    const at = (k) => f.times[i + k] || plusHours(f.times[i], k);
+    const forecast = [[f.times[i], f.now[i]], [at(1), f.f1[i]], [at(2), f.f2[i]], [at(3), f.f3[i]]];
+    const top = Math.max(0, ...[...actual, ...predicted, ...forecast].map((x) => x[1]).filter((v) => v != null));
+    const lines = [["Level 1", l1, "#d97706"], ["Level 2", l2, "#dc2626"]].filter(([, v]) => v <= top * 1.4)
+      .map(([lname, v, color]) => ({ yAxis: v, label: { formatter: lname, color }, lineStyle: { color, type: "dotted" } }));
+    chart.setOption({ series: [{ id: "actual", data: actual, markLine: { silent: true, symbol: "none", data: lines } },
+      { id: "predicted", data: predicted }, { id: "forecast", data: forecast }] });
+
+    $("forecast-ladder").innerHTML = ladderHtml(key, s.level === "unknown" ? null : s.level);
 
     const now = replayTime();
     const dayBefore = plusHours(now, -24);
     const recent = episodesOf[key].filter((e) => { const t = String(e.peak_time || e.start).slice(0, 16); return t <= now && t > dayBefore; }).pop();
-    $("live-change").innerHTML = `<div class="card-head"><h3>Unusual change</h3><span class="muted">Last 24 hours</span></div>` + (recent
+    $("forecast-change").innerHTML = `<div class="card-head"><h3>Unusual change</h3><span class="muted">Last 24 hours</span></div>` + (recent
       ? `<p><b>${esc(fmtDateTime(recent.peak_time || recent.start))}</b> <span class="pill ${(KINDS[recent.type] || KINDS.Unclear)[1]}">${esc((KINDS[recent.type] || KINDS.Unclear)[0])}</span></p>${changeLines(recent, u)}`
       : `<p class="muted">No unusual change in the last 24 hours.</p>`);
   };
   replay.listener = update;
   wireReplay(() => [pollutant]);
-  $("show-real").addEventListener("change", update);
   update();
 }
 
-// ---------- Health alerts ----------
+// ---------- Alerts ----------
 async function renderAlerts(view, fresh) {
   await loadReplayData();
   if (!fresh()) return;
@@ -552,9 +642,9 @@ async function renderAlerts(view, fresh) {
       <div class="card-head"><h3>All pollutants: now and the next 3 hours</h3>
         <button type="button" id="print-advisory" class="btn ghost small no-print">Print advisory</button></div>
       <div class="table-wrap"><table>
-        <thead><tr><th>Pollutant</th><th class="num">Now</th><th class="num">In 1 h</th><th class="num">In 2 h</th><th class="num">In 3 h</th><th>Status</th></tr></thead>
+        <thead><tr><th>Pollutant</th><th class="num">Now</th><th class="num">After 1 h</th><th class="num">After 2 h</th><th class="num">After 3 h</th><th>Level</th></tr></thead>
         <tbody id="alert-table"></tbody></table></div>
-      <p class="muted">High: above 95 in 100 earlier hours at this station. Very high: above 99 in 100. ${esc(DISCLAIMER)}</p>
+      <p class="muted">${esc(DISCLAIMER)}</p>
     </section>
     <div id="alert-cards" class="alert-list"></div>
     <section class="card no-print">
@@ -564,19 +654,19 @@ async function renderAlerts(view, fresh) {
   $("print-advisory").addEventListener("click", () => window.print());
 
   const card = (k, s, since) => {
-    const h = HEALTH[k] || {};
     const f = series[k];
     const u = esc(f.unit);
     const [name, cls] = LEVELS[s.level];
+    const step = LADDER[k][s.level];
     const id = `${k}|${f.times[since]}`;   // one send per warning, not per hour
-    const guide = GUIDE[s.level];
     return `<article class="card alert-card ${cls}">
-      <div class="card-head"><h3>${esc(f.pollutant)}: ${name.toLowerCase()} expected</h3><span class="pill ${cls}">${name}</span></div>
+      <div class="card-head"><h3>${esc(f.pollutant)}: ${name}</h3><span class="pill ${cls}">${name}</span></div>
       <p><b>${num(s.top)} ${u} forecast in ${esc(s.at)} hour${s.at === 1 ? "" : "s"}</b> (now ${num(s.now)}${s.change != null
-        ? `, ${s.change >= 0 ? "+" : "−"}${Math.abs(Math.round(s.change * 100))}%` : ""}). ${esc(s.reason)}</p>
+        ? `, ${s.change >= 0 ? "+" : "−"}${Math.abs(Math.round(s.change * 100))}%` : ""}). ${esc(step.what)}</p>
       <p class="muted">Since ${esc(fmtDateTime(f.times[since]))}</p>
-      <p><b>Why it matters:</b> ${esc(h.risk || "")}</p>
-      <div class="advice-grid">${Object.entries(guide).map(([who, text]) => `<div><b>${esc(who)}</b><p>${esc(text)}</p></div>`).join("")}</div>
+      <p><b>Health effects:</b> ${esc(step.effect)}</p>
+      <p><b>If it keeps rising:</b> ${esc(step.rising)}</p>
+      <div class="advice-grid">${Object.entries(GUIDE[s.level]).map(([who, text]) => `<div><b>${esc(who)}</b><p>${esc(text)}</p></div>`).join("")}</div>
       <p class="muted">Goes to: ${esc(RECIPIENTS)}</p>
       <div class="no-print">${!can("sendAlerts") ? `<p class="muted">Admins and doctors can send this warning.</p>`
         : sent.has(id) ? `<p class="note">Preview only: nothing was sent. Your team's backend will deliver this to the hospitals, doctors and public health organisations for this area.</p>`
@@ -600,7 +690,7 @@ async function renderAlerts(view, fresh) {
     if (signature !== shown) {   // rebuild the cards only when something changed, so a click never lands on a replaced button
       shown = signature;
       $("alert-cards").innerHTML = active.length ? active.map(([k, s, since]) => card(k, s, since)).join("")
-        : `<section class="card"><p class="note ok">No warnings for ${esc(fmtDateTime(replayTime()))}: every forecast for the next 3 hours is in the usual range.</p></section>`;
+        : `<section class="card"><p class="note ok">No warnings for ${esc(fmtDateTime(replayTime()))}: every forecast for the next 3 hours is at a normal level.</p></section>`;
       $("alert-cards").querySelectorAll("[data-send]").forEach((b) => b.addEventListener("click", () => { sent.add(b.dataset.send); update(); }));
     }
     const log = recentWarnings(replay.i);
@@ -615,11 +705,86 @@ async function renderAlerts(view, fresh) {
   update();
 }
 
+// ---------- Public health actions ----------
+async function renderActions(view, fresh) {
+  await loadReplayData();
+  if (!fresh()) return;
+  const keys = dataset.pollutants.map((x) => x.key);
+  const teams = Object.keys(PLAYBOOK[0][1]);
+  view.innerHTML = `
+    ${replayControls()}
+    <section class="card">
+      <div class="card-head"><h3>Today's briefing</h3><span class="muted" id="briefing-day"></span></div>
+      <p id="briefing-summary" class="lead-line"></p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Pollutant</th><th class="num">Highest so far today</th><th class="num">Highest in the next 3 h</th><th>Level</th><th>Warnings today</th></tr></thead>
+        <tbody id="briefing-table"></tbody></table></div>
+    </section>
+    <section class="card">
+      <div class="card-head"><h3>What to do at each level</h3><span class="muted">Action plan for each team</span></div>
+      <div class="table-wrap"><table class="playbook">
+        <thead><tr><th>Level</th>${teams.map((t) => `<th>${esc(t)}</th>`).join("")}</tr></thead>
+        <tbody>${PLAYBOOK.map(([level, row]) => `<tr id="play-${level}"><td><span class="pill ${LEVELS[level][1]}">${LEVELS[level][0]}</span></td>
+          ${teams.map((t) => `<td class="wrap">${esc(row[t])}</td>`).join("")}</tr>`).join("")}</tbody>
+      </table></div>
+    </section>
+    <div class="grid cols-2">
+      <section class="card">
+        <div class="card-head"><h3>A day with the portal</h3></div>
+        <ol class="routine">${ROUTINE.map(([when, what]) => `<li><b>${esc(when)}</b><span>${esc(what)}</span></li>`).join("")}</ol>
+      </section>
+      <section class="card">
+        <div class="card-head"><h3>How the predictions help</h3></div>
+        <div class="uses">${USES.map(([title, text]) => `<div><b>${esc(title)}</b><p>${esc(text)}</p></div>`).join("")}</div>
+      </section>
+    </div>
+    <p class="muted">${esc(DISCLAIMER)}</p>`;
+
+  const update = () => {
+    syncReplayControls();
+    const i = replay.i;
+    const times = series[keys[0]].times;
+    const day = times[i].slice(0, 10);
+    let first = i;
+    while (first > 0 && times[first - 1].slice(0, 10) === day) first--;
+    $("briefing-day").textContent = fmtDate(times[i]);
+    const rows = keys.map((k) => {
+      const f = series[k];
+      const today = f.now.slice(first, i + 1).filter((v) => v != null);
+      const s = statusAt(k, i);
+      let started = 0;
+      for (let j = first; j <= i; j++) if (startsWarning(k, j)) started++;
+      return { k, f, high: today.length ? Math.max(...today) : null, s, started };
+    });
+    const worst = rows.reduce((a, b) => (["normal", "l1", "l2"].indexOf(b.s.level) > ["normal", "l1", "l2"].indexOf(a.s.level) ? b : a));
+    const [wname] = LEVELS[worst.s.level] || LEVELS.normal;
+    $("briefing-summary").innerHTML = warning(worst.s.level)
+      ? `Level for the next 3 hours: <span class="pill ${LEVELS[worst.s.level][1]}">${wname}</span> because of <b>${esc(worst.f.pollutant)}</b>. Follow the ${wname} row below.`
+      : `Level for the next 3 hours: <span class="pill st-normal">Normal</span>. Routine monitoring is enough.`;
+    $("briefing-table").innerHTML = rows.map(({ k, f, high, s, started }) => {
+      const [name, cls] = LEVELS[s.level];
+      return `<tr><td><b>${esc(f.pollutant)}</b> <span class="muted">${esc(f.unit)}</span></td><td class="num">${num(high)}</td><td class="num">${num(s.top)}</td>
+        <td><span class="pill ${cls}">${name}</span></td><td>${started ? `${started} started` : "None"}</td></tr>`;
+    }).join("");
+    document.querySelectorAll(".playbook tbody tr").forEach((tr) => tr.classList.toggle("on", tr.id === `play-${warning(worst.s.level) ? worst.s.level : "normal"}`));
+  };
+  replay.listener = update;
+  wireReplay(() => keys);
+  update();
+}
+
+// ---------- Model and data ----------
+async function renderModelData(view, fresh) {
+  view.innerHTML = `<div id="model-part"></div><h3 class="section-title">The data</h3><div id="data-part"></div>`;
+  await renderModel($("model-part"), fresh);
+  if (fresh()) await renderDataset($("data-part"), fresh);
+}
+
 function choosePollutant(key, keep) {
   if (!dataset.pollutants.some((p) => p.key === key)) return;
   pollutant = key;
   store.set("ahp-pollutant", key);
-  $("pollutant").value = key;
+  $("pollutant").querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.key === key)));
   show(keep);
 }
 
@@ -887,7 +1052,10 @@ function start() {
   $("signout").addEventListener("click", signOut);
   $("menu-toggle").addEventListener("click", () => openMenu(!$("shell").classList.contains("menu-open")));
   $("scrim").addEventListener("click", () => openMenu(false));
-  $("pollutant").addEventListener("change", (event) => choosePollutant(event.target.value, "pollutant"));
+  $("pollutant").addEventListener("click", (event) => {
+    const b = event.target.closest("button");
+    if (b) choosePollutant(b.dataset.key, b.id);
+  });
   $("nav").addEventListener("click", (event) => { if (event.target.closest("a")) openMenu(false); });   // also when tapping the screen you're on
   window.addEventListener("hashchange", () => show());
   NARROW.addEventListener("change", () => openMenu(false));
