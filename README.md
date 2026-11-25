@@ -26,7 +26,7 @@ Until a station sends readings, the app shows the 2005 test months as a demo, at
 
 | File | What it does |
 |---|---|
-| `train.py` | Reads `data/AirQualityUCI.csv`, trains and compares the models, saves `models/` |
+| `train.py` | Reads `data/AirQualityUCI.csv` and `data/delhi/`, trains and compares the models, saves `models/` |
 | `main.py` | The server: forecasts, alerts, sensor checks, unusual periods, and the API |
 | `web/` | The web page (plain HTML, CSS and JavaScript, ECharts for the two charts) |
 | `tests/test_app.py` | Tests |
@@ -34,6 +34,11 @@ Until a station sends readings, the app shows the 2005 test months as a demo, at
 | `postman/` | Postman requests for `/predict` |
 
 ## How the forecast works
+
+Each model learns from two places: the UCI Air Quality data from one street station in Italy (2004–2005), and CPCB
+hourly data from 6 stations in Delhi (June 2018 to October 2019), so it also suits Indian stations. The Delhi data is
+the *Delhi Multi-Site Air-Quality Data Set* by S. Sonawani and K. Patil (Mendeley Data, doi:10.17632/bzhzr9b64v.1,
+CC BY 4.0), used unchanged. The app's demo, test months and Watch/Warning levels still come from the Italian station.
 
 The data is split by time: the first 60% to learn, the next 20% to choose the model, the last 20% to test. For each
 gas, linear regression, random forest and XGBoost are compared with simply repeating the last hour, and the closest one

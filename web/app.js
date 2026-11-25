@@ -240,7 +240,9 @@ async function showModel() {
   const span = ([from, to, hours]) => `${fmt(hours)} hours, ${date(from)} to ${date(to)}`;
   page.innerHTML = `
     <h1>How the model works</h1>
-    <p class="muted">For the data team. Built from ${esc(m.source)}: ${fmt(m.hours)} hourly readings from one street station in Italy.</p>
+    <p class="muted">For the data team. Built from ${esc(m.source)}: ${fmt(m.hours)} hourly readings from one street station in Italy${m.also_learned_from
+      ? `, plus ${fmt(m.also_learned_from.hours)} hours from ${esc(m.also_learned_from.name)} (${date(m.also_learned_from.from)} to ${date(m.also_learned_from.to)})` : ""}.
+      The dates below are the Italian station's; each Delhi station is split the same way.</p>
     <section class="panel">
       <h2>How it was trained</h2>
       <ol class="steps">
@@ -278,6 +280,8 @@ async function showModel() {
       <dl class="facts">
         <div><dt>On the test months</dt><dd>Usually off by ±${fmt(g.test.in_1_hour)} ${esc(g.unit)} one hour ahead and ±${fmt(g.test.in_2_hours)} two hours ahead.</dd></div>
         <div><dt>Compared with "same as last hour"</dt><dd>${better(g.test.in_1_hour, g.test.guess_1_hour)}% closer at 1 hour and ${better(g.test.in_2_hours, g.test.guess_2_hours)}% closer at 2 hours.</dd></div>
+        ${g.test_delhi ? `<div><dt>On the Delhi test months</dt><dd>Off by ±${fmt(g.test_delhi.in_1_hour)} ${esc(g.unit)} at 1 hour and ±${fmt(g.test_delhi.in_2_hours)} at 2 hours,
+          ${better(g.test_delhi.in_1_hour, g.test_delhi.guess_1_hour)}% and ${better(g.test_delhi.in_2_hours, g.test_delhi.guess_2_hours)}% closer than "same as last hour".</dd></div>` : ""}
         <div><dt>What it relies on most</dt><dd>${g.top_inputs.map((i) => INPUTS[i]).join(", ")}.</dd></div>
         <div><dt>Watch and Warning levels</dt><dd>${fmt(g.limits[0])} and ${fmt(g.limits[1])} ${esc(g.unit)}. ${esc(g.limit_source)}.</dd></div>
         <div><dt>Missing readings</dt><dd>${fmt(g.missing)}% of hours.</dd></div>

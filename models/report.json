@@ -8,59 +8,71 @@
       "unit": "mg/m³",
       "model": "Random forest",
       "scores": {
-        "Random forest": 0.562,
-        "XGBoost": 0.569,
-        "Same as last hour": 0.607,
-        "Linear regression": 0.61
+        "Random forest": 0.242,
+        "XGBoost": 0.248,
+        "Linear regression": 0.255,
+        "Same as last hour": 0.267
       },
       "test": {
-        "in_1_hour": 0.396,
-        "in_2_hours": 0.566,
+        "in_1_hour": 0.438,
+        "in_2_hours": 0.667,
         "guess_1_hour": 0.523,
-        "guess_2_hours": 0.862
+        "guess_2_hours": 0.856
+      },
+      "test_delhi": {
+        "in_1_hour": 0.14,
+        "in_2_hours": 0.211,
+        "guess_1_hour": 0.155,
+        "guess_2_hours": 0.249
       },
       "limits": [
         4,
         10
       ],
       "limit_source": "WHO guideline: 4 mg/m³ over a day, 10 mg/m³ over 8 hours",
-      "unusual_miss": 2.76,
+      "unusual_miss": 2.953,
       "typical_change": 0.538,
       "missing": 18.0,
       "top_inputs": [
-        "hour",
         "lag_2",
+        "hour",
         "lag_1"
       ]
     },
     "NO2": {
       "name": "Nitrogen dioxide",
       "unit": "µg/m³",
-      "model": "Random forest",
+      "model": "XGBoost",
       "scores": {
-        "Random forest": 13.98,
-        "Linear regression": 14.549,
-        "XGBoost": 14.564,
-        "Same as last hour": 15.213
+        "XGBoost": 8.316,
+        "Random forest": 8.375,
+        "Linear regression": 8.735,
+        "Same as last hour": 9.419
       },
       "test": {
-        "in_1_hour": 16.146,
-        "in_2_hours": 23.043,
+        "in_1_hour": 16.643,
+        "in_2_hours": 24.569,
         "guess_1_hour": 19.672,
-        "guess_2_hours": 32.896
+        "guess_2_hours": 32.788
+      },
+      "test_delhi": {
+        "in_1_hour": 4.565,
+        "in_2_hours": 6.529,
+        "guess_1_hour": 5.108,
+        "guess_2_hours": 7.967
       },
       "limits": [
         200,
         400
       ],
       "limit_source": "EU limit: 200 µg/m³ for one hour, 400 µg/m³ alert level",
-      "unusual_miss": 60.742,
+      "unusual_miss": 65.851,
       "typical_change": 14.599,
       "missing": 17.5,
       "top_inputs": [
-        "hour",
         "lag_2",
-        "lag_24"
+        "lag_24",
+        "hour"
       ]
     },
     "NOx": {
@@ -68,29 +80,35 @@
       "unit": "ppb",
       "model": "Random forest",
       "scores": {
-        "Random forest": 89.898,
-        "Linear regression": 90.858,
-        "Same as last hour": 91.337,
-        "XGBoost": 94.6
+        "Random forest": 18.938,
+        "Linear regression": 19.174,
+        "XGBoost": 19.221,
+        "Same as last hour": 20.069
       },
       "test": {
-        "in_1_hour": 57.586,
-        "in_2_hours": 84.804,
+        "in_1_hour": 60.872,
+        "in_2_hours": 91.343,
         "guess_1_hour": 73.293,
-        "guess_2_hours": 123.276
+        "guess_2_hours": 121.6
+      },
+      "test_delhi": {
+        "in_1_hour": 5.303,
+        "in_2_hours": 7.934,
+        "guess_1_hour": 5.7,
+        "guess_2_hours": 8.927
       },
       "limits": [
         677.8,
         1001.0
       ],
       "limit_source": "No short-term health limit: higher than 95 and 99 of 100 earlier hours at this station",
-      "unusual_miss": 406.835,
+      "unusual_miss": 413.577,
       "typical_change": 41.45,
       "missing": 17.5,
       "top_inputs": [
         "hour",
-        "lag_2",
-        "lag_1"
+        "lag_24",
+        "lag_3"
       ]
     },
     "C6H6": {
@@ -98,29 +116,35 @@
       "unit": "µg/m³",
       "model": "Random forest",
       "scores": {
-        "Random forest": 2.325,
-        "XGBoost": 2.391,
-        "Same as last hour": 2.712,
-        "Linear regression": 2.795
+        "Random forest": 1.009,
+        "Linear regression": 1.028,
+        "XGBoost": 1.049,
+        "Same as last hour": 1.078
       },
       "test": {
-        "in_1_hour": 1.73,
-        "in_2_hours": 2.483,
+        "in_1_hour": 1.875,
+        "in_2_hours": 2.857,
         "guess_1_hour": 2.294,
-        "guess_2_hours": 3.699
+        "guess_2_hours": 3.702
+      },
+      "test_delhi": {
+        "in_1_hour": 0.534,
+        "in_2_hours": 0.81,
+        "guess_1_hour": 0.547,
+        "guess_2_hours": 0.858
       },
       "limits": [
         25.2,
         35.6
       ],
       "limit_source": "No short-term health limit: higher than 95 and 99 of 100 earlier hours at this station",
-      "unusual_miss": 13.775,
+      "unusual_miss": 14.318,
       "typical_change": 2.834,
       "missing": 3.9,
       "top_inputs": [
-        "hour",
         "lag_2",
-        "lag_1"
+        "lag_1",
+        "hour"
       ]
     }
   },
@@ -140,5 +164,11 @@
       "2005-04-04",
       1871
     ]
+  },
+  "also_learned_from": {
+    "name": "CPCB, 6 stations in Delhi, India",
+    "hours": 70227,
+    "from": "2018-06-01",
+    "to": "2019-10-01"
   }
 }
