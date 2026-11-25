@@ -44,6 +44,18 @@ main { padding-top: 24px; padding-bottom: 32px; outline: none; }
 .btn:hover { filter: brightness(1.1); }
 :focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
 .error { color: var(--warning); font-weight: 500; }
+.panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.eyebrow { color: var(--accent); font-size: 0.76rem; font-weight: 700; letter-spacing: 0.14em; margin-bottom: 6px; }
+.predictor-panel { border-top: 4px solid var(--accent); }
+.pollutant-pills { margin-top: 16px; }
+.pill span { color: var(--muted); font-size: 0.82rem; margin-left: 4px; }
+.pill[aria-pressed="true"] span { color: #d9f1f4; }
+.selected-summary { margin: 12px 0 0; }
+.chart-note { margin-top: 8px; }
+.prediction-test { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 20px; }
+.feature-form { margin-top: 14px; }
+.field-name { color: var(--muted); font-size: 0.78rem; font-weight: 400; }
+.feature-form .btn { align-self: end; min-height: 40px; }
 
 /* today */
 .status { border-left: 8px solid var(--none); background: var(--none-bg); border-radius: 8px; padding: 20px 24px; margin-bottom: 16px; }

@@ -27,11 +27,13 @@ async function get(url, options) {
 const views = { today: showToday, history: showHistory, check: showCheck, model: showModel, tv: showTv };
 let timer = null;
 let charts = [];
+let selectedChart = null;
 
 async function route() {
   clearInterval(timer);
   charts.forEach((c) => c.dispose());
   charts = [];
+  selectedChart = null;
   const name = views[location.hash.slice(1)] ? location.hash.slice(1) : "today";
   document.body.classList.toggle("tv", name === "tv");
   document.querySelectorAll("nav a").forEach((a) => (a.hash === `#${name}` ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
@@ -62,10 +64,38 @@ function showMode(today) {
 
 // ---------- Today ----------
 async function showToday() {
-  const d = await get("/api/today");
+  const [d, model] = await Promise.all([get("/api/today"), get("/api/model")]);
   showMode(d);
   const alert = d.level === "watch" || d.level === "warning";
   page.innerHTML = `
+    <section class="panel predictor-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">POLLUTANT PREDICTION</p>
+          <h1>Choose a pollutant</h1>
+          <p class="muted">View hourly actual versus predicted values, then test a prediction with the model inputs.</p>
+        </div>
+        <span class="chip good">UCI Air Quality</span>
+      </div>
+      <div class="pills pollutant-pills" role="group" aria-label="Select pollutant">
+        ${Object.entries(GASES).map(([key, [name, unit]]) => `<button type="button" class="pill" data-pollutant="${key}">${esc(key)} <span>${esc(name)}</span></button>`).join("")}
+      </div>
+      <div class="selected-summary" id="selected-summary"></div>
+      <div id="pollutant-chart" class="chart" role="img" aria-label="Actual and predicted hourly values"></div>
+      <p class="muted chart-note">The dashed line is the one-hour-ahead prediction. Use the slider to inspect individual hours.</p>
+      <div class="prediction-test">
+        <div>
+          <p class="eyebrow">TEST A VALUE</p>
+          <h2>Enter model input features</h2>
+          <p class="muted">The selected pollutant is the target. Enter the remaining feature values below; the target value is predicted by the model.</p>
+        </div>
+        <form id="predict-form" class="form feature-form">
+          ${Object.entries(INPUTS).map(([key, label]) => `<label>${esc(label)} <span class="field-name">(${esc(key)})</span><input name="${key}" type="number" step="any" ${key === "lag_1" ? "required" : ""} placeholder="Enter value"></label>`).join("")}
+          <button class="btn" type="submit">Predict selected pollutant</button>
+        </form>
+        <div id="predict-out" class="result" aria-live="polite"></div>
+      </div>
+    </section>
     ${d.silent_hours ? `<p class="notice">No readings from the station for ${d.silent_hours} hours. Ask the data team to check it.</p>` : ""}
     <section class="status ${d.level}">
       <p class="status-level">Next 2 hours · ${LEVEL[d.level]}</p>
@@ -92,6 +122,41 @@ async function showToday() {
     <div class="gases">${d.gases.map(gasCard).join("")}</div>`;
   if (alert) document.getElementById("copy").addEventListener("click", (e) => copy(d.message, e.target));
   pie(document.getElementById("pie"), d.pie);
+  let selectedPollutant = "CO";
+  const drawPollutant = (gas) => {
+    selectedPollutant = gas;
+    const g = model.gases[gas];
+    document.querySelectorAll("[data-pollutant]").forEach((button) => button.setAttribute("aria-pressed", button.dataset.pollutant === gas));
+    document.getElementById("selected-summary").innerHTML = `<h2>${esc(g.name)} (${esc(gas)})</h2><p class="muted">Actual and predicted hourly values · ${esc(g.unit)} · selected model: ${esc(g.model)}</p>`;
+    if (selectedChart) {
+      selectedChart.dispose();
+      charts = charts.filter((item) => item !== selectedChart);
+    }
+    const start = Math.max(0, model.times.length - 24 * 7);
+    selectedChart = chart(document.getElementById("pollutant-chart"), {
+      tooltip: { trigger: "axis", valueFormatter: (v) => (v == null ? "no reading" : `${fmt(v)} ${g.unit}`) },
+      legend: { data: ["Actual", "Predicted"], top: 0 },
+      grid: { left: 58, right: 24, top: 38, bottom: 70 },
+      xAxis: { type: "time", name: "Hour" },
+      yAxis: { type: "value", name: g.unit, splitLine: { lineStyle: { color: "#e7ecef" } } },
+      dataZoom: [{ type: "inside", start: 0, end: 100 }, { type: "slider", start: 0, end: 100, height: 20 }],
+      series: [
+        { name: "Actual", type: "line", showSymbol: false, color: "#172b4d", lineStyle: { width: 2 }, data: model.times.slice(start).map((t, i) => [t, model.real[gas][start + i]]) },
+        { name: "Predicted", type: "line", showSymbol: false, color: "#1583a3", lineStyle: { width: 2, type: "dashed" }, data: model.times.slice(start).map((t, i) => [t, model.forecast[gas][start + i]]) },
+      ],
+    });
+  };
+  document.querySelectorAll("[data-pollutant]").forEach((button) => button.addEventListener("click", () => drawPollutant(button.dataset.pollutant)));
+  drawPollutant(selectedPollutant);
+  document.getElementById("predict-form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const out = document.getElementById("predict-out");
+    const features = Object.fromEntries([...new FormData(e.target)].map(([key, value]) => [key, value === "" ? null : Number(value)]));
+    try {
+      const result = await get("/predict", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pollutant: selectedPollutant, features }) });
+      out.innerHTML = `<div class="status good"><p class="status-level">Prediction ready</p><h2>${esc(result.pollutant)}: ${fmt(result.prediction)} ${esc(result.unit)}</h2><p>Predicted for the next hour using the ${esc(result.model)} model.</p></div>`;
+    } catch (err) { out.innerHTML = `<p class="error">${esc(err.message)}</p>`; }
+  });
   timer = setInterval(route, 5 * 60 * 1000);
 }
 
